@@ -13,7 +13,7 @@ export function ExportCsvButton(props: Props) {
   return (
     <button
       type="button"
-      className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-800 shadow-sm hover:bg-slate-50"
+      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:border-slate-300 hover:bg-slate-50"
       onClick={() => {
         downloadCsv(props.filename, rowsToCsv(props.rows));
       }}

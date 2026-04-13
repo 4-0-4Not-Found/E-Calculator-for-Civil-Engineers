@@ -1,24 +1,27 @@
 import Link from "next/link";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
+import { AppShell } from "@/components/layout/AppShell";
+import { PageFooterNav } from "@/components/navigation/PageFooterNav";
 
 /** Help: capabilities, limits, units, and tips for students. */
 export default function InfoPage() {
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-6 p-6 md:p-10">
+    <AppShell>
       <Card>
         <CardHeader
           title="About this app"
           description="AISC 360–based steel checks using the v16 shape database. Works offline after the first load (PWA). Use Summary to print or review inputs and key results together."
-          right={
-            <Link href="/" className="text-sm font-medium text-blue-700 hover:underline">
-              Home
-            </Link>
-          }
         />
-        <CardBody className="max-w-none space-y-8 text-slate-800">
-          <section>
-            <h3 className="text-lg font-bold text-slate-900">What you can do</h3>
-            <ul className="mt-2 list-disc space-y-2 pl-5 text-sm">
+        <CardBody className="max-w-none space-y-4 text-slate-800">
+          <details open className="rounded-2xl border border-slate-200 bg-white">
+            <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
+              What you can do
+              <span className="mt-1 block text-xs font-semibold text-slate-600">
+                A quick map of each module and what it checks.
+              </span>
+            </summary>
+            <div className="border-t border-slate-200 p-5">
+              <ul className="list-disc space-y-2 pl-5 text-sm">
               <li>
                 <strong>Tension:</strong> Gross yielding, net-section rupture, block shear (J4.3), optional staggered net-width
                 helper (D3). Check mode or design hint (lightest shape in a chosen family by weight).
@@ -39,12 +42,19 @@ export default function InfoPage() {
                 tension, shear–tension interaction, fillet and groove weld metal in shear, approximate prying plate thickness —
                 plus bolt-count and weld-length hints. Inputs can auto-save in your browser.
               </li>
-            </ul>
-          </section>
+              </ul>
+            </div>
+          </details>
 
-          <section>
-            <h3 className="text-lg font-bold text-slate-900">What this app does not replace</h3>
-            <ul className="mt-2 list-disc space-y-2 pl-5 text-sm">
+          <details open className="rounded-2xl border border-slate-200 bg-white">
+            <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
+              What this app does not replace
+              <span className="mt-1 block text-xs font-semibold text-slate-600">
+                Limits and what to verify outside the tool.
+              </span>
+            </summary>
+            <div className="border-t border-slate-200 p-5">
+              <ul className="list-disc space-y-2 pl-5 text-sm">
               <li>
                 Full connection design: eccentric bolt groups, full T-stub / end-plate prying, combined weld limit states beyond the
                 shear-on-throat checks here, and project-specific details not captured in a short form.
@@ -56,12 +66,19 @@ export default function InfoPage() {
               <li>Full AISC E7 effective-area treatment for every slender compression element—results are educational checks.</li>
               <li>Building code load combinations beyond what you enter (wind, seismic, snow) unless you supply the factored loads.</li>
               <li>Sealed or permit-ready construction documents—always verify with your instructor or a licensed engineer when required.</li>
-            </ul>
-          </section>
+              </ul>
+            </div>
+          </details>
 
-          <section>
-            <h3 className="text-lg font-bold text-slate-900">Units &amp; conventions</h3>
-            <ul className="mt-2 list-disc space-y-2 pl-5 text-sm">
+          <details open className="rounded-2xl border border-slate-200 bg-white">
+            <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
+              Units & conventions
+              <span className="mt-1 block text-xs font-semibold text-slate-600">
+                Consistent units used across the calculators.
+              </span>
+            </summary>
+            <div className="border-t border-slate-200 p-5">
+              <ul className="list-disc space-y-2 pl-5 text-sm">
               <li>
                 <strong>Length:</strong> inches (in) unless a field says feet (e.g. beam span in feet converts to inches inside).
               </li>
@@ -74,12 +91,19 @@ export default function InfoPage() {
                 <strong>D+L</strong> is used for deflection checks.
               </li>
               <li>Final strengths and demands are usually shown to <strong>about three decimal places</strong> for readability.</li>
-            </ul>
-          </section>
+              </ul>
+            </div>
+          </details>
 
-          <section>
-            <h3 className="text-lg font-bold text-slate-900">Tips</h3>
-            <ul className="mt-2 list-disc space-y-2 pl-5 text-sm">
+          <details open className="rounded-2xl border border-slate-200 bg-white">
+            <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
+              Tips
+              <span className="mt-1 block text-xs font-semibold text-slate-600">
+                Faster workflow and where to print/export.
+              </span>
+            </summary>
+            <div className="border-t border-slate-200 p-5">
+              <ul className="list-disc space-y-2 pl-5 text-sm">
               <li>
                 Open each calculator from <Link href="/" className="text-blue-700 hover:underline">Home</Link> — each module has
                 its own full-width layout. Use <Link href="/report" className="text-blue-700 hover:underline">Summary</Link> for a
@@ -96,10 +120,12 @@ export default function InfoPage() {
                 Use <Link href="/report" className="text-blue-700 hover:underline">Summary</Link> (also linked on Home) for a
                 printable overview when you have saved inputs.
               </li>
-            </ul>
-          </section>
+              </ul>
+            </div>
+          </details>
         </CardBody>
       </Card>
-    </main>
+      <PageFooterNav currentHref="/info" />
+    </AppShell>
   );
 }

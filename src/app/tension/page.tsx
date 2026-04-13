@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { aiscShapes } from "@/lib/aisc/data";
 import {
   filterShapesByFamily,
@@ -15,13 +14,35 @@ import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Field, SelectInput, TextInput } from "@/components/ui/Field";
 import { Badge } from "@/components/ui/Badge";
 import { StepsTable } from "@/components/StepsTable";
-import { ExportJsonButton } from "@/components/ExportJsonButton";
-import { ExportCsvButton } from "@/components/ExportCsvButton";
 import { STORAGE } from "@/lib/storage/keys";
+import { AppShell } from "@/components/layout/AppShell";
+import { ResultHero } from "@/components/results/ResultHero";
+import { PageFooterNav } from "@/components/navigation/PageFooterNav";
+import { TextInputWithUnit } from "@/components/ui/InputGroup";
+import { Button } from "@/components/ui/Button";
+import { UtilizationBar } from "@/components/ui/UtilizationBar";
+import { CalculatorActionRail } from "@/components/actions/CalculatorActionRail";
 
 const toNumber = (v: string) => Number(v) || 0;
 /** Client preference: ~3 decimals on final strengths / demands. */
 const fmt = (n: number, digits = 3) => (Number.isFinite(n) ? n.toFixed(digits) : "-");
+
+function isInvalidNumber(v: string, opts?: { min?: number; allowBlank?: boolean }) {
+  const allowBlank = opts?.allowBlank ?? false;
+  if (allowBlank && v.trim() === "") return false;
+  const n = Number(v);
+  if (!Number.isFinite(n)) return true;
+  if (opts?.min != null && n < opts.min) return true;
+  return false;
+}
+
+function scrollTo(id: string) {
+  try {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch {
+    /* ignore */
+  }
+}
 
 export default function TensionModulePage() {
   const [material, setMaterial] = useState<SteelMaterialKey>("A992");
@@ -51,34 +72,36 @@ export default function TensionModulePage() {
     try {
       const raw = localStorage.getItem(STORAGE.tension);
       if (!raw) {
-        setHydrated(true);
+        queueMicrotask(() => setHydrated(true));
         return;
       }
       const p = JSON.parse(raw) as Record<string, string>;
-      if (typeof p.material === "string") setMaterial(p.material as SteelMaterialKey);
-      if (typeof p.shapeName === "string") setShapeName(p.shapeName);
-      if (typeof p.Ag === "string") setAg(p.Ag);
-      if (typeof p.An === "string") setAn(p.An);
-      if (typeof p.U === "string") setU(p.U);
-      if (typeof p.Pu === "string") setPu(p.Pu);
-      if (typeof p.Agv === "string") setAgv(p.Agv);
-      if (typeof p.Anv === "string") setAnv(p.Anv);
-      if (typeof p.Agt === "string") setAgt(p.Agt);
-      if (typeof p.Ant === "string") setAnt(p.Ant);
-      if (typeof p.ubs === "string") setUbs(p.ubs);
-      if (typeof p.stagW === "string") setStagW(p.stagW);
-      if (typeof p.stagDh === "string") setStagDh(p.stagDh);
-      if (typeof p.stagN === "string") setStagN(p.stagN);
-      if (typeof p.stagS === "string") setStagS(p.stagS);
-      if (typeof p.stagG === "string") setStagG(p.stagG);
-      if (typeof p.stagT === "string") setStagT(p.stagT);
-      if (typeof p.shapeFamily === "string") setShapeFamily(p.shapeFamily as ShapeFamilyKey);
-      if (p.designMethod === "LRFD" || p.designMethod === "ASD") setDesignMethod(p.designMethod);
-      if (p.mode === "check" || p.mode === "design") setMode(p.mode);
+      queueMicrotask(() => {
+        if (typeof p.material === "string") setMaterial(p.material as SteelMaterialKey);
+        if (typeof p.shapeName === "string") setShapeName(p.shapeName);
+        if (typeof p.Ag === "string") setAg(p.Ag);
+        if (typeof p.An === "string") setAn(p.An);
+        if (typeof p.U === "string") setU(p.U);
+        if (typeof p.Pu === "string") setPu(p.Pu);
+        if (typeof p.Agv === "string") setAgv(p.Agv);
+        if (typeof p.Anv === "string") setAnv(p.Anv);
+        if (typeof p.Agt === "string") setAgt(p.Agt);
+        if (typeof p.Ant === "string") setAnt(p.Ant);
+        if (typeof p.ubs === "string") setUbs(p.ubs);
+        if (typeof p.stagW === "string") setStagW(p.stagW);
+        if (typeof p.stagDh === "string") setStagDh(p.stagDh);
+        if (typeof p.stagN === "string") setStagN(p.stagN);
+        if (typeof p.stagS === "string") setStagS(p.stagS);
+        if (typeof p.stagG === "string") setStagG(p.stagG);
+        if (typeof p.stagT === "string") setStagT(p.stagT);
+        if (typeof p.shapeFamily === "string") setShapeFamily(p.shapeFamily as ShapeFamilyKey);
+        if (p.designMethod === "LRFD" || p.designMethod === "ASD") setDesignMethod(p.designMethod);
+        if (p.mode === "check" || p.mode === "design") setMode(p.mode);
+      });
     } catch {
       /* ignore */
     }
-    setHydrated(true);
+    queueMicrotask(() => setHydrated(true));
   }, []);
 
   useEffect(() => {
@@ -107,6 +130,7 @@ export default function TensionModulePage() {
     };
     try {
       localStorage.setItem(STORAGE.tension, JSON.stringify(payload));
+      localStorage.setItem("ssc:ts:tension", String(Date.now()));
     } catch {
       /* ignore */
     }
@@ -258,101 +282,211 @@ export default function TensionModulePage() {
     return { netWidth: nw, an: nw * t };
   }, [stagW, stagDh, stagN, stagS, stagG, stagT]);
 
+  const failureModeRows = useMemo(() => {
+    const demand = result.demand;
+    return Object.entries(result.results)
+      .map(([key, value]) => {
+        const cap = value.phiPn;
+        const ratio = Number.isFinite(cap) && cap > 0 ? demand / cap : Number.POSITIVE_INFINITY;
+        return { key, name: value.name, unit: value.unit, cap, ratio };
+      })
+      .sort((a, b) => b.ratio - a.ratio);
+  }, [result]);
+
+  const resetInputs = () => {
+    try {
+      localStorage.removeItem(STORAGE.tension);
+      localStorage.removeItem("ssc:ts:tension");
+    } catch {
+      /* ignore */
+    }
+    setMaterial("A992");
+    setShapeName("W24X131");
+    setAg("38.5");
+    setAn("32");
+    setU("0.9");
+    setPu("900");
+    setAgv("24");
+    setAnv("20");
+    setAgt("8");
+    setAnt("6.5");
+    setUbs("0.5");
+    setStagW("");
+    setStagDh("0.875");
+    setStagN("2");
+    setStagS("3");
+    setStagG("3");
+    setStagT("0.75");
+    setShapeFamily("all");
+    setDesignMethod("LRFD");
+    setMode("check");
+  };
+
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-6 p-6 md:p-10">
+    <AppShell>
       <Card>
         <CardHeader
           title="Tension Analysis & Design"
           description="Yielding, rupture, block shear (J4.3), optional staggered net width. Check or design mode. Inputs save in this browser."
-          right={
-            <div className="flex flex-wrap items-center gap-2">
-              <ExportCsvButton filename="tension-export.csv" rows={csvRows} />
-              <ExportJsonButton
-                data={{ result, inputs: { material, shapeName, designMethod, mode, Ag, An, U, Pu, Agv, Anv, Agt, Ant, ubs } }}
-              />
-              <Link href="/info" className="text-sm font-medium text-slate-600 hover:underline">
-                Info
-              </Link>
-              <Link href="/" className="text-sm font-medium text-blue-700 hover:underline">
-                Home
-              </Link>
-            </div>
-          }
         />
-        <CardBody className="grid gap-4 md:grid-cols-12">
+        <CardBody className="grid gap-6 md:grid-cols-12 md:gap-8">
           <div className="md:col-span-8 grid gap-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Steel Type" hint="Auto-fills Fy and Fu (ksi).">
-                <SelectInput value={material} onChange={(v) => setMaterial(v as SteelMaterialKey)}>
-                  {steelMaterials.map((m) => (
-                    <option key={m.key} value={m.key}>
-                      {m.label} (Fy={m.Fy}, Fu={m.Fu})
-                    </option>
-                  ))}
-                </SelectInput>
-              </Field>
-              <Field label="Shape family" hint="Filter AISC v16 database (W, S, C, L, HSS, …).">
-                <SelectInput value={shapeFamily} onChange={(v) => handleShapeFamilyChange(v as ShapeFamilyKey)}>
-                  {shapeFamilyOptions.map((o) => (
-                    <option key={o.key} value={o.key}>
-                      {o.label}
-                    </option>
-                  ))}
-                </SelectInput>
-              </Field>
-              <Field label="AISC Shape" hint="Select a section; Ag will auto-update.">
-                <SelectInput
-                  value={shapeName}
-                  onChange={(v) => {
-                    const selected = aiscShapes.find((s) => s.shape === v);
-                    setShapeName(v);
-                    if (selected) setAg(String(selected.A));
-                  }}
-                >
-                  {shapeChoices.map((s) => (
-                    <option key={s.shape} value={s.shape}>
-                      {s.shape}
-                    </option>
-                  ))}
-                </SelectInput>
-              </Field>
-            </div>
+            <details open className="rounded-2xl border border-slate-200 bg-white" id="tension-general">
+              <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
+                1 · General
+                <span className="mt-1 block text-xs font-semibold text-slate-600">
+                  Steel, shape selection, method, and required Pu. These drive everything else.
+                </span>
+              </summary>
+              <div className="border-t border-slate-200 p-5">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Field label="Steel Type" hint="Auto-fills Fy and Fu (ksi).">
+                    <SelectInput value={material} onChange={(v) => setMaterial(v as SteelMaterialKey)}>
+                      {steelMaterials.map((m) => (
+                        <option key={m.key} value={m.key}>
+                          {m.label} (Fy={m.Fy}, Fu={m.Fu})
+                        </option>
+                      ))}
+                    </SelectInput>
+                  </Field>
+                  <Field label="Shape family" hint="Filter AISC v16 database (W, S, C, L, HSS, …).">
+                    <SelectInput value={shapeFamily} onChange={(v) => handleShapeFamilyChange(v as ShapeFamilyKey)}>
+                      {shapeFamilyOptions.map((o) => (
+                        <option key={o.key} value={o.key}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </SelectInput>
+                  </Field>
+                  <Field label="AISC Shape" hint="Ag auto-updates from the database.">
+                    <SelectInput
+                      value={shapeName}
+                      onChange={(v) => {
+                        const selected = aiscShapes.find((s) => s.shape === v);
+                        setShapeName(v);
+                        if (selected) setAg(String(selected.A));
+                      }}
+                    >
+                      {shapeChoices.map((s) => (
+                        <option key={s.shape} value={s.shape}>
+                          {s.shape}
+                        </option>
+                      ))}
+                    </SelectInput>
+                  </Field>
 
-            <Card className="shadow-none">
-              <CardBody className="grid gap-4 md:grid-cols-2">
-                <Field label="Mode" hint="Check a section, or get a lightest-weight suggestion in the chosen family.">
-                  <SelectInput value={mode} onChange={(v) => setMode(v as "check" | "design")}>
-                    <option value="check">Check / analyze</option>
-                    <option value="design">Design (lightest shape)</option>
-                  </SelectInput>
-                </Field>
-                <Field label="Design method" hint="LRFD (default) or ASD.">
-                  <SelectInput value={designMethod} onChange={(v) => setDesignMethod(v as "LRFD" | "ASD")}>
-                    <option value="LRFD">LRFD</option>
-                    <option value="ASD">ASD</option>
-                  </SelectInput>
-                </Field>
-                <Field label="Required Pu / Pa" hint="Required axial (kips) — LRFD Pu or ASD Pa depending on method.">
-                  <TextInput value={Pu} onChange={setPu} placeholder="e.g. 900" />
-                </Field>
-                <Field label="Shear lag factor U" hint="dimensionless">
-                  <TextInput value={U} onChange={setU} placeholder="e.g. 0.90" />
-                </Field>
-                <Field label="Ag" hint="gross area (in²)">
-                  <TextInput value={Ag} onChange={setAg} />
-                </Field>
-                <Field label="An" hint="net area (in²)">
-                  <TextInput value={An} onChange={setAn} />
-                </Field>
-              </CardBody>
-            </Card>
+                  <Field label="Mode" hint="Check a section, or get a lightest-weight suggestion in the chosen family.">
+                    <SelectInput value={mode} onChange={(v) => setMode(v as "check" | "design")}>
+                      <option value="check">Check / analyze</option>
+                      <option value="design">Design (lightest shape)</option>
+                    </SelectInput>
+                  </Field>
+
+                  <Field label="Design method" hint="LRFD (default) or ASD.">
+                    <SelectInput value={designMethod} onChange={(v) => setDesignMethod(v as "LRFD" | "ASD")}>
+                      <option value="LRFD">LRFD</option>
+                      <option value="ASD">ASD</option>
+                    </SelectInput>
+                  </Field>
+
+                  <Field label="Required Pu / Pa" hint="Required axial (kips) — LRFD Pu or ASD Pa depending on method.">
+                    <TextInputWithUnit
+                      value={Pu}
+                      onChange={setPu}
+                      unit="kips"
+                      placeholder="e.g. 900"
+                      inputMode="decimal"
+                      className={isInvalidNumber(Pu, { min: 0 }) ? "border-rose-300 focus:border-rose-400 focus:ring-rose-500/10" : undefined}
+                    />
+                  </Field>
+                </div>
+
+                {shape ? (
+                  <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-800">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-semibold text-slate-900">Section context</p>
+                      <Badge tone="info">{shape.shape}</Badge>
+                    </div>
+                    <div className="mt-2 grid grid-cols-2 gap-2 text-xs font-semibold text-slate-700 sm:grid-cols-4">
+                      <span className="tabular-nums">W: {fmt(shape.W, 1)} plf</span>
+                      <span className="tabular-nums">Ag: {fmt(shape.A, 3)} in²</span>
+                      <span className="tabular-nums">rx: {fmt(shape.rx, 3)} in</span>
+                      <span className="tabular-nums">ry: {fmt(shape.ry, 3)} in</span>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </details>
+
+            <details open className="rounded-2xl border border-slate-200 bg-white" id="tension-net-area">
+              <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
+                2 · Net area (yielding / rupture)
+                <span className="mt-1 block text-xs font-semibold text-slate-600">
+                  Enter areas and U. Use quick defaults for early sizing.
+                </span>
+              </summary>
+              <div className="border-t border-slate-200 p-5">
+                <div className="mb-3 flex flex-wrap gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    type="button"
+                    onClick={() => setU("0.90")}
+                  >
+                    Typical U = 0.90
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    type="button"
+                    onClick={() => setAn(Ag)}
+                  >
+                    Set An = Ag (no holes yet)
+                  </Button>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Field label="Shear lag factor U" hint="dimensionless">
+                    <TextInput
+                      value={U}
+                      onChange={setU}
+                      placeholder="e.g. 0.90"
+                    />
+                  </Field>
+                  <Field label="Ag" hint="gross area (in²)">
+                    <TextInputWithUnit
+                      value={Ag}
+                      onChange={setAg}
+                      unit="in²"
+                      inputMode="decimal"
+                      className={isInvalidNumber(Ag, { min: 0 }) ? "border-rose-300 focus:border-rose-400 focus:ring-rose-500/10" : undefined}
+                    />
+                  </Field>
+                  <Field label="An" hint="net area (in²)">
+                    <TextInputWithUnit
+                      value={An}
+                      onChange={setAn}
+                      unit="in²"
+                      inputMode="decimal"
+                      className={isInvalidNumber(An, { min: 0 }) ? "border-rose-300 focus:border-rose-400 focus:ring-rose-500/10" : undefined}
+                    />
+                  </Field>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+                    <p className="font-semibold text-slate-900">Tip</p>
+                    <p className="mt-1 text-sm">
+                      If you don’t have hole details yet, use <strong>An ≈ Ag</strong> for quick sizing, then refine in Check mode.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </details>
 
             {designSuggestion ? (
-              <Card className="border-emerald-200 bg-emerald-50/80">
+              <Card className="border-[#0818A8]/20 bg-[#0818A8]/5">
                 <CardBody>
-                  <p className="text-sm font-semibold text-emerald-950">Suggested section (lightest in family that passes)</p>
-                  <p className="mt-1 text-xl font-bold text-emerald-950">{designSuggestion.shape}</p>
-                  <p className="mt-1 text-sm text-emerald-900">
+                  <p className="text-sm font-semibold text-slate-950">Suggested section (lightest in family that passes)</p>
+                  <p className="mt-1 text-xl font-extrabold tracking-tight text-slate-950">{designSuggestion.shape}</p>
+                  <p className="mt-1 text-sm text-slate-700">
                     {designSuggestion.W} lb/ft — uses gross = net areas and your block-shear inputs; switch to Check to enter real A<sub>n</sub> and holes.
                   </p>
                 </CardBody>
@@ -397,114 +531,201 @@ export default function TensionModulePage() {
               </Card>
             ) : null}
 
-            <Card className="shadow-none border border-dashed border-slate-300">
-              <CardBody className="space-y-3">
-                <p className="text-sm font-semibold text-slate-900">Staggered holes — net width (AISC D3)</p>
-                <p className="text-sm text-slate-600">
-                  Net width = W − n d_h + Σ(s² / 4g) for stagger(s). Then A_n = t × net width for a uniform plate strip. For W-shapes, compute path areas separately or use this as a helper and enter A_n above.
-                </p>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Field label="Gross width W" hint="in — along the failure path">
-                    <TextInput value={stagW} onChange={setStagW} placeholder="e.g. 8" />
-                  </Field>
-                  <Field label="Hole dia d_h" hint="in">
-                    <TextInput value={stagDh} onChange={setStagDh} />
-                  </Field>
-                  <Field label="Number of holes n" hint="on that path">
-                    <TextInput value={stagN} onChange={setStagN} />
-                  </Field>
-                  <Field label="Thickness t" hint="in — for A_n = t × net width">
-                    <TextInput value={stagT} onChange={setStagT} />
-                  </Field>
-                  <Field label="Pitch s" hint="in — optional stagger (leave 0 for collinear holes)">
-                    <TextInput value={stagS} onChange={setStagS} />
-                  </Field>
-                  <Field label="Gage g" hint="in — between gage lines for one stagger">
-                    <TextInput value={stagG} onChange={setStagG} />
-                  </Field>
+            <details className="rounded-2xl border border-slate-200 bg-white">
+              <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
+                3 · Block shear + stagger helper
+                <span className="mt-1 block text-xs font-semibold text-slate-600">
+                  Block shear (J4.3) and an optional staggered-net tool (D3) for plate strips.
+                </span>
+              </summary>
+              <div className="border-t border-slate-200 p-5 space-y-4">
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="secondary" size="sm" type="button" onClick={() => setUbs("0.50")}>
+                    Typical Ubs = 0.50
+                  </Button>
                 </div>
-                {staggerHelp ? (
-                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-50 p-3 text-sm text-slate-800">
-                    <span>
-                      Net width = {staggerHelp.netWidth.toFixed(4)} in → A_n = {staggerHelp.an.toFixed(4)} in²
-                    </span>
-                    <button
-                      type="button"
-                      className="rounded-lg bg-blue-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-800"
-                      onClick={() => setAn(String(Math.round(staggerHelp.an * 10000) / 10000))}
+
+                <Card className="shadow-none border border-slate-200">
+                  <CardBody className="grid gap-4 md:grid-cols-2">
+                    <Field label="Agv" hint="gross shear area (in²)">
+                      <TextInputWithUnit value={Agv} onChange={setAgv} unit="in²" inputMode="decimal" />
+                    </Field>
+                    <Field label="Anv" hint="net shear area (in²)">
+                      <TextInputWithUnit value={Anv} onChange={setAnv} unit="in²" inputMode="decimal" />
+                    </Field>
+                    <Field label="Agt" hint="gross tension area (in²)">
+                      <TextInputWithUnit value={Agt} onChange={setAgt} unit="in²" inputMode="decimal" />
+                    </Field>
+                    <Field label="Ant" hint="net tension area (in²)">
+                      <TextInputWithUnit value={Ant} onChange={setAnt} unit="in²" inputMode="decimal" />
+                    </Field>
+                    <Field
+                      label="Ubs (block shear)"
+                      hint="AISC J4.3 U_bs: 0.5 non-uniform tension on A_nt (typical); 1.0 uniform"
+                      className="md:col-span-2"
                     >
-                      Copy A_n to net area
-                    </button>
-                  </div>
-                ) : (
-                  <p className="text-sm text-slate-500">Enter W, d_h, t, and n to compute.</p>
-                )}
-              </CardBody>
-            </Card>
+                      <TextInput
+                        value={ubs}
+                        onChange={setUbs}
+                        placeholder="0.5"
+                      />
+                    </Field>
+                  </CardBody>
+                </Card>
 
-            <Card className="shadow-none">
-              <CardBody className="grid gap-4 md:grid-cols-2">
-                <Field label="Agv" hint="gross shear area (in²)">
-                  <TextInput value={Agv} onChange={setAgv} />
-                </Field>
-                <Field label="Anv" hint="net shear area (in²)">
-                  <TextInput value={Anv} onChange={setAnv} />
-                </Field>
-                <Field label="Agt" hint="Gross tension area (in²), for full block-shear path when needed.">
-                  <TextInput value={Agt} onChange={setAgt} />
-                </Field>
-                <Field label="Ant" hint="net tension area (in²)">
-                  <TextInput value={Ant} onChange={setAnt} />
-                </Field>
-                <Field
-                  label="Ubs (block shear)"
-                  hint="AISC J4.3 U_bs: 0.5 non-uniform tension on A_nt (typical); 1.0 uniform"
-                >
-                  <TextInput value={ubs} onChange={setUbs} placeholder="0.5" />
-                </Field>
-              </CardBody>
-            </Card>
+                <Card className="shadow-none border border-dashed border-slate-300 bg-white">
+                  <CardBody className="space-y-3">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-950">Tool — staggered net width (AISC D3)</p>
+                        <p className="mt-1 text-sm text-slate-700">
+                          Computes net width for a plate strip. Use as a helper, then copy A<sub>n</sub> to the net area field.
+                        </p>
+                      </div>
+                      <Button variant="ghost" size="sm" type="button" onClick={() => scrollTo("tension-net-area")}>
+                        Go to net area
+                      </Button>
+                    </div>
 
-            <details className="rounded-2xl border border-slate-200 bg-white p-5">
-              <summary className="cursor-pointer text-sm font-semibold text-slate-900">Show step-by-step calculations</summary>
-              <div className="mt-4">
-                <StepsTable steps={result.steps} />
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <Field label="Gross width W" hint="in — along failure path">
+                        <TextInputWithUnit value={stagW} onChange={setStagW} unit="in" placeholder="e.g. 8" inputMode="decimal" />
+                      </Field>
+                      <Field label="Hole dia d_h" hint="in">
+                        <TextInputWithUnit value={stagDh} onChange={setStagDh} unit="in" inputMode="decimal" />
+                      </Field>
+                      <Field label="Number of holes n" hint="on that path">
+                        <TextInput value={stagN} onChange={setStagN} />
+                      </Field>
+                      <Field label="Thickness t" hint="in">
+                        <TextInputWithUnit value={stagT} onChange={setStagT} unit="in" inputMode="decimal" />
+                      </Field>
+                      <Field label="Pitch s" hint="in — optional stagger">
+                        <TextInputWithUnit value={stagS} onChange={setStagS} unit="in" inputMode="decimal" />
+                      </Field>
+                      <Field label="Gage g" hint="in — between gage lines">
+                        <TextInputWithUnit value={stagG} onChange={setStagG} unit="in" inputMode="decimal" />
+                      </Field>
+                    </div>
+
+                    {staggerHelp ? (
+                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-800">
+                        <span className="tabular-nums">
+                          Net width = {staggerHelp.netWidth.toFixed(4)} in → A<sub>n</sub> = {staggerHelp.an.toFixed(4)} in²
+                        </span>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                await navigator.clipboard.writeText(staggerHelp.netWidth.toFixed(4));
+                              } catch {
+                                /* ignore */
+                              }
+                            }}
+                          >
+                            Copy net width
+                          </Button>
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            type="button"
+                            onClick={() => setAn(String(Math.round(staggerHelp.an * 10000) / 10000))}
+                          >
+                            Copy A_n to net area
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-slate-600">Enter W, d_h, t, and n to compute.</p>
+                    )}
+                  </CardBody>
+                </Card>
+              </div>
+            </details>
+
+            <details id="tension-steps" className="rounded-2xl border border-slate-200 bg-white">
+              <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
+                Steps (show math)
+                <span className="mt-1 block text-xs font-semibold text-slate-600">
+                  Governing: <span className="text-slate-900">{result.governingCase}</span> · Capacity{" "}
+                  <span className="tabular-nums text-slate-900">{fmt(result.controllingStrength)} kips</span>
+                </span>
+              </summary>
+              <div className="border-t border-slate-200 p-5">
+                <StepsTable steps={result.steps} governingCase={String(result.governingCase)} tools />
               </div>
             </details>
           </div>
 
           <aside className="md:col-span-4">
             <div className="sticky top-6 space-y-4">
-              <Card className="border-slate-200">
-                <CardBody>
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-semibold uppercase text-slate-500">Status</p>
-                      <p className="mt-1 text-2xl font-extrabold text-slate-900">
-                        {result.isSafe ? <Badge tone="good">SAFE</Badge> : <Badge tone="bad">NOT SAFE</Badge>}
-                      </p>
-                    </div>
-                    <Badge tone="info">{selectedMaterial.key}</Badge>
-                  </div>
-                  <div className="mt-4 grid gap-2 text-sm">
-                    <Row label="Governing case" value={result.governingCase} />
-                    <Row
-                      label={designMethod === "LRFD" ? "Design strength (φPn)" : "Allowable (Pa)"}
-                      value={`${fmt(result.controllingStrength)} kips`}
-                    />
-                    <Row label={designMethod === "LRFD" ? "Demand Pu" : "Demand Pa"} value={`${fmt(result.demand)} kips`} />
-                  </div>
-                </CardBody>
-              </Card>
+              <CalculatorActionRail
+                desktopClassName="hidden md:block"
+                hideMobileBar
+                title="Actions"
+                subtitle={`${shapeName} · ${designMethod} · ${mode === "design" ? "Design" : "Check"}`}
+                copyText={() =>
+                  [
+                    `Tension — ${shapeName}`,
+                    `Method: ${designMethod} · Material: ${selectedMaterial.key}`,
+                    `Mode: ${mode}`,
+                    `Pu = ${Pu} kips`,
+                    `Governing: ${result.governingCase}`,
+                    `Capacity: ${fmt(result.controllingStrength)} kips`,
+                    `Demand: ${fmt(result.demand)} kips`,
+                    `Utilization: ${
+                      result.controllingStrength > 0 ? ((result.demand / result.controllingStrength) * 100).toFixed(1) : "-"
+                    }%`,
+                  ].join("\n")
+                }
+                onGoSteps={() => scrollTo("tension-steps")}
+                csv={{ filename: "tension-export.csv", rows: csvRows }}
+                json={{ data: { result, inputs: { material, shapeName, designMethod, mode, Ag, An, U, Pu, Agv, Anv, Agt, Ant, ubs } } }}
+                onReset={resetInputs}
+              />
+              <ResultHero
+                status={result.isSafe ? "safe" : "unsafe"}
+                governing={result.governingCase}
+                capacityLabel={designMethod === "LRFD" ? "Design strength (φPn)" : "Allowable (Pa)"}
+                capacity={`${fmt(result.controllingStrength)} kips`}
+                demandLabel={designMethod === "LRFD" ? "Demand Pu" : "Demand Pa"}
+                demand={`${fmt(result.demand)} kips`}
+                utilization={result.controllingStrength > 0 ? result.demand / result.controllingStrength : undefined}
+                metaRight={<Badge tone="info">{selectedMaterial.key}</Badge>}
+              />
 
               <Card className="border-slate-200">
                 <CardBody>
-                  <p className="text-xs font-semibold uppercase text-slate-500">Failure modes</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Failure modes</p>
                   <div className="mt-3 space-y-2">
-                    {Object.entries(result.results).map(([key, value]) => (
-                      <div key={key} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                        <div className="text-xs font-semibold text-slate-700">{value.name}</div>
-                        <div className="mt-1 text-lg font-bold text-slate-900">{fmt(value.phiPn)} {value.unit}</div>
+                    {failureModeRows.map((row) => (
+                      <div
+                        key={row.key}
+                        className={[
+                          "rounded-xl border p-3",
+                          row.name.toLowerCase().includes(String(result.governingCase).toLowerCase())
+                            ? "border-[#0818A8]/25 bg-[#0818A8]/5"
+                            : "border-slate-200 bg-slate-50",
+                        ].join(" ")}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="text-xs font-semibold text-slate-700">{row.name}</div>
+                            <div className="mt-1 text-base font-extrabold tabular-nums text-slate-950">
+                              {fmt(row.cap)} {row.unit}
+                            </div>
+                          </div>
+                          <div className="text-right text-xs font-semibold text-slate-700">
+                            <div>Util.</div>
+                            <div className="tabular-nums text-slate-950">{(row.ratio * 100).toFixed(1)}%</div>
+                          </div>
+                        </div>
+                        <div className="mt-2">
+                          <UtilizationBar ratio={row.ratio} />
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -532,7 +753,45 @@ export default function TensionModulePage() {
           </aside>
         </CardBody>
       </Card>
-    </main>
+      <div className="mt-8 md:mt-10">
+      <CalculatorActionRail
+        mobileOnly
+        subtitle="Tension actions"
+        copyText={() =>
+          [
+            `Tension — ${shapeName}`,
+            `Method: ${designMethod} · Material: ${selectedMaterial.key}`,
+            `Mode: ${mode}`,
+            `Pu = ${Pu} kips`,
+            `Governing: ${result.governingCase}`,
+            `Capacity: ${fmt(result.controllingStrength)} kips`,
+            `Demand: ${fmt(result.demand)} kips`,
+          ].join("\n")
+        }
+        onGoSteps={() => scrollTo("tension-steps")}
+        csv={{ filename: "tension-export.csv", rows: csvRows }}
+        json={{ data: { result, inputs: { material, shapeName, designMethod, mode, Ag, An, U, Pu, Agv, Anv, Agt, Ant, ubs } } }}
+        compare={{
+          storageKey: "ssc:compare:tension",
+          getCurrent: () => ({
+            title: `Tension — ${shapeName}`,
+            lines: [
+              `Method: ${designMethod} · Material: ${selectedMaterial.key} · Mode: ${mode}`,
+              `Pu: ${Pu} kips`,
+              `Governing: ${String(result.governingCase)}`,
+              `Capacity: ${fmt(result.controllingStrength)} kips`,
+              `Demand: ${fmt(result.demand)} kips`,
+              `Utilization: ${
+                result.controllingStrength > 0 ? ((result.demand / result.controllingStrength) * 100).toFixed(1) : "-"
+              }%`,
+            ],
+          }),
+        }}
+        onReset={resetInputs}
+      />
+      </div>
+      <PageFooterNav currentHref="/tension" />
+    </AppShell>
   );
 }
 

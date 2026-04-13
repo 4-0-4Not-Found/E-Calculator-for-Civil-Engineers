@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
+import { AppShell } from "@/components/layout/AppShell";
+import { PageFooterNav } from "@/components/navigation/PageFooterNav";
 
 export default function OfflinePage() {
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col justify-center p-6 md:p-10">
+    <AppShell width="3xl">
       <Card>
         <CardHeader
           title="You are offline"
@@ -19,6 +21,7 @@ export default function OfflinePage() {
           <p>Your saved calculator inputs in this browser are not deleted.</p>
         </CardBody>
       </Card>
-    </main>
+      <PageFooterNav currentHref="/offline" />
+    </AppShell>
   );
 }

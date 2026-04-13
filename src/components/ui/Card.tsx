@@ -9,8 +9,8 @@ export function CardHeader(props: { className?: string; title: ReactNode; descri
   return (
     <div className={cn("flex items-start justify-between gap-4 border-b border-slate-100 p-6", props.className)}>
       <div className="min-w-0">
-        <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">{props.title}</h1>
-        {props.description ? <p className="mt-2 text-base text-slate-700">{props.description}</p> : null}
+        <h1 className="text-xl font-extrabold tracking-tight text-slate-950 md:text-2xl">{props.title}</h1>
+        {props.description ? <p className="mt-2 text-sm text-slate-700 md:text-base">{props.description}</p> : null}
       </div>
       {props.right ? <div className="shrink-0">{props.right}</div> : null}
     </div>

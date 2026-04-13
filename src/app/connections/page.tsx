@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   calculateBoltShearBearingCombinedLRFD,
@@ -16,12 +15,16 @@ import {
   calculateGrooveWeldShearLRFD,
 } from "@/lib/calculations/connections-advanced";
 import { boltDiametersIn, type BoltGroup, type BoltThreadMode } from "@/lib/data/bolts";
-import { ExportJsonButton } from "@/components/ExportJsonButton";
-import { ExportCsvButton } from "@/components/ExportCsvButton";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Field, SelectInput, TextInput } from "@/components/ui/Field";
 import { STORAGE } from "@/lib/storage/keys";
+import { AppShell } from "@/components/layout/AppShell";
+import { ResultHero } from "@/components/results/ResultHero";
+import { PageFooterNav } from "@/components/navigation/PageFooterNav";
+import { TextInputWithUnit } from "@/components/ui/InputGroup";
+import { Button } from "@/components/ui/Button";
+import { CalculatorActionRail } from "@/components/actions/CalculatorActionRail";
 
 export default function ConnectionsPage() {
   const [hydrated, setHydrated] = useState(false);
@@ -61,40 +64,42 @@ export default function ConnectionsPage() {
     try {
       const raw = localStorage.getItem(STORAGE.connections);
       if (!raw) {
-        setHydrated(true);
+        queueMicrotask(() => setHydrated(true));
         return;
       }
       const p = JSON.parse(raw) as Record<string, string>;
-      if (typeof p.designMethod === "string") setDesignMethod(p.designMethod as "LRFD" | "ASD");
-      if (typeof p.shearMode === "string") setShearMode(p.shearMode as "bearing" | "slip");
-      if (typeof p.surfaceClass === "string") setSurfaceClass(p.surfaceClass as "A" | "B");
-      if (typeof p.slipHf === "string") setSlipHf(p.slipHf);
-      if (typeof p.vu === "string") setVu(p.vu);
-      if (typeof p.tu === "string") setTu(p.tu);
-      if (typeof p.boltGroup === "string") setBoltGroup(p.boltGroup as BoltGroup);
-      if (typeof p.dBolt === "string") setDBolt(p.dBolt);
-      if (typeof p.nBolts === "string") setNBolts(p.nBolts);
-      if (typeof p.shearPlanes === "string") setShearPlanes(p.shearPlanes as "1" | "2");
-      if (typeof p.threadMode === "string") setThreadMode(p.threadMode as BoltThreadMode);
-      if (typeof p.checkBearing === "boolean") setCheckBearing(p.checkBearing);
-      if (typeof p.plateFu === "string") setPlateFu(p.plateFu);
-      if (typeof p.plateT === "string") setPlateT(p.plateT);
-      if (typeof p.lcMin === "string") setLcMin(p.lcMin);
-      if (typeof p.fexx === "string") setFexx(p.fexx);
-      if (typeof p.legIn === "string") setLegIn(p.legIn);
-      if (typeof p.weldLen === "string") setWeldLen(p.weldLen);
-      if (typeof p.weldDemand === "string") setWeldDemand(p.weldDemand);
-      if (typeof p.grooveThroatIn === "string") setGrooveThroatIn(p.grooveThroatIn);
-      if (typeof p.grooveLenIn === "string") setGrooveLenIn(p.grooveLenIn);
-      if (typeof p.grooveDemand === "string") setGrooveDemand(p.grooveDemand);
-      if (typeof p.pryingTPerBoltOverride === "string") setPryingTPerBoltOverride(p.pryingTPerBoltOverride);
-      if (typeof p.pryingBPrimeIn === "string") setPryingBPrimeIn(p.pryingBPrimeIn);
-      if (typeof p.pryingStripWidthIn === "string") setPryingStripWidthIn(p.pryingStripWidthIn);
-      if (typeof p.pryingFyKsi === "string") setPryingFyKsi(p.pryingFyKsi);
+      queueMicrotask(() => {
+        if (typeof p.designMethod === "string") setDesignMethod(p.designMethod as "LRFD" | "ASD");
+        if (typeof p.shearMode === "string") setShearMode(p.shearMode as "bearing" | "slip");
+        if (typeof p.surfaceClass === "string") setSurfaceClass(p.surfaceClass as "A" | "B");
+        if (typeof p.slipHf === "string") setSlipHf(p.slipHf);
+        if (typeof p.vu === "string") setVu(p.vu);
+        if (typeof p.tu === "string") setTu(p.tu);
+        if (typeof p.boltGroup === "string") setBoltGroup(p.boltGroup as BoltGroup);
+        if (typeof p.dBolt === "string") setDBolt(p.dBolt);
+        if (typeof p.nBolts === "string") setNBolts(p.nBolts);
+        if (typeof p.shearPlanes === "string") setShearPlanes(p.shearPlanes as "1" | "2");
+        if (typeof p.threadMode === "string") setThreadMode(p.threadMode as BoltThreadMode);
+        if (typeof p.checkBearing === "boolean") setCheckBearing(p.checkBearing);
+        if (typeof p.plateFu === "string") setPlateFu(p.plateFu);
+        if (typeof p.plateT === "string") setPlateT(p.plateT);
+        if (typeof p.lcMin === "string") setLcMin(p.lcMin);
+        if (typeof p.fexx === "string") setFexx(p.fexx);
+        if (typeof p.legIn === "string") setLegIn(p.legIn);
+        if (typeof p.weldLen === "string") setWeldLen(p.weldLen);
+        if (typeof p.weldDemand === "string") setWeldDemand(p.weldDemand);
+        if (typeof p.grooveThroatIn === "string") setGrooveThroatIn(p.grooveThroatIn);
+        if (typeof p.grooveLenIn === "string") setGrooveLenIn(p.grooveLenIn);
+        if (typeof p.grooveDemand === "string") setGrooveDemand(p.grooveDemand);
+        if (typeof p.pryingTPerBoltOverride === "string") setPryingTPerBoltOverride(p.pryingTPerBoltOverride);
+        if (typeof p.pryingBPrimeIn === "string") setPryingBPrimeIn(p.pryingBPrimeIn);
+        if (typeof p.pryingStripWidthIn === "string") setPryingStripWidthIn(p.pryingStripWidthIn);
+        if (typeof p.pryingFyKsi === "string") setPryingFyKsi(p.pryingFyKsi);
+      });
     } catch {
       /* ignore */
     }
-    setHydrated(true);
+    queueMicrotask(() => setHydrated(true));
   }, []);
 
   useEffect(() => {
@@ -129,6 +134,7 @@ export default function ConnectionsPage() {
     };
     try {
       localStorage.setItem(STORAGE.connections, JSON.stringify(payload));
+      localStorage.setItem("ssc:ts:connections", String(Date.now()));
     } catch {
       /* ignore */
     }
@@ -357,6 +363,62 @@ export default function ConnectionsPage() {
     return Number(tu) <= cap;
   }, [tensionOut, designMethod, tu]);
 
+  const overallStatus = useMemo(() => {
+    const checks: Array<boolean | null> = [];
+    if (shearAdequate !== null) checks.push(shearAdequate);
+    if (Number(tu) > 0) {
+      if (tensionAdequate !== null) checks.push(tensionAdequate);
+      if (interactionOut) checks.push(interactionOut.isSafe);
+    }
+    if (weldDemandOk !== null) checks.push(weldDemandOk);
+    if (grooveOut) checks.push(grooveOut.isSafe);
+    if (checks.length === 0) return "invalid" as const;
+    return checks.every((c) => c === true) ? ("safe" as const) : ("unsafe" as const);
+  }, [shearAdequate, tu, tensionAdequate, interactionOut, weldDemandOk, grooveOut]);
+
+  function scrollTo(id: string) {
+    try {
+      document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const resetInputs = () => {
+    try {
+      localStorage.removeItem(STORAGE.connections);
+      localStorage.removeItem("ssc:ts:connections");
+    } catch {
+      /* ignore */
+    }
+    setDesignMethod("LRFD");
+    setShearMode("bearing");
+    setSurfaceClass("A");
+    setSlipHf("1");
+    setVu("120");
+    setTu("0");
+    setBoltGroup("A325");
+    setDBolt("0.75");
+    setNBolts("4");
+    setShearPlanes("2");
+    setThreadMode("N");
+    setCheckBearing(true);
+    setPlateFu("65");
+    setPlateT("0.5");
+    setLcMin("1.25");
+    setFexx("70");
+    setLegIn("0.25");
+    setWeldLen("4");
+    setWeldDemand("50");
+    setGrooveThroatIn("0.25");
+    setGrooveLenIn("4");
+    setGrooveDemand("50");
+    setPryingTPerBoltOverride("");
+    setPryingBPrimeIn("1.5");
+    setPryingStripWidthIn("4");
+    setPryingFyKsi("50");
+  };
+
   const csvRows = useMemo(() => {
     const rows: string[][] = [
       ["Category", "Item", "Value"],
@@ -427,71 +489,143 @@ export default function ConnectionsPage() {
   ]);
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-6 p-6 md:p-10">
+    <AppShell>
       <Card>
         <CardHeader
           title="Bolted & welded connections"
           description="LRFD or ASD — bolts, welds, and optional groove/prying helpers. Inputs auto-save in this browser."
-          right={
-            <div className="flex flex-wrap items-center gap-2">
-              <ExportCsvButton filename="connections-export.csv" rows={csvRows} />
-              <ExportJsonButton
-                label="Copy JSON"
-                data={{
-                  bolt: boltOut,
-                  slip: slipOut,
-                  tension: tensionOut,
-                  interaction: interactionOut,
-                  weld: weldOut,
-                  grooveWeld: grooveOut,
-                  pryingPlate: pryingOut,
-                  inputs: {
-                    designMethod,
-                    shearMode,
-                    surfaceClass,
-                    slipHf,
-                    vu,
-                    tu,
-                    boltGroup,
-                    threadMode,
-                    dBolt,
-                    nBolts,
-                    shearPlanes,
-                    checkBearing,
-                    plateFu,
-                    plateT,
-                    lcMin,
-                    fexx,
-                    legIn,
-                    weldLen,
-                    weldDemand,
-                    grooveThroatIn,
-                    grooveLenIn,
-                    grooveDemand,
-                    pryingTPerBoltOverride,
-                    pryingBPrimeIn,
-                    pryingStripWidthIn,
-                    pryingFyKsi,
-                  },
-                }}
-              />
-              <Link href="/info" className="text-sm font-medium text-slate-600 hover:underline">
-                Info
-              </Link>
-              <Link href="/" className="text-sm font-medium text-blue-700 hover:underline">
-                Back
-              </Link>
-            </div>
-          }
         />
-        <CardBody className="flex flex-col gap-10 p-4 sm:p-6">
-          <section className="rounded-2xl border border-slate-200 bg-slate-50/60 p-5 sm:p-6">
-            <h2 className="text-base font-bold uppercase tracking-wide text-slate-500">1 · Demands &amp; bolt layout</h2>
-            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
-              Choose <strong>bearing-type</strong> (shear in bolts/plate) or <strong>slip-critical</strong> (friction). Slip
-              uses J3.8; with <strong>T_u &gt; 0</strong> on slip-critical, check J3.9 reduction outside this tool.
-            </p>
-            <div className="mt-6 grid gap-5 sm:grid-cols-2">
+        <CardBody className="flex flex-col gap-6 p-4 sm:p-6">
+          <CalculatorActionRail
+            hideMobileBar
+            title="Actions"
+            subtitle={`${designMethod} · ${shearMode === "slip" ? "Slip-critical" : "Bearing"} · ${boltGroup} d=${dBolt} in`}
+            copyText={() =>
+              [
+                "Connections",
+                `Method: ${designMethod}`,
+                `Shear mode: ${shearMode}`,
+                `Vu: ${vu} kips`,
+                `Tu: ${tu} kips`,
+                `Bolt: ${boltGroup} d=${dBolt} in n=${nBolts} planes=${shearPlanes} threads=${threadMode}`,
+                interactionOut && Number(tu) > 0 ? `Interaction Σ: ${interactionOut.interactionSum.toFixed(6)}` : null,
+                shearMode === "slip" && slipOut ? `Available slip: ${slipOut.availableSlip.toFixed(6)} kips` : null,
+                boltOut ? `Governing shear/bearing: ${boltOut.phiRnTotalGoverning.toFixed(6)} kips` : null,
+                tensionOut ? `Bolt tension φRn total: ${tensionOut.phiRnTotal.toFixed(6)} kips` : null,
+                weldOut ? `Fillet weld φRn: ${weldOut.phiRn.toFixed(6)} kips` : null,
+                grooveOut ? `Groove weld: ${grooveOut.phiRnOrAllowableKips.toFixed(6)} kips` : null,
+              ]
+                .filter(Boolean)
+                .join("\n")
+            }
+            onGoSteps={() => scrollTo("conn-results")}
+            csv={{ filename: "connections-export.csv", rows: csvRows }}
+            json={{
+              data: {
+                bolt: boltOut,
+                slip: slipOut,
+                tension: tensionOut,
+                interaction: interactionOut,
+                weld: weldOut,
+                grooveWeld: grooveOut,
+                pryingPlate: pryingOut,
+                inputs: {
+                  designMethod,
+                  shearMode,
+                  surfaceClass,
+                  slipHf,
+                  vu,
+                  tu,
+                  boltGroup,
+                  threadMode,
+                  dBolt,
+                  nBolts,
+                  shearPlanes,
+                  checkBearing,
+                  plateFu,
+                  plateT,
+                  lcMin,
+                  fexx,
+                  legIn,
+                  weldLen,
+                  weldDemand,
+                  grooveThroatIn,
+                  grooveLenIn,
+                  grooveDemand,
+                  pryingTPerBoltOverride,
+                  pryingBPrimeIn,
+                  pryingStripWidthIn,
+                  pryingFyKsi,
+                },
+              },
+            }}
+            onReset={resetInputs}
+          />
+          <ResultHero
+            status={overallStatus}
+            title="Overall"
+            governing={
+              interactionOut && Number(tu) > 0
+                ? `Interaction Σ = ${interactionOut.interactionSum.toFixed(4)}`
+                : shearMode === "slip" && slipOut
+                  ? "Slip-critical (J3.8)"
+                  : boltOut
+                    ? `Bolt check (${boltOut.controlling})`
+                    : "Enter inputs to evaluate"
+            }
+            capacityLabel="Key capacity"
+            capacity={
+              shearMode === "slip" && slipOut
+                ? `${slipOut.availableSlip.toFixed(3)} kips (available slip)`
+                : boltOut
+                  ? `${(designMethod === "LRFD"
+                      ? boltOut.phiRnTotalGoverning
+                      : lrfdToAsdSamePhiOmega(boltOut.phiRnTotalGoverning)
+                    ).toFixed(3)} kips (governing shear/bearing)`
+                  : "—"
+            }
+            demandLabel="Demand"
+            demand={`${Number(vu).toFixed(3)} kips shear${Number(tu) > 0 ? ` · ${Number(tu).toFixed(3)} kips tension` : ""}`}
+            utilization={
+              interactionOut && Number(tu) > 0
+                ? interactionOut.interactionSum
+                : shearMode === "slip" && slipOut
+                  ? Number(vu) / slipOut.availableSlip
+                  : boltOut
+                    ? Number(vu) /
+                      (designMethod === "LRFD"
+                        ? boltOut.phiRnTotalGoverning
+                        : lrfdToAsdSamePhiOmega(boltOut.phiRnTotalGoverning))
+                    : undefined
+            }
+          />
+
+          <details open className="rounded-2xl border border-slate-200 bg-white" id="conn-inputs">
+            <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
+              1 · Demands & bolt layout
+              <span className="mt-1 block text-xs font-semibold text-slate-600">
+                V<sub>u</sub>, T<sub>u</sub>, bolt group and slip/bearing choices.
+              </span>
+            </summary>
+            <div className="border-t border-slate-200 p-5">
+              <div className="mb-3 flex flex-wrap gap-2">
+                <Button variant="secondary" size="sm" type="button" onClick={() => setTu("0")}>
+                  Set Tu = 0 (shear-only)
+                </Button>
+                <Button variant="secondary" size="sm" type="button" onClick={() => setDesignMethod("LRFD")}>
+                  LRFD
+                </Button>
+                <Button variant="secondary" size="sm" type="button" onClick={() => setDesignMethod("ASD")}>
+                  ASD
+                </Button>
+              </div>
+
+              <p className="mb-4 max-w-3xl text-sm leading-relaxed text-slate-700">
+                Choose <strong>bearing-type</strong> (shear in bolts/plate) or <strong>slip-critical</strong> (friction). Slip uses
+                J3.8; with <strong>T_u &gt; 0</strong> on slip-critical, check J3.9 reduction outside this tool.
+              </p>
+
+              <div className="grid gap-5 sm:grid-cols-2">
               <Field label="Shear transfer" hint="Slip-critical uses Table J3.1 T_b; use A325/A490.">
                 <SelectInput value={shearMode} onChange={(v) => setShearMode(v as "bearing" | "slip")}>
                   <option value="bearing">Bearing-type (shear + optional bearing)</option>
@@ -505,10 +639,10 @@ export default function ConnectionsPage() {
                 </SelectInput>
               </Field>
               <Field label="Required shear V_u" hint="kips — on bolt group">
-                <TextInput value={vu} onChange={setVu} placeholder="e.g. 120" />
+                <TextInputWithUnit value={vu} onChange={setVu} unit="kips" placeholder="e.g. 120" inputMode="decimal" />
               </Field>
               <Field label="Required tension T_u" hint="kips — on bolt group (0 if shear-only)">
-                <TextInput value={tu} onChange={setTu} placeholder="0" />
+                <TextInputWithUnit value={tu} onChange={setTu} unit="kips" placeholder="0" inputMode="decimal" />
               </Field>
               <Field label="Bolt ASTM type" hint={shearMode === "slip" ? "Slip-critical: A325 or A490 (T_b from Table J3.1)." : "Table J3.2"}>
                 <SelectInput value={boltGroup} onChange={(v) => setBoltGroup(v as BoltGroup)}>
@@ -565,16 +699,16 @@ export default function ConnectionsPage() {
               {shearMode === "bearing" ? (
                 <>
                   <Field label="Plate F_u" hint="ksi">
-                    <TextInput value={plateFu} onChange={setPlateFu} placeholder="65" />
+                    <TextInputWithUnit value={plateFu} onChange={setPlateFu} unit="ksi" placeholder="65" inputMode="decimal" />
                   </Field>
                   <Field label="Plate thickness t" hint="in">
-                    <TextInput value={plateT} onChange={setPlateT} placeholder="0.5" />
+                    <TextInputWithUnit value={plateT} onChange={setPlateT} unit="in" placeholder="0.5" inputMode="decimal" />
                   </Field>
                   <Field
                     label="Min clear L_c"
                     hint="in — clear distance in load direction (J3.10(a)); governs bearing / hole tear-out vs 2.4 d t cap"
                   >
-                    <TextInput value={lcMin} onChange={setLcMin} placeholder="1.25" />
+                    <TextInputWithUnit value={lcMin} onChange={setLcMin} unit="in" placeholder="1.25" inputMode="decimal" />
                   </Field>
                 </>
               ) : null}
@@ -617,12 +751,18 @@ export default function ConnectionsPage() {
                 unreduced slip capacity.
               </p>
             ) : null}
-          </section>
+            </div>
+          </details>
 
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-            <h2 className="text-base font-bold uppercase tracking-wide text-slate-500">2 · Bolt check results</h2>
-            <p className="mt-1 text-sm text-slate-500">Capacities vs your V_u and T_u — interaction applies when T_u &gt; 0.</p>
-            <div className="mt-5 grid gap-4 lg:grid-cols-2">
+          <details open className="rounded-2xl border border-slate-200 bg-white" id="conn-results">
+            <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
+              2 · Bolt check results
+              <span className="mt-1 block text-xs font-semibold text-slate-600">
+                Capacities vs V<sub>u</sub> and T<sub>u</sub>; interaction applies when T<sub>u</sub> &gt; 0.
+              </span>
+            </summary>
+            <div className="border-t border-slate-200 p-5">
+              <div className="grid gap-4 lg:grid-cols-2">
             {shearMode === "slip" && slipOut ? (
               <Card className="border-slate-200 bg-slate-50/80">
                 <CardBody className="space-y-2 text-sm text-slate-800">
@@ -722,14 +862,18 @@ export default function ConnectionsPage() {
               </div>
             ) : null}
             </div>
-          </section>
+            </div>
+          </details>
 
-          <section className="rounded-2xl border border-slate-200 bg-slate-50/60 p-5 sm:p-6">
-            <h2 className="text-base font-bold uppercase tracking-wide text-slate-500">3 · Fillet weld</h2>
-            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
-              R_n = 0.6 F_EXX (0.707 a) L; φ = 0.75. Electrode F_EXX is also used for optional groove checks below.
-            </p>
-            <div className="mt-6 grid gap-5 sm:grid-cols-2">
+          <details className="rounded-2xl border border-slate-200 bg-white" id="conn-weld">
+            <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
+              3 · Fillet weld
+              <span className="mt-1 block text-xs font-semibold text-slate-600">
+                R<sub>n</sub> = 0.6 F<sub>EXX</sub> (0.707a) L; φ = 0.75. Electrode also used for groove checks below.
+              </span>
+            </summary>
+            <div className="border-t border-slate-200 p-5">
+              <div className="grid gap-5 sm:grid-cols-2">
               <Field label="F_EXX (electrode)" hint="ksi">
                 <SelectInput value={fexx} onChange={setFexx}>
                   <option value="70">70 (E70XX)</option>
@@ -737,13 +881,13 @@ export default function ConnectionsPage() {
                 </SelectInput>
               </Field>
               <Field label="Leg size a" hint="inches">
-                <TextInput value={legIn} onChange={setLegIn} placeholder="0.25" />
+                <TextInputWithUnit value={legIn} onChange={setLegIn} unit="in" placeholder="0.25" inputMode="decimal" />
               </Field>
               <Field label="Weld length L" hint="inches">
-                <TextInput value={weldLen} onChange={setWeldLen} placeholder="4" />
+                <TextInputWithUnit value={weldLen} onChange={setWeldLen} unit="in" placeholder="4" inputMode="decimal" />
               </Field>
               <Field label="Demand on weld" hint="kips">
-                <TextInput value={weldDemand} onChange={setWeldDemand} placeholder="50" />
+                <TextInputWithUnit value={weldDemand} onChange={setWeldDemand} unit="kips" placeholder="50" inputMode="decimal" />
               </Field>
             </div>
             {weldOut ? (
@@ -767,7 +911,8 @@ export default function ConnectionsPage() {
                 </CardBody>
               </Card>
             ) : null}
-          </section>
+              </div>
+          </details>
 
           <details className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/40 open:border-slate-400 open:bg-white">
             <summary className="cursor-pointer list-none px-5 py-4 text-base font-bold text-slate-900 [&::-webkit-details-marker]:hidden">
@@ -785,13 +930,13 @@ export default function ConnectionsPage() {
                 </p>
                 <div className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                   <Field label="Effective throat" hint="in — from detail">
-                    <TextInput value={grooveThroatIn} onChange={setGrooveThroatIn} placeholder="0.25" />
+                    <TextInputWithUnit value={grooveThroatIn} onChange={setGrooveThroatIn} unit="in" placeholder="0.25" inputMode="decimal" />
                   </Field>
                   <Field label="Length L" hint="in — total effective length in shear">
-                    <TextInput value={grooveLenIn} onChange={setGrooveLenIn} placeholder="4" />
+                    <TextInputWithUnit value={grooveLenIn} onChange={setGrooveLenIn} unit="in" placeholder="4" inputMode="decimal" />
                   </Field>
                   <Field label="Shear demand" hint="kips on weld group">
-                    <TextInput value={grooveDemand} onChange={setGrooveDemand} placeholder="50" />
+                    <TextInputWithUnit value={grooveDemand} onChange={setGrooveDemand} unit="kips" placeholder="50" inputMode="decimal" />
                   </Field>
                 </div>
                 {grooveOut ? (
@@ -818,16 +963,16 @@ export default function ConnectionsPage() {
                 </p>
                 <div className="mt-4 grid gap-5 sm:grid-cols-2">
                   <Field label="T per bolt (optional)" hint="kips — blank uses T_u / n">
-                    <TextInput value={pryingTPerBoltOverride} onChange={setPryingTPerBoltOverride} placeholder="" />
+                    <TextInputWithUnit value={pryingTPerBoltOverride} onChange={setPryingTPerBoltOverride} unit="kips" placeholder="" inputMode="decimal" />
                   </Field>
                   <Field label="b′ (lever arm)" hint="in — bolt line to hinge">
-                    <TextInput value={pryingBPrimeIn} onChange={setPryingBPrimeIn} placeholder="1.5" />
+                    <TextInputWithUnit value={pryingBPrimeIn} onChange={setPryingBPrimeIn} unit="in" placeholder="1.5" inputMode="decimal" />
                   </Field>
                   <Field label="Strip width w" hint="in — gage or tributary width">
-                    <TextInput value={pryingStripWidthIn} onChange={setPryingStripWidthIn} placeholder="4" />
+                    <TextInputWithUnit value={pryingStripWidthIn} onChange={setPryingStripWidthIn} unit="in" placeholder="4" inputMode="decimal" />
                   </Field>
                   <Field label="Plate F_y" hint="ksi">
-                    <TextInput value={pryingFyKsi} onChange={setPryingFyKsi} placeholder="50" />
+                    <TextInputWithUnit value={pryingFyKsi} onChange={setPryingFyKsi} unit="ksi" placeholder="50" inputMode="decimal" />
                   </Field>
                 </div>
                 {pryingOut && pryingTPerBoltKips != null ? (
@@ -848,6 +993,55 @@ export default function ConnectionsPage() {
           </details>
         </CardBody>
       </Card>
-    </main>
+      <div className="mt-8 md:mt-10">
+      <CalculatorActionRail
+        mobileOnly
+        subtitle="Connections actions"
+        copyText={() =>
+          [
+            "Connections",
+            `Method: ${designMethod}`,
+            `Shear mode: ${shearMode}`,
+            `Vu: ${vu} kips`,
+            `Tu: ${tu} kips`,
+            interactionOut && Number(tu) > 0 ? `Interaction Σ: ${interactionOut.interactionSum.toFixed(6)}` : null,
+          ]
+            .filter(Boolean)
+            .join("\n")
+        }
+        onGoSteps={() => scrollTo("conn-results")}
+        csv={{ filename: "connections-export.csv", rows: csvRows }}
+        json={{
+          data: {
+            bolt: boltOut,
+            slip: slipOut,
+            tension: tensionOut,
+            interaction: interactionOut,
+            weld: weldOut,
+            grooveWeld: grooveOut,
+            pryingPlate: pryingOut,
+          },
+        }}
+        compare={{
+          storageKey: "ssc:compare:connections",
+          getCurrent: () => ({
+            title: "Connections",
+            lines: [
+              `Method: ${designMethod} · Shear mode: ${shearMode}`,
+              `Vu: ${vu} kips · Tu: ${tu} kips`,
+              `Bolt: ${boltGroup} d=${dBolt} in · n=${nBolts} · planes=${shearPlanes} · threads=${threadMode}`,
+              interactionOut && Number(tu) > 0 ? `Interaction Σ: ${interactionOut.interactionSum.toFixed(4)}` : "Interaction: —",
+              shearMode === "slip" && slipOut ? `Available slip: ${slipOut.availableSlip.toFixed(3)} kips` : "Slip: —",
+              boltOut ? `Governing shear/bearing: ${boltOut.phiRnTotalGoverning.toFixed(3)} kips` : "Bolt check: —",
+              tensionOut ? `Bolt tension φRn total: ${tensionOut.phiRnTotal.toFixed(3)} kips` : "Tension: —",
+              weldOut ? `Fillet weld φRn: ${weldOut.phiRn.toFixed(3)} kips` : "Fillet weld: —",
+            ],
+          }),
+        }}
+        onReset={resetInputs}
+      />
+      </div>
+      <PageFooterNav currentHref="/connections" />
+    </AppShell>
   );
 }

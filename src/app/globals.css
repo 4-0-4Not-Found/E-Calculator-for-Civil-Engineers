@@ -1,9 +1,25 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f5f7fb;
+  --background: #ffffff;
   --foreground: #0f172a;
+  --brand: #0818A8;
+  --action: #FF5F1F;
   color-scheme: light;
+}
+
+html {
+  /*
+    Slightly reduce the global rem scale so Tailwind `text-*` sizing
+    feels less oversized across the app (inputs, headings, tables).
+  */
+  font-size: 15px;
+}
+
+@media (min-width: 768px) {
+  html {
+    font-size: 15.5px;
+  }
 }
 
 @theme inline {
@@ -17,8 +33,8 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
-  font-size: 17px;
-  line-height: 1.6;
+  font-size: 15px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -39,4 +55,61 @@ summary {
 
 summary::-webkit-details-marker {
   display: none;
+}
+
+/* Accessibility: sensible global focus fallback */
+:where(a, button, input, select, textarea, summary):focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--brand) 18%, transparent);
+  border-radius: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media print {
+  /* Remove app chrome + interactive UI */
+  header,
+  nav,
+  footer,
+  button,
+  [role="dialog"],
+  .backdrop-blur {
+    display: none !important;
+  }
+
+  /* Ensure white background + crisp text */
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  /* Make cards print cleanly */
+  section {
+    break-inside: avoid;
+  }
+
+  /* Expand details content and reduce visual noise */
+  summary {
+    display: none !important;
+  }
+  details {
+    border: 0 !important;
+  }
+  details > div {
+    border-top: 0 !important;
+    padding-top: 0 !important;
+  }
+
+  /* Tables: preserve borders */
+  table {
+    break-inside: avoid;
+  }
 }

@@ -40,7 +40,15 @@ export function ProjectBackupPanel() {
   }, []);
 
   const clearAll = useCallback(() => {
+    const ok = window.confirm(
+      "Clear all saved inputs for this browser?\n\nThis removes saved fields for every module and cannot be undone.",
+    );
+    if (!ok) return;
     Object.values(STORAGE).forEach((k) => localStorage.removeItem(k));
+    ["tension", "compression", "bending", "connections"].forEach((m) =>
+      localStorage.removeItem(`ssc:ts:${m}`),
+    );
+    localStorage.removeItem("ssc:lastRoute");
     setMsg("Saved inputs cleared for this browser.");
   }, []);
 
@@ -55,15 +63,23 @@ export function ProjectBackupPanel() {
         <button
           type="button"
           onClick={download}
-          className="rounded-lg bg-blue-600 px-3 py-2 font-medium text-white hover:bg-blue-700"
+          className="rounded-lg bg-[#FF5F1F] px-3 py-2 font-semibold text-white shadow-sm hover:bg-[#e24f16] focus:outline-none focus:ring-4 focus:ring-[#FF5F1F]/20"
         >
           Download project JSON
         </button>
-        <button type="button" onClick={() => fileRef.current?.click()} className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-medium hover:bg-slate-50">
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          className="rounded-lg border border-slate-200 bg-white px-3 py-2 font-semibold text-slate-800 shadow-sm hover:border-slate-300 hover:bg-slate-50"
+        >
           Load project JSON
         </button>
         <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={onFile} />
-        <button type="button" onClick={clearAll} className="rounded-lg border border-red-200 bg-white px-3 py-2 text-red-800 hover:bg-red-50">
+        <button
+          type="button"
+          onClick={clearAll}
+          className="rounded-lg border border-red-200 bg-white px-3 py-2 font-semibold text-red-800 shadow-sm hover:bg-red-50"
+        >
           Clear saved inputs
         </button>
       </div>

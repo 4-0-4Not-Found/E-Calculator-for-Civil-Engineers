@@ -1,10 +1,11 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
-import Link from "next/link";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import type { BeamLimitStates, CalculationOutput, CalculationResult, CalculationStep } from "@/lib/types/calculation";
 import { readModuleStoresFromLocalStorage, summarizeModuleStores } from "@/lib/report/snapshot-store";
+import { AppShell } from "@/components/layout/AppShell";
+import { PageFooterNav } from "@/components/navigation/PageFooterNav";
 
 function formatNumberForReport(v: number): string {
   if (!Number.isFinite(v)) {
@@ -166,7 +167,9 @@ function ModuleSummaryStrip({ output }: { output: CalculationOutput }) {
 
 export default function ReportPage() {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    queueMicrotask(() => setMounted(true));
+  }, []);
 
   const summaries = useMemo(() => {
     if (!mounted || typeof window === "undefined") return null;
@@ -180,7 +183,7 @@ export default function ReportPage() {
   const connectionsS = summaries?.connections ?? null;
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-6xl p-6 md:p-10 print:p-4">
+    <AppShell>
       <Card className="print:border-0 print:shadow-none">
         <CardHeader
           title="Project summary"
@@ -190,81 +193,108 @@ export default function ReportPage() {
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="rounded-lg bg-slate-800 px-3 py-2 text-sm font-medium text-white hover:bg-slate-900"
+                className="rounded-lg bg-[#FF5F1F] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#e24f16]"
               >
                 Print / Save PDF
               </button>
-              <Link href="/" className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium hover:bg-slate-50">
-                Home
-              </Link>
             </div>
           }
         />
-        <CardBody className="space-y-6 text-sm text-slate-800">
+        <CardBody className="space-y-4 text-sm text-slate-800">
           {!mounted ? (
             <p className="text-slate-600">Loading…</p>
           ) : (
             <>
-              <section className="rounded-xl border border-slate-200 p-4 print:break-inside-avoid">
-                <h3 className="font-bold text-slate-900">Tension</h3>
-                {tensionS?.ok ? (
-                  <div className="mt-2 space-y-2">
-                    <p className="text-xs text-slate-600">Material: {tensionS.materialLabel}</p>
-                    <ModuleSummaryStrip output={tensionS.output} />
-                    <LimitStatesResultsTable results={tensionS.output.results} />
-                    <CalculationStepsTable steps={tensionS.output.steps} title="Calculation steps (AISC D2 / J4.3)" />
-                  </div>
-                ) : (
-                  <p className="mt-1 text-slate-600">{tensionS && "error" in tensionS ? tensionS.error : "No data."}</p>
-                )}
-              </section>
+              <details open className="rounded-2xl border border-slate-200 bg-white print:break-inside-avoid">
+                <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
+                  Tension
+                  <span className="mt-1 block text-xs font-semibold text-slate-600">
+                    Saved snapshot from the Tension module.
+                  </span>
+                </summary>
+                <div className="border-t border-slate-200 p-5">
+                  {tensionS?.ok ? (
+                    <div className="space-y-2">
+                      <p className="text-xs text-slate-600">Material: {tensionS.materialLabel}</p>
+                      <ModuleSummaryStrip output={tensionS.output} />
+                      <LimitStatesResultsTable results={tensionS.output.results} />
+                      <CalculationStepsTable steps={tensionS.output.steps} title="Calculation steps (AISC D2 / J4.3)" />
+                    </div>
+                  ) : (
+                    <p className="text-slate-600">{tensionS && "error" in tensionS ? tensionS.error : "No data."}</p>
+                  )}
+                </div>
+              </details>
 
-              <section className="rounded-xl border border-slate-200 p-4 print:break-inside-avoid">
-                <h3 className="font-bold text-slate-900">Compression</h3>
-                {compressionS?.ok ? (
-                  <div className="mt-2 space-y-2">
-                    <p className="text-xs text-slate-600">
-                      Shape: {compressionS.shapeName} · Steel: {compressionS.materialLabel}
+              <details open className="rounded-2xl border border-slate-200 bg-white print:break-inside-avoid">
+                <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
+                  Compression
+                  <span className="mt-1 block text-xs font-semibold text-slate-600">
+                    Saved snapshot from the Compression module.
+                  </span>
+                </summary>
+                <div className="border-t border-slate-200 p-5">
+                  {compressionS?.ok ? (
+                    <div className="space-y-2">
+                      <p className="text-xs text-slate-600">
+                        Shape: {compressionS.shapeName} · Steel: {compressionS.materialLabel}
+                      </p>
+                      <ModuleSummaryStrip output={compressionS.output} />
+                      <LimitStatesResultsTable results={compressionS.output.results} />
+                      <CalculationStepsTable steps={compressionS.output.steps} title="Calculation steps (AISC E3 / local limits)" />
+                    </div>
+                  ) : (
+                    <p className="text-slate-600">
+                      {compressionS && "error" in compressionS ? compressionS.error : "No data."}
                     </p>
-                    <ModuleSummaryStrip output={compressionS.output} />
-                    <LimitStatesResultsTable results={compressionS.output.results} />
-                    <CalculationStepsTable steps={compressionS.output.steps} title="Calculation steps (AISC E3 / local limits)" />
-                  </div>
-                ) : (
-                  <p className="mt-1 text-slate-600">
-                    {compressionS && "error" in compressionS ? compressionS.error : "No data."}
-                  </p>
-                )}
-              </section>
+                  )}
+                </div>
+              </details>
 
-              <section className="rounded-xl border border-slate-200 p-4 print:break-inside-avoid">
-                <h3 className="font-bold text-slate-900">Beam (bending / shear / deflection)</h3>
-                {bendingS?.ok ? (
-                  <div className="mt-2 space-y-2">
-                    <p className="text-xs text-slate-600">
-                      Shape: {bendingS.shapeName} ({bendingS.shapeFamilyLabel}) · Steel: {bendingS.materialLabel}
-                    </p>
-                    {bendingS.output.beamLimitStates ? (
-                      <BeamLimitStatesBlock
-                        beamLimitStates={bendingS.output.beamLimitStates}
-                        overallSafe={bendingS.output.isSafe}
+              <details open className="rounded-2xl border border-slate-200 bg-white print:break-inside-avoid">
+                <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
+                  Beam (bending / shear / deflection)
+                  <span className="mt-1 block text-xs font-semibold text-slate-600">
+                    Saved snapshot from the Beam module.
+                  </span>
+                </summary>
+                <div className="border-t border-slate-200 p-5">
+                  {bendingS?.ok ? (
+                    <div className="space-y-2">
+                      <p className="text-xs text-slate-600">
+                        Shape: {bendingS.shapeName} ({bendingS.shapeFamilyLabel}) · Steel: {bendingS.materialLabel}
+                      </p>
+                      {bendingS.output.beamLimitStates ? (
+                        <BeamLimitStatesBlock
+                          beamLimitStates={bendingS.output.beamLimitStates}
+                          overallSafe={bendingS.output.isSafe}
+                        />
+                      ) : (
+                        <ModuleSummaryStrip output={bendingS.output} />
+                      )}
+                      <LimitStatesResultsTable results={bendingS.output.results} />
+                      <CalculationStepsTable
+                        steps={bendingS.output.steps}
+                        title="Calculation steps (AISC F2 / F6 / G2 / deflection)"
                       />
-                    ) : (
-                      <ModuleSummaryStrip output={bendingS.output} />
-                    )}
-                    <LimitStatesResultsTable results={bendingS.output.results} />
-                    <CalculationStepsTable steps={bendingS.output.steps} title="Calculation steps (AISC F2 / F6 / G2 / deflection)" />
-                  </div>
-                ) : (
-                  <p className="mt-1 text-slate-600">{bendingS && "error" in bendingS ? bendingS.error : "No data."}</p>
-                )}
-              </section>
+                    </div>
+                  ) : (
+                    <p className="text-slate-600">{bendingS && "error" in bendingS ? bendingS.error : "No data."}</p>
+                  )}
+                </div>
+              </details>
 
-              <section className="rounded-xl border border-slate-200 p-4 print:break-inside-avoid">
-                <h3 className="font-bold text-slate-900">Connections</h3>
-                {connectionsS?.ok && connectionsS.module === "connections" ? (
-                  <div className="mt-2 space-y-3">
-                    <ul className="list-disc space-y-1 pl-5 text-sm">
+              <details open className="rounded-2xl border border-slate-200 bg-white print:break-inside-avoid">
+                <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
+                  Connections
+                  <span className="mt-1 block text-xs font-semibold text-slate-600">
+                    Saved snapshot from the Connections module.
+                  </span>
+                </summary>
+                <div className="border-t border-slate-200 p-5">
+                  {connectionsS?.ok && connectionsS.module === "connections" ? (
+                    <div className="space-y-3">
+                      <ul className="list-disc space-y-1 pl-5 text-sm">
                       <li>
                         Design: {connectionsS.designMethod ?? "—"} · Shear mode: {connectionsS.shearMode ?? "—"}
                       </li>
@@ -322,18 +352,20 @@ export default function ReportPage() {
                         title="Connections — detailed check (bolts, slip, fillet weld, optional groove & prying)"
                       />
                     ) : null}
-                  </div>
-                ) : (
-                  <p className="mt-1 text-slate-600">
-                    {connectionsS && "error" in connectionsS ? connectionsS.error : "No data."}
-                  </p>
-                )}
-              </section>
+                    </div>
+                  ) : (
+                    <p className="text-slate-600">
+                      {connectionsS && "error" in connectionsS ? connectionsS.error : "No data."}
+                    </p>
+                  )}
+                </div>
+              </details>
             </>
           )}
         </CardBody>
       </Card>
-    </main>
+      <PageFooterNav currentHref="/report" />
+    </AppShell>
   );
 }
 

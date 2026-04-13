@@ -61,7 +61,7 @@ export function InstallAppButton() {
       <button
         type="button"
         onClick={onInstall}
-        className="inline-flex items-center rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900 shadow-sm hover:bg-emerald-100"
+        className="inline-flex items-center rounded-xl bg-[#FF5F1F] px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#e24f16] focus:outline-none focus:ring-4 focus:ring-[#FF5F1F]/20"
       >
         Install app
       </button>

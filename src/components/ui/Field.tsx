@@ -23,7 +23,7 @@ export function TextInput(props: {
 }) {
   return (
     <input
-      className="rounded-md border border-slate-300 bg-white px-3 py-2.5 text-base text-slate-900 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+      className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-base text-slate-950 shadow-sm outline-none ring-0 placeholder:text-slate-400 focus:border-[#0818A8]/40 focus:ring-4 focus:ring-[#0818A8]/10"
       value={props.value}
       placeholder={props.placeholder}
       onChange={(e) => props.onChange(e.target.value)}
@@ -38,7 +38,7 @@ export function SelectInput(props: {
 }) {
   return (
     <select
-      className="rounded-md border border-slate-300 bg-white px-3 py-2.5 text-base font-medium text-black shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+      className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-base font-semibold text-black shadow-sm outline-none focus:border-[#0818A8]/40 focus:ring-4 focus:ring-[#0818A8]/10"
       value={props.value}
       onChange={(e) => props.onChange(e.target.value)}
     >
