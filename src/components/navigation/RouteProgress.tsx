@@ -21,7 +21,7 @@ export function RouteProgress() {
   return (
     <div className="pointer-events-none fixed left-0 top-0 z-[60] h-[3px] w-full bg-slate-200/40 dark:bg-slate-700/50" aria-hidden="true">
       <div
-        className={["h-full bg-[#FF5F1F] transition-[width] duration-300 ease-out", active ? "w-full" : "w-0"].join(" ")}
+        className={["h-full bg-[color:var(--action)] transition-[width] duration-300 ease-out", active ? "w-full" : "w-0"].join(" ")}
       />
     </div>
   );

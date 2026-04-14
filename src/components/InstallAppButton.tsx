@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useToast } from "@/components/ui/Toast";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -10,6 +11,7 @@ type BeforeInstallPromptEvent = Event & {
 export function InstallAppButton() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const toast = useToast();
 
   const isIos = useMemo(() => {
     if (typeof navigator === "undefined") return false;
@@ -28,6 +30,7 @@ export function InstallAppButton() {
     };
     const onInstalled = () => {
       setMsg("App installed. You can launch it from your device icon.");
+      toast.push({ title: "Installed", message: "You can launch the app from your device icon.", tone: "good" });
       setDeferredPrompt(null);
     };
 
@@ -45,14 +48,20 @@ export function InstallAppButton() {
     if (!deferredPrompt) {
       if (isIos) {
         setMsg("iPhone/iPad: tap Share, then 'Add to Home Screen'.");
+        toast.push({ title: "Install on iOS", message: "Tap Share → Add to Home Screen.", tone: "info" });
       } else {
         setMsg("If no prompt appears, use browser menu: Install app / Add to Home screen.");
+        toast.push({ title: "Install", message: "Use your browser menu: Install app / Add to Home screen.", tone: "info" });
       }
       return;
     }
     await deferredPrompt.prompt();
     const choice = await deferredPrompt.userChoice;
     setMsg(choice.outcome === "accepted" ? "Install started." : "Install canceled.");
+    toast.push({
+      title: choice.outcome === "accepted" ? "Install started" : "Install canceled",
+      tone: choice.outcome === "accepted" ? "good" : "neutral",
+    });
     setDeferredPrompt(null);
   };
 
@@ -61,7 +70,7 @@ export function InstallAppButton() {
       <button
         type="button"
         onClick={onInstall}
-        className="inline-flex items-center rounded-xl bg-[#FF5F1F] px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#e24f16] focus:outline-none focus:ring-4 focus:ring-[#FF5F1F]/20"
+        className="inline-flex items-center rounded-xl bg-[color:var(--action)] px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#e24f16] focus:outline-none focus:ring-4 focus:ring-[color:var(--action)]/20"
       >
         Install app
       </button>

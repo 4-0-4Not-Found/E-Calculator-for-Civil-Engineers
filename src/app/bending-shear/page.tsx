@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { calculateBendingShearDesign } from "@/lib/calculations/bending";
 import {
   asdStrengthUniformLoadKlf,
@@ -22,6 +22,7 @@ import { PageFooterNav } from "@/components/navigation/PageFooterNav";
 import { UtilizationBar } from "@/components/ui/UtilizationBar";
 import { TextInputWithUnit } from "@/components/ui/InputGroup";
 import { CalculatorActionRail } from "@/components/actions/CalculatorActionRail";
+import { PageSectionNav } from "@/components/navigation/PageSectionNav";
 
 export default function BendingShearPage() {
   const [designMethod, setDesignMethod] = useState<"LRFD" | "ASD">("LRFD");
@@ -38,6 +39,9 @@ export default function BendingShearPage() {
   const [cbFactor, setCbFactor] = useState("1.14");
   const [mode, setMode] = useState<"check" | "design">("check");
   const [hydrated, setHydrated] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const saveTimer = useRef<number | null>(null);
 
   useEffect(() => {
     try {
@@ -71,6 +75,7 @@ export default function BendingShearPage() {
   useEffect(() => {
     if (!hydrated) return;
     try {
+      setSaving(true);
       localStorage.setItem(
         STORAGE.bending,
         JSON.stringify({
@@ -89,10 +94,14 @@ export default function BendingShearPage() {
           mode,
         }),
       );
-      localStorage.setItem("ssc:ts:bending", String(Date.now()));
+      const ts = Date.now();
+      localStorage.setItem("ssc:ts:bending", String(ts));
+      setSavedAt(ts);
     } catch {
       /* ignore */
     }
+    if (saveTimer.current) window.clearTimeout(saveTimer.current);
+    saveTimer.current = window.setTimeout(() => setSaving(false), 450);
   }, [
     hydrated,
     designMethod,
@@ -257,7 +266,8 @@ export default function BendingShearPage() {
 
   function scrollTo(id: string) {
     try {
-      document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+      document.getElementById(id)?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
     } catch {
       /* ignore */
     }
@@ -285,6 +295,12 @@ export default function BendingShearPage() {
     setMode("check");
   };
 
+  const invalid = (v: string, min = 0, allowBlank = false) => {
+    if (allowBlank && v.trim() === "") return false;
+    const n = Number(v);
+    return !Number.isFinite(n) || n < min;
+  };
+
   return (
     <AppShell>
       <Card>
@@ -293,12 +309,25 @@ export default function BendingShearPage() {
           description="Simply supported strong axis: rolled W-shapes (full F6/F2) or rectangular HSS (approximate F7/G-style limits in-engine). Design mode suggests lightest W only. Inputs save in this browser."
         />
         <CardBody className="grid gap-6 md:grid-cols-12 md:gap-8">
+          <div className="md:col-span-12">
+            <PageSectionNav
+              sections={[
+                { id: "beam-general", label: "General" },
+                { id: "beam-loads", label: "Loads" },
+                { id: "beam-check", label: "Checks" },
+                { id: "beam-steps", label: "Steps" },
+              ]}
+            />
+          </div>
           <div className="md:col-span-8 grid gap-4">
             <details open className="rounded-2xl border border-slate-200 bg-white" id="beam-general">
-              <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
+              <summary className="min-h-11 cursor-pointer px-4 py-3.5 text-sm font-extrabold tracking-tight text-slate-950 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10 sm:px-5 sm:py-4">
                 1 · General
                 <span className="mt-1 block text-xs font-semibold text-slate-600">
                   Steel, member selection, check/design mode, and method.
+                </span>
+                <span className="mt-2 inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+                  Units: ksi
                 </span>
               </summary>
               <div className="border-t border-slate-200 p-5">
@@ -387,6 +416,9 @@ export default function BendingShearPage() {
                 <span className="mt-1 block text-xs font-semibold text-slate-600">
                   Option A: dead/live/span → auto-derive M, V, service w. Option B: enter M, V, w manually.
                 </span>
+                <span className="mt-2 inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+                  Units: k/ft, ft
+                </span>
               </summary>
               <div className="border-t border-slate-200 p-5">
                 <div className="grid gap-4 md:grid-cols-2">
@@ -411,7 +443,7 @@ export default function BendingShearPage() {
                 </div>
 
                 {derivedFromLoads ? (
-                  <Card className="mt-4 border-[#0818A8]/20 bg-[#0818A8]/5">
+                  <Card className="mt-4 border-[color:var(--brand)]/20 bg-[color:var(--brand)]/5">
                     <CardBody className="space-y-1 text-sm text-slate-900">
                       <p className="font-bold">Derived from your loads ({designMethod})</p>
                       <p className="tabular-nums">
@@ -434,6 +466,9 @@ export default function BendingShearPage() {
                 <span className="mt-1 block text-xs font-semibold text-slate-600">
                   Enter demands directly (or use Loads above). L is inches for analysis.
                 </span>
+                <span className="mt-2 inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+                  Units: kip·ft, kips, in
+                </span>
               </summary>
               <div className="border-t border-slate-200 p-5">
                 <div className="grid gap-4 md:grid-cols-2">
@@ -443,18 +478,20 @@ export default function BendingShearPage() {
                 <Field label="V_u" hint="Required shear (kips).">
                   <TextInputWithUnit value={Vu} onChange={setVu} unit="kips" inputMode="decimal" />
                 </Field>
-                <Field label="Span L" hint="Span in inches.">
+                <Field label="Span L" hint="Span in inches." error={invalid(L, 0) ? "Enter a number ≥ 0." : undefined}>
                   <TextInputWithUnit value={L} onChange={setL} unit="in" inputMode="decimal" />
                 </Field>
                 <Field
                   label="Unbraced L_b (LTB)"
                   hint="Inches along the beam between points braced against twist/lateral displacement. Leave blank to use span L (fully unbraced)."
+                  error={invalid(unbracedLbIn, 0, true) ? "Enter a number ≥ 0, or leave blank." : undefined}
                 >
                   <TextInputWithUnit value={unbracedLbIn} onChange={setUnbracedLbIn} unit="in" placeholder="default = span" inputMode="decimal" />
                 </Field>
                 <Field
                   label="C_b (moment gradient)"
                   hint="AISC F1. Uniform moment 1.0; uniform load on simple span ≈ 1.14; others per Table 3-2."
+                  error={invalid(cbFactor, 0) ? "Enter a number > 0." : undefined}
                 >
                   <TextInput value={cbFactor} onChange={setCbFactor} />
                 </Field>
@@ -498,11 +535,36 @@ export default function BendingShearPage() {
 
           <aside className="md:col-span-4">
             {out ? (
-              <div className="sticky top-6 space-y-4">
+              <div className="sticky top-6 md:top-[calc(var(--app-header-h,104px)+16px)] space-y-4">
                 <CalculatorActionRail
                   hideMobileBar
                   title="Actions"
                   subtitle={`${shapeName} · ${designMethod} · ${mode === "design" ? "Design" : "Check"}`}
+                  savedKey="ssc:ts:bending"
+                  saving={saving}
+                  savedAt={savedAt}
+                  compare={{
+                    storageKey: "ssc:compare:beam",
+                    getCurrent: () => {
+                      const gov = out?.beamLimitStates?.governing ?? out?.governingCase ?? "—";
+                      const lines: string[] = [
+                        `Method: ${designMethod} · Material: ${mat.key} · Mode: ${mode}`,
+                        `Shape: ${shapeName}`,
+                        `Mu: ${Mu} kip-ft · Vu: ${Vu} kips · L: ${L} in`,
+                        `Governing: ${String(gov)}`,
+                      ];
+                      if (out?.beamLimitStates) {
+                        lines.push(
+                          `Bending ratio: ${(out.beamLimitStates.bending.ratio * 100).toFixed(1)}%`,
+                          `Shear ratio: ${(out.beamLimitStates.shear.ratio * 100).toFixed(1)}%`,
+                          `Deflection ratio: ${(out.beamLimitStates.deflection.ratio * 100).toFixed(1)}%`,
+                        );
+                      } else if (out) {
+                        lines.push(`Capacity: ${fmtKips(out.controllingStrength)} · Demand: ${fmtKips(out.demand)}`);
+                      }
+                      return { title: `Beam — ${shapeName}`, lines };
+                    },
+                  }}
                   copyText={() => {
                     if (!out) return "Beam — No results";
                     const lines = [
@@ -524,6 +586,7 @@ export default function BendingShearPage() {
                     }
                     return lines.join("\n");
                   }}
+                  onGoResults={() => scrollTo("results")}
                   onGoSteps={() => scrollTo("beam-steps")}
                   json={{ data: { result: out, inputs: { material, shapeName, Mu, Vu, L, wLive, designMethod, unbracedLbIn, cbFactor } } }}
                   onReset={resetInputs}
@@ -536,6 +599,7 @@ export default function BendingShearPage() {
                     </CardBody>
                   </Card>
                 ) : null}
+                <div id="results">
                 <ResultHero
                   status={out.governingCase === "geometry_error" ? "invalid" : out.isSafe ? "safe" : "unsafe"}
                   governing={out.beamLimitStates?.governing ?? out.governingCase}
@@ -565,6 +629,7 @@ export default function BendingShearPage() {
                         : undefined
                   }
                 />
+                </div>
 
                 {out.beamLimitStates && out.governingCase !== "geometry_error" ? (
                   <Card>
@@ -625,9 +690,13 @@ export default function BendingShearPage() {
       </Card>
 
       <div className="mt-8 md:mt-10">
+      <div id="actions">
       <CalculatorActionRail
         mobileOnly
         subtitle="Beam actions"
+        savedKey="ssc:ts:bending"
+        saving={saving}
+        savedAt={savedAt}
         copyText={() => {
           if (!out) return "Beam — No results";
           const lines = [
@@ -649,6 +718,7 @@ export default function BendingShearPage() {
           }
           return lines.join("\n");
         }}
+        onGoResults={() => scrollTo("results")}
         onGoSteps={() => scrollTo("beam-steps")}
         json={
           out
@@ -684,6 +754,7 @@ export default function BendingShearPage() {
         }}
         onReset={resetInputs}
       />
+      </div>
       </div>
       <PageFooterNav currentHref="/bending-shear" />
     </AppShell>

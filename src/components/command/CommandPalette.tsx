@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { modalHeaderClass, modalOverlayClass, modalPanelClass, modalSubtitleClass, modalTitleClass, useModalA11y } from "@/components/ui/modal";
 
 export type CommandAction = {
   id: string;
@@ -43,6 +44,14 @@ export function CommandPalette() {
 
   const inputRef = useRef<HTMLInputElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+
+  useModalA11y({
+    open,
+    onClose: () => setOpen(false),
+    initialFocusRef: inputRef,
+    containerRef: panelRef,
+  });
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -191,7 +200,7 @@ export function CommandPalette() {
   return (
     <div className="fixed inset-0 z-[100]">
       <div
-        className="absolute inset-0 bg-slate-950/25 backdrop-blur-[1px]"
+        className={modalOverlayClass}
         onMouseDown={() => setOpen(false)}
         aria-hidden="true"
       />
@@ -200,23 +209,31 @@ export function CommandPalette() {
         role="dialog"
         aria-modal="true"
         aria-label="Command palette"
-        className="absolute left-1/2 top-[12vh] w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 rounded-2xl border border-slate-200 bg-white shadow-xl"
+        ref={panelRef}
+        className={cn(
+          modalPanelClass,
+          "absolute left-1/2 top-[10vh] w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 overflow-hidden",
+        )}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="border-b border-slate-100 p-4">
-          <div className="flex items-center gap-2">
-            <span className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">Ctrl/⌘ K</span>
+        <div className={cn(modalHeaderClass, "border-b border-slate-200")}>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Search</p>
+            <p className={cn(modalTitleClass, "mt-1")}>Command palette</p>
+            <p className={modalSubtitleClass}>Type to jump between modules or run utilities (favorite, print, copy link).</p>
+            <div className="mt-3 flex items-center gap-2">
+              <span className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700">
+                Ctrl/⌘ K
+              </span>
             <input
               ref={inputRef}
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search modules, actions…"
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm outline-none placeholder:text-slate-400 focus:border-[#0818A8]/40 focus:ring-4 focus:ring-[#0818A8]/10"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm outline-none placeholder:text-slate-400 focus:border-[color:var(--brand)]/40 focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10"
             />
           </div>
-          <p className="mt-2 text-xs font-medium text-slate-600">
-            Tip: type “favorite” to pin modules on Home.
-          </p>
+          </div>
         </div>
 
         <div ref={listRef} className="max-h-[55vh] overflow-auto p-2">
@@ -233,8 +250,8 @@ export function CommandPalette() {
                       type="button"
                       onClick={() => a.run()}
                       className={cn(
-                        "flex w-full items-center justify-between gap-4 rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-800 hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#0818A8]/10",
-                        a.id === `nav:${pathname}` ? "bg-[#0818A8]/5 text-[#0818A8]" : undefined,
+                        "flex w-full items-center justify-between gap-4 rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-800 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10",
+                        a.id === `nav:${pathname}` ? "bg-[color:var(--brand)]/5 text-[color:var(--brand)]" : undefined,
                       )}
                     >
                       <span className="min-w-0 truncate">{a.label}</span>
@@ -250,6 +267,19 @@ export function CommandPalette() {
             ))
           )}
         </div>
+
+        <div className="border-t border-slate-200 bg-slate-50/70 px-4 py-3 text-xs text-slate-700">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-semibold text-slate-800">Shortcuts</span>
+              <span className="rounded-md border border-slate-200 bg-white px-2 py-1 font-semibold">Ctrl/⌘ K</span>
+              <span className="text-slate-500">open/close</span>
+              <span className="rounded-md border border-slate-200 bg-white px-2 py-1 font-semibold">Esc</span>
+              <span className="text-slate-500">close</span>
+            </div>
+            <span className="text-slate-500">Tip: search “favorite” to pin modules on Home.</span>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -263,7 +293,7 @@ export function CommandPaletteButton() {
         // Dispatch a custom event so the single palette instance can open.
         window.dispatchEvent(new Event("ssc:command-palette:open"));
       }}
-      className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 shadow-sm hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#0818A8]/10"
+      className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 shadow-sm hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10"
       aria-label="Open command palette"
     >
       Search

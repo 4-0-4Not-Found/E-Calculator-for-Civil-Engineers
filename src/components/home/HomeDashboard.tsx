@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Card, CardBody } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { InstallAppButton } from "@/components/InstallAppButton";
 import { ProjectBackupPanel } from "@/components/ProjectBackupPanel";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { STORAGE } from "@/lib/storage/keys";
 
 type ModuleKey = keyof typeof STORAGE;
@@ -158,11 +160,13 @@ function previewLineFor(key: ModuleKey): string | null {
 }
 
 export function HomeDashboard() {
+  const router = useRouter();
   const [tick, setTick] = useState(0);
   /** false until after mount — SSR and first client paint must not read localStorage (differs from server HTML). */
   const [mounted, setMounted] = useState(false);
   /** null until mounted — avoids SSR vs client mismatch on navigator.onLine */
   const [networkOnline, setNetworkOnline] = useState<boolean | null>(null);
+  const [restoreOpen, setRestoreOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -195,6 +199,17 @@ export function HomeDashboard() {
       return null;
     }
   }, [tick, mounted]);
+
+  useEffect(() => {
+    if (!mounted) return;
+    try {
+      const hasAny = Object.values(STORAGE).some((k) => Boolean(localStorage.getItem(k)));
+      const last = localStorage.getItem("ssc:lastRoute");
+      if (hasAny && last && last !== "/") setRestoreOpen(true);
+    } catch {
+      /* ignore */
+    }
+  }, [mounted]);
 
   const moduleState = useMemo(() => {
     if (!mounted) return emptyModuleState();
@@ -251,6 +266,33 @@ export function HomeDashboard() {
 
   return (
     <div className="space-y-6">
+      <ConfirmDialog
+        open={restoreOpen}
+        contextLabel="This device"
+        title="Restore your previous session?"
+        description={
+          <p>
+            We found saved inputs from a previous session on this device. You can continue where you left off or start fresh.
+          </p>
+        }
+        confirmLabel="Continue"
+        cancelLabel="Start fresh"
+        onCancel={() => {
+          setRestoreOpen(false);
+          try {
+            Object.values(STORAGE).forEach((k) => localStorage.removeItem(k));
+            ["tension", "compression", "bending", "connections"].forEach((m) => localStorage.removeItem(`ssc:ts:${m}`));
+            localStorage.removeItem("ssc:lastRoute");
+          } catch {
+            /* ignore */
+          }
+          setTick((v) => v + 1);
+        }}
+        onConfirm={() => {
+          setRestoreOpen(false);
+          if (resumeHref) router.push(resumeHref);
+        }}
+      />
       <Card className="border-slate-200">
         <CardBody className="space-y-4">
           <div className="flex flex-wrap items-center gap-2">
@@ -310,7 +352,7 @@ export function HomeDashboard() {
           <CardBody className="space-y-3">
             <div className="flex items-baseline justify-between gap-3">
               <p className="text-sm font-bold text-slate-950">Recent work</p>
-              <Link href="/report" className="text-sm font-semibold text-[#0818A8] hover:underline">
+              <Link href="/report" className="text-sm font-semibold text-[color:var(--brand)] hover:underline">
                 Open report
               </Link>
             </div>
@@ -319,7 +361,7 @@ export function HomeDashboard() {
                 <Link
                   key={m.key}
                   href={m.href}
-                  className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm transition hover:border-[#0818A8]/35 hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#0818A8]/10"
+                  className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm transition hover:border-[color:var(--brand)]/35 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -353,7 +395,7 @@ export function HomeDashboard() {
         </div>
 
         <details className="rounded-2xl border border-slate-200 bg-white">
-          <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
+          <summary className="min-h-11 cursor-pointer px-4 py-3.5 text-sm font-extrabold tracking-tight text-slate-950 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10 sm:px-5 sm:py-4">
             Personalize Home
             <span className="mt-1 block text-xs font-semibold text-slate-600">
               Favorites and module order are saved in this browser only.
@@ -452,12 +494,12 @@ export function HomeDashboard() {
               <Link
                 key={m.key}
                 href={m.href}
-                className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm transition hover:border-[#0818A8]/40 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-[#0818A8]/10"
+                className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm transition hover:border-[color:var(--brand)]/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-xl font-extrabold tracking-tight text-slate-950">
-                      {m.isFav ? <span className="text-[#0818A8]">★ </span> : null}
+                      {m.isFav ? <span className="text-[color:var(--brand)]">★ </span> : null}
                       {m.label}
                     </p>
                     <p className="mt-2 text-sm text-slate-700">{m.summary}</p>
@@ -474,7 +516,7 @@ export function HomeDashboard() {
 
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-slate-600">
                   <span>{s?.hasData ? (saved ? `Last saved: ${saved}` : "Saved inputs found") : "No saved inputs yet"}</span>
-                  <span className="text-[#0818A8]">Open →</span>
+                  <span className="text-[color:var(--brand)]">Open →</span>
                 </div>
               </Link>
             );

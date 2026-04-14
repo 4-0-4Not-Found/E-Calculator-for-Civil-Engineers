@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useId, useRef, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
+import { modalOverlayClass, modalPanelClass, modalSubtitleClass, modalTitleClass, useModalA11y } from "@/components/ui/modal";
 
 function WarningIcon(props: { className?: string }) {
   return (
@@ -27,6 +29,8 @@ function WarningIcon(props: { className?: string }) {
  */
 export function ConfirmDialog(props: {
   open: boolean;
+  /** Small "app says" label (UI only). */
+  contextLabel?: string;
   title: string;
   description: ReactNode;
   confirmLabel: string;
@@ -36,34 +40,38 @@ export function ConfirmDialog(props: {
   onConfirm: () => void;
   onCancel: () => void;
 }) {
-  const { open, title, description, confirmLabel, cancelLabel: cancelLabelProp, destructive, onConfirm, onCancel } = props;
+  const {
+    open,
+    contextLabel,
+    title,
+    description,
+    confirmLabel,
+    cancelLabel: cancelLabelProp,
+    destructive,
+    onConfirm,
+    onCancel,
+  } = props;
   const titleId = useId();
   const descId = useId();
   const cancelRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    queueMicrotask(() => cancelRef.current?.focus());
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onCancel();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onCancel]);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useModalA11y({
+    open,
+    onClose: onCancel,
+    initialFocusRef: cancelRef,
+    containerRef: dialogRef,
+  });
 
   if (!open) return null;
+  if (typeof document === "undefined") return null;
 
   const cancelLabel = cancelLabelProp ?? "Cancel";
 
-  return (
+  return createPortal(
     <div className="not-print fixed inset-0 z-[95] flex items-center justify-center p-4">
       <button
         type="button"
-        className="absolute inset-0 bg-slate-950/45 backdrop-blur-[2px]"
+        className={modalOverlayClass}
         aria-label="Dismiss dialog"
         onClick={onCancel}
       />
@@ -73,34 +81,44 @@ export function ConfirmDialog(props: {
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descId}
+        ref={dialogRef}
         className={cn(
-          "relative w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl",
+          modalPanelClass,
+          "max-w-md p-6",
           "dark:border-slate-700 dark:bg-slate-900",
         )}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+        {contextLabel ? (
+          <p className="text-xs font-semibold text-slate-500">
+            {contextLabel} says
+          </p>
+        ) : null}
+        <div className="flex items-start gap-4">
           <div
-            className="mx-auto flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 sm:mx-0"
+            className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400"
             aria-hidden
           >
-            <WarningIcon className="h-6 w-6" />
+            <WarningIcon className="h-5 w-5" />
           </div>
-          <div className="min-w-0 flex-1 text-center sm:text-left">
-            <h2 id={titleId} className="text-lg font-extrabold tracking-tight text-slate-950 dark:text-slate-50">
+          <div className="min-w-0 flex-1">
+            <h2 id={titleId} className={cn(modalTitleClass, "text-lg dark:text-slate-50")}>
               {title}
             </h2>
-            <div
-              id={descId}
-              className="mt-2 space-y-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300"
-            >
+            <div id={descId} className={cn(modalSubtitleClass, "text-sm dark:text-slate-300")}>
               {description}
             </div>
           </div>
         </div>
 
         <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
-          <Button ref={cancelRef} type="button" variant="secondary" onClick={onCancel}>
+          <Button
+            ref={cancelRef}
+            type="button"
+            variant="secondary"
+            onClick={onCancel}
+            className="rounded-full px-5"
+          >
             {cancelLabel}
           </Button>
           <Button
@@ -110,7 +128,7 @@ export function ConfirmDialog(props: {
             className={
               destructive
                 ? "border-0 bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500/30 dark:bg-red-600 dark:hover:bg-red-700"
-                : undefined
+                : "rounded-full border border-[color:var(--brand)] bg-white px-5 text-[color:var(--brand)] shadow-sm hover:bg-[color:var(--brand)]/5 focus-visible:ring-[color:var(--brand)]/15"
             }
           >
             {confirmLabel}
@@ -118,5 +136,5 @@ export function ConfirmDialog(props: {
         </div>
       </div>
     </div>
-  );
+  , document.body);
 }

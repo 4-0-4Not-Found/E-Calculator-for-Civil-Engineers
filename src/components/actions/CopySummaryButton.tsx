@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { useToast } from "@/components/ui/Toast";
 
 export function CopySummaryButton(props: { getText: () => string; label?: string }) {
   const [copied, setCopied] = useState(false);
+  const toast = useToast();
 
   return (
     <Button
@@ -15,7 +17,9 @@ export function CopySummaryButton(props: { getText: () => string; label?: string
           await navigator.clipboard.writeText(props.getText());
           setCopied(true);
           window.setTimeout(() => setCopied(false), 900);
+          toast.push({ title: "Copied", message: "Summary copied to clipboard.", tone: "good" });
         } catch {
+          toast.push({ title: "Copy failed", message: "Clipboard permission blocked.", tone: "bad" });
           /* ignore */
         }
       }}

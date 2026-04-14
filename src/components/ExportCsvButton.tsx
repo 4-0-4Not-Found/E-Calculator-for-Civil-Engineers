@@ -1,6 +1,8 @@
 "use client";
 
 import { downloadCsv, rowsToCsv } from "@/lib/utils/csv";
+import { Button } from "@/components/ui/Button";
+import { useToast } from "@/components/ui/Toast";
 
 type Props = {
   filename: string;
@@ -10,15 +12,18 @@ type Props = {
 
 /** Downloads an Excel-compatible CSV file. */
 export function ExportCsvButton(props: Props) {
+  const toast = useToast();
   return (
-    <button
+    <Button
       type="button"
-      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:border-slate-300 hover:bg-slate-50"
+      variant="secondary"
+      size="sm"
       onClick={() => {
         downloadCsv(props.filename, rowsToCsv(props.rows));
+        toast.push({ title: "Download started", message: props.filename, tone: "info" });
       }}
     >
       {props.label ?? "Download CSV (Excel)"}
-    </button>
+    </Button>
   );
 }

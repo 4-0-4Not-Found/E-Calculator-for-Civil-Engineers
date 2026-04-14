@@ -1,165 +1,184 @@
 # Structural Steel Calculators
 
-**Repository:** **[Civil-E-Cal](https://github.com/4-0-4Not-Found/Civil-E-Cal)** — `github.com/4-0-4Not-Found/Civil-E-Cal`
+Structural Steel Calculators is a web-based engineering tool for civil engineering students. It runs AISC-style checks in the browser using **local TypeScript calculation modules** and provides a lightweight, mobile-friendly UI with offline support via a **Progressive Web App (PWA)**.
 
-Structural Steel Calculators is a Next.js PWA for civil engineering students to run AISC-style tension, compression, beam, and connection checks in the browser, with local TypeScript calculations and offline support after first load.
+Repository: `github.com/4-0-4Not-Found/Civil-E-Cal`
 
 ---
 
-## Key features
+## Description
 
-- **Module calculators** — Tension, compression, beam (bending/shear/deflection), and bolted/welded connections  
-- **LRFD and ASD** where applicable, with step-by-step output for learning  
-- **AISC v16 shapes** and material presets  
-- **Local persistence** — inputs saved in the browser; optional JSON backup/restore  
-- **Report** — combined snapshot from saved module data; print/save as PDF from the browser  
-- **Fast UI** — Next.js App Router, responsive layout, keyboard-friendly navigation  
+This project is designed to support coursework and self-study by:
+
+- Providing clear inputs, outputs, and step-by-step breakdowns where available
+- Saving work locally in the browser as you iterate
+- Generating a combined **Report** view suitable for printing or exporting as a PDF
+
+All engineering computations are performed locally (no external calculation service). The project is intended for **educational use**.
+
+---
+
+## Features
+
+- **Multiple calculators (modules)**: Tension, Compression, Beam, and Connections
+- **Report**: Combined snapshot of saved module work from this browser
+- **Info**: Capabilities, units, limitations, and workflow tips
+- **Local persistence**: Inputs auto-save to `localStorage`
+- **Exports**: CSV/JSON where offered in-module
+- **Responsive + accessible UI**: Mobile-first layouts, keyboard-friendly controls
+- **PWA + offline support**: Works offline after an initial load (see details below)
+
+---
+
+## Modules overview
+
+| Module | Route | Summary |
+|---|---|---|
+| **Tension** | `/tension` | Gross yielding, net-section fracture, block shear (with an optional stagger helper) |
+| **Compression** | `/compression` | Member compression/buckling-style checks with K and length inputs |
+| **Beam (Bending & Shear)** | `/bending-shear` | Flexure, shear, and deflection checks; includes a load-to-demand helper |
+| **Connections** | `/connections` | Bolt shear/bearing, slip-critical slip, bolt tension and interaction; fillet/groove weld checks and optional helpers |
+| **Report** | `/report` | Reads saved module state and renders a printable project summary |
+| **Info** | `/info` | What the tool covers, units/conventions, limitations, and tips |
 
 ---
 
 ## Tech stack
 
-| Layer | Technology |
-|--------|------------|
-| Framework | [Next.js 16](https://nextjs.org/) (App Router) |
-| UI | [React 19](https://react.dev/), [TypeScript](https://www.typescriptlang.org/) |
-| Styling | [Tailwind CSS v4](https://tailwindcss.com/) |
-| Calculations | TypeScript modules under `src/lib/` |
-| PWA | [next-pwa](https://github.com/shadowwalker/next-pwa) |
+- **Framework**: Next.js 16 (App Router)
+- **UI**: React 19 + TypeScript
+- **Styling**: Tailwind CSS v4
+- **PWA**: `next-pwa`
+- **Tests**: Vitest (calculation regression tests)
 
 ---
 
-## Project structure (App Router)
+## Project structure
+
+The project uses the **Next.js App Router**. These folders are the main entry points for both users and developers:
 
 ```text
 src/
-├── app/                    # Routes and layouts
-│   ├── page.tsx            # Home
-│   ├── tension/            # Tension module
-│   ├── compression/      # Compression module
-│   ├── bending-shear/      # Beam module
-│   ├── connections/        # Connections module
-│   ├── report/             # Combined report / print
-│   ├── info/               # Help, units, limitations
-│   ├── offline/            # Offline fallback page
-│   ├── layout.tsx          # Root layout
-│   └── globals.css         # Global styles
-├── components/             # Shared UI (cards, navigation, actions, etc.)
-└── lib/                    # Calculations, data, storage keys (core logic)
-public/                     # Static assets, service worker
+├── app/                      # App Router routes (pages) and route handlers (API)
+│   ├── page.tsx              # Home dashboard
+│   ├── tension/page.tsx      # Tension module page
+│   ├── compression/page.tsx  # Compression module page
+│   ├── bending-shear/page.tsx# Beam module page
+│   ├── connections/page.tsx  # Connections module page
+│   ├── report/page.tsx       # Report page (reads saved browser state)
+│   ├── info/page.tsx         # Help, units, limitations
+│   ├── offline/page.tsx      # Offline fallback page (PWA)
+│   └── api/                  # Route handlers used for logging/diagnostics (see below)
+│
+├── components/               # Reusable UI components (cards, fields, buttons, nav, tables, etc.)
+└── lib/                      # Calculation logic, domain data, formatting, and storage keys
+
+public/                       # Static assets + generated service worker files (PWA)
 ```
 
----
+### Notes for developers
 
-## Modules
-
-| Module | Route | What it covers |
-|--------|--------|----------------|
-| **Tension** | `/tension` | Yielding, rupture, block shear; optional staggered net-width helper |
-| **Compression** | `/compression` | Member buckling (e.g. AISC E3), effective length, LRFD/ASD |
-| **Beam** | `/bending-shear` | Flexure, shear, deflection; check vs design modes where supported |
-| **Connections** | `/connections` | Bolts (shear, bearing, slip, tension), interaction, welds, optional helpers |
-| **Report** | `/report` | Snapshot of saved inputs/results across modules; print/PDF |
-| **Info** | `/info` | Capabilities, units, limitations, tips |
-
-Use the **header navigation** or **Home** to switch modules. **Footer links** on each page move to the previous/next module in a suggested order.
+- **Engineering logic** lives under `src/lib/` (pure TypeScript modules).
+- **UI components** should remain reusable and calculation-agnostic where possible.
+- **Routes/pages** under `src/app/` wire inputs to calculations and render results.
 
 ---
 
-## Installation
+## Installation guide
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) (LTS recommended)  
-- npm (comes with Node)
+- Node.js (LTS recommended)
+- npm
 
-### Steps
+### Install and run (development)
 
 ```bash
-# Clone the repository
 git clone https://github.com/4-0-4Not-Found/Civil-E-Cal.git
 cd Civil-E-Cal
-
-# Install dependencies
 npm install
-
-# Start the development server
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Then open `http://localhost:3000`.
 
-### Other commands
+### Production build
 
 ```bash
-npm run build    # Production build
-npm run start    # Run production server (after build)
-npm run lint     # ESLint
-npm test         # Vitest (calculation regression tests)
+npm run build
+npm run start
+```
+
+### Quality checks
+
+```bash
+npm run lint
+npm test
 ```
 
 ---
 
-## Usage
+## Usage guide
 
-### Navigation
+### How students typically use the tool
 
-- **Home (`/`)** — Dashboard, quick links to modules, project backup, install prompt (PWA).  
-- **Top nav** — Jump to any module, Report, or Info.  
-- **Continue** — Uses the last visited route stored locally (when available).  
+1. Start on **Home** (`/`) and open a module.
+2. Enter the required inputs (steel, section, demands, method, etc.).
+3. Review results and (when available) step-by-step calculation tables.
+4. Use the in-module actions to **copy**, **export**, and navigate to key sections (Results/Steps).
+5. Open **Report** (`/report`) to generate a combined summary from the values saved in this browser.
 
-### Using each calculator
+### Report behavior (important)
 
-1. Open the module from **Home** or the **nav bar**.  
-2. Enter **steel**, **section**, **loads**, and **method** (LRFD/ASD) as prompted.  
-3. Inputs **auto-save** in `localStorage` for that module (same browser).  
-4. Review **results**, **limit states**, and optional **step-by-step** tables.  
-5. Use **Copy summary**, **export** (CSV/JSON where offered), or **Report** for a combined view.  
-
-Always confirm assumptions, units, and code edition with your course or a licensed engineer when required.
-
-### Report
-
-The **Report** page (`/report`) reads **saved module state** from the browser and shows a **single-page summary** suitable for review or **Print → Save as PDF**. It reflects what was last saved in each module on **this device and browser**.
+The Report page reads module state from **this device + this browser** via `localStorage`. If you switch browsers, clear site data, or use a different device, your saved module inputs will not be present unless you restore them using the app’s backup/restore flow (when used).
 
 ---
 
-## Design and UX
+## PWA and offline support
 
-The interface is tuned for **students**: clear hierarchy, minimal clutter, **fast** data entry, readable numbers and tables, and **mobile-friendly** controls. The visual system uses a light base with restrained accent colors for structure and primary actions.
+This project is configured as a **Progressive Web App** using `next-pwa`.
 
----
-
-## PWA and offline
-
-After the app loads once, the **service worker** caches assets so core routes can open **offline**. If the network is unavailable, the app may show the **offline** page; cached pages still work depending on cache state. **Install** the app from the browser (where supported) for an app-like shortcut.
+- After the app loads once, the service worker caches core assets.
+- If you later open the app with no network, the app may show the **Offline** page (`/offline`) depending on what is cached.
+- Installation is supported via the browser’s “Install” UX (where available).
 
 ---
 
-## Git: one folder, one repository
+## Design and UX principles
 
-Use **this project folder** as the Git root (File → Add Local Repository → choose the folder that contains `package.json` and `.git`).
-
-- **Do not** place this whole project inside another Git repo as a subfolder that still has its own `.git` — GitHub Desktop will show errors like “nothing added to commit” or refuse to stage nested repos correctly.
-- If you already copied this project **inside** another clone: either develop only in one folder, or copy **files only** (not the `.git` folder) into the other repo if you want one combined tree.
-
-Remote `origin` should be [4-0-4Not-Found/Civil-E-Cal](https://github.com/4-0-4Not-Found/Civil-E-Cal). After changing remotes, run `git fetch origin` and reconcile history (`git pull --rebase origin main` or follow GitHub’s merge instructions if histories differ) before pushing.
+- **Mobile-first** layouts with sensible spacing and tap targets
+- **Readable engineering output** (tabular numbers, clear labels, minimal visual noise)
+- **Keyboard navigation** and visible focus states
+- **Avoid horizontal scrolling** except where tables intentionally scroll
 
 ---
 
-## Contributing
+## API routes (logging & diagnostics)
 
-1. **Fork** [4-0-4Not-Found/Civil-E-Cal](https://github.com/4-0-4Not-Found/Civil-E-Cal) and create a **feature branch** from `main` (or branch directly if you have write access).  
-2. Keep changes **focused**; avoid unrelated refactors.  
-3. Run **`npm run lint`**, **`npm test`**, and **`npm run build`** before opening a PR.  
-4. Describe **what** changed and **why** in the PR.  
-5. For calculation or code changes, add or update **tests** in `src/lib/calculations/*.test.ts` when applicable.  
+API routes live under `src/app/api/`.
+
+- These endpoints are intended for **development diagnostics**.
+- In production builds, diagnostic routes are designed to be **no-ops or unavailable** to keep deployments safe and lightweight.
+
+---
+
+## Contribution guidelines
+
+- Keep changes **small and focused**.
+- Do not change correct engineering formulas or behavior without adding/adjusting tests under `src/lib/`.
+- Before opening a PR, run:
+
+```bash
+npm run lint
+npm test
+npm run build
+```
 
 ---
 
 ## License
 
-This project is licensed under the **MIT License** — see the [`LICENSE`](LICENSE) file in the repository root.
+MIT License. (If your repository includes a `LICENSE` file, GitHub will display the license automatically.)
 
 ---
 

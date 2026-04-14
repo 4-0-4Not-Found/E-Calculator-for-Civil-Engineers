@@ -9,20 +9,24 @@ import { useEffect } from "react";
  */
 export function AgentHeadBootstrap() {
   useEffect(() => {
+    const isDev = process.env.NODE_ENV === "development";
+
     // #region agent log
-    fetch("http://127.0.0.1:7428/ingest/ca13048c-9d98-4bcc-a485-2fd46d0652e4", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "a0af80" },
-      body: JSON.stringify({
-        sessionId: "a0af80",
-        runId: "post-fix-verify",
-        hypothesisId: "VERIFY",
-        location: "src/components/AgentHeadBootstrap.tsx:mount",
-        message: "AgentHeadBootstrap mounted (head scripts removed from layout)",
-        data: {},
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
+    if (isDev) {
+      fetch("http://127.0.0.1:7428/ingest/ca13048c-9d98-4bcc-a485-2fd46d0652e4", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "a0af80" },
+        body: JSON.stringify({
+          sessionId: "a0af80",
+          runId: "post-fix-verify",
+          hypothesisId: "VERIFY",
+          location: "src/components/AgentHeadBootstrap.tsx:mount",
+          message: "AgentHeadBootstrap mounted (head scripts removed from layout)",
+          data: {},
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+    }
     // #endregion agent log
 
     const send = (payload: Record<string, unknown>) => {
@@ -47,6 +51,7 @@ export function AgentHeadBootstrap() {
     }
 
     try {
+      if (!isDev) return;
       const origErr = console.error;
       console.error = (...args: unknown[]) => {
         try {
@@ -86,6 +91,7 @@ export function AgentHeadBootstrap() {
     }
 
     try {
+      if (!isDev) return;
       const html = document.documentElement;
       const body = document.body;
       const htmlAttrs = html?.getAttributeNames?.() ?? [];

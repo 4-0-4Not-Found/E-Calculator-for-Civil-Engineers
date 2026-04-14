@@ -83,12 +83,24 @@ summary::-webkit-details-marker {
   .backdrop-blur {
     display: none !important;
   }
+  .not-print {
+    display: none !important;
+  }
 
   /* Ensure white background + crisp text */
   html,
   body {
     background: #fff !important;
     color: #000 !important;
+  }
+
+  /* Improve report readability on paper */
+  main {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+  section {
+    box-shadow: none !important;
   }
 
   /* Make cards print cleanly */

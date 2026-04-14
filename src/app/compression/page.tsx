@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { aiscShapes } from "@/lib/aisc/data";
 import {
   filterShapesByFamily,
@@ -20,6 +20,7 @@ import { PageFooterNav } from "@/components/navigation/PageFooterNav";
 import { TextInputWithUnit } from "@/components/ui/InputGroup";
 import { Button } from "@/components/ui/Button";
 import { CalculatorActionRail } from "@/components/actions/CalculatorActionRail";
+import { PageSectionNav } from "@/components/navigation/PageSectionNav";
 
 export default function CompressionPage() {
   const [material, setMaterial] = useState<SteelMaterialKey>("A992");
@@ -32,6 +33,9 @@ export default function CompressionPage() {
   const [Pu, setPu] = useState("700");
   const [designMethod, setDesignMethod] = useState<"LRFD" | "ASD">("LRFD");
   const [hydrated, setHydrated] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const saveTimer = useRef<number | null>(null);
 
   useEffect(() => {
     try {
@@ -60,14 +64,19 @@ export default function CompressionPage() {
   useEffect(() => {
     if (!hydrated) return;
     try {
+      setSaving(true);
       localStorage.setItem(
         STORAGE.compression,
         JSON.stringify({ material, shapeFamily, shapeName, k, builtUpFactor, L, Pu, designMethod }),
       );
-      localStorage.setItem("ssc:ts:compression", String(Date.now()));
+      const ts = Date.now();
+      localStorage.setItem("ssc:ts:compression", String(ts));
+      setSavedAt(ts);
     } catch {
       /* ignore */
     }
+    if (saveTimer.current) window.clearTimeout(saveTimer.current);
+    saveTimer.current = window.setTimeout(() => setSaving(false), 450);
   }, [hydrated, material, shapeFamily, shapeName, k, builtUpFactor, L, Pu, designMethod]);
 
   const shapeChoices = useMemo(
@@ -122,7 +131,8 @@ export default function CompressionPage() {
 
   function scrollTo(id: string) {
     try {
-      document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+      document.getElementById(id)?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
     } catch {
       /* ignore */
     }
@@ -145,6 +155,11 @@ export default function CompressionPage() {
     setDesignMethod("LRFD");
   };
 
+  const invalid = (v: string, min = 0) => {
+    const n = Number(v);
+    return !Number.isFinite(n) || n < min;
+  };
+
   return (
     <AppShell>
       <Card>
@@ -153,6 +168,15 @@ export default function CompressionPage() {
           description="Column buckling (E3), LRFD or ASD. Slender-element limits are approximate when shape data is available. Inputs save in this browser."
         />
         <CardBody className="grid gap-6 md:grid-cols-12 md:gap-8">
+          <div className="md:col-span-12">
+            <PageSectionNav
+              sections={[
+                { id: "compression-general", label: "General" },
+                { id: "compression-member", label: "Member" },
+                { id: "compression-steps", label: "Steps" },
+              ]}
+            />
+          </div>
           <div className="md:col-span-8 grid gap-4">
             {missingSlenderness ? (
               <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
@@ -165,9 +189,12 @@ export default function CompressionPage() {
             ) : null}
 
             <details open className="rounded-2xl border border-slate-200 bg-white" id="compression-general">
-              <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
+              <summary className="min-h-11 cursor-pointer px-4 py-3.5 text-sm font-extrabold tracking-tight text-slate-950 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10 sm:px-5 sm:py-4">
                 1 · General
                 <span className="mt-1 block text-xs font-semibold text-slate-600">Steel + section selection.</span>
+                <span className="mt-2 inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+                  Units: ksi, in
+                </span>
               </summary>
               <div className="border-t border-slate-200 p-5">
                 <div className="grid gap-4 md:grid-cols-2">
@@ -221,6 +248,9 @@ export default function CompressionPage() {
               <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
                 2 · Member (KL/r)
                 <span className="mt-1 block text-xs font-semibold text-slate-600">Method, demand, length, and K.</span>
+                <span className="mt-2 inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+                  Units: kips, in
+                </span>
               </summary>
               <div className="border-t border-slate-200 p-5">
                 <div className="mb-3 flex flex-wrap gap-2">
@@ -239,10 +269,14 @@ export default function CompressionPage() {
                       <option value="ASD">ASD</option>
                     </SelectInput>
                   </Field>
-                  <Field label="Demand Pu / Pa" hint="Required compressive strength (kips).">
+                  <Field
+                    label="Demand Pu / Pa"
+                    hint="Required compressive strength (kips)."
+                    error={invalid(Pu, 0) ? "Enter a number ≥ 0." : undefined}
+                  >
                     <TextInputWithUnit value={Pu} onChange={setPu} unit="kips" inputMode="decimal" />
                   </Field>
-                  <Field label="Length L" hint="in">
+                  <Field label="Length L" hint="in" error={invalid(L, 0) ? "Enter a number ≥ 0." : undefined}>
                     <TextInputWithUnit value={L} onChange={setL} unit="in" inputMode="decimal" />
                   </Field>
                   <Field label="K-factor" hint="End condition factor from alignment chart.">
@@ -283,11 +317,28 @@ export default function CompressionPage() {
           </div>
 
           <aside className="md:col-span-4">
-            <div className="sticky top-6 space-y-4">
+            <div className="sticky top-6 md:top-[calc(var(--app-header-h,104px)+16px)] space-y-4">
               <CalculatorActionRail
                 hideMobileBar
                 title="Actions"
                 subtitle={`${shapeName} · ${designMethod}`}
+                savedKey="ssc:ts:compression"
+                saving={saving}
+                savedAt={savedAt}
+                compare={{
+                  storageKey: "ssc:compare:compression",
+                  getCurrent: () => ({
+                    title: `Compression — ${shapeName}`,
+                    lines: [
+                      `Method: ${designMethod} · Material: ${mat.key}`,
+                      `Pu/Pa = ${Pu} kips · L = ${L} in · K = ${k} · built-up = ${builtUpFactor}`,
+                      `Governing: ${out.governingCase}`,
+                      `Capacity: ${out.controllingStrength.toFixed(3)} kips`,
+                      `Demand: ${out.demand.toFixed(3)} kips`,
+                      `Utilization: ${out.controllingStrength > 0 ? ((out.demand / out.controllingStrength) * 100).toFixed(1) : "-"}%`,
+                    ],
+                  }),
+                }}
                 copyText={() =>
                   [
                     "Compression",
@@ -299,11 +350,13 @@ export default function CompressionPage() {
                     `Demand: ${out.demand.toFixed(3)} kips`,
                   ].join("\n")
                 }
+                onGoResults={() => scrollTo("results")}
                 onGoSteps={() => scrollTo("compression-steps")}
                 csv={{ filename: "compression-export.csv", rows: csvRows }}
                 json={{ data: { result: out, inputs: { material, shapeName, designMethod, k, L, Pu } } }}
                 onReset={resetInputs}
               />
+              <div id="results">
               <ResultHero
                 status={out.isSafe ? "safe" : "unsafe"}
                 governing={out.governingCase}
@@ -314,6 +367,7 @@ export default function CompressionPage() {
                 utilization={out.controllingStrength > 0 ? out.demand / out.controllingStrength : undefined}
                 metaRight={<Badge tone="info">{mat.key}</Badge>}
               />
+              </div>
 
               {shape ? (
                 <Card>
@@ -339,9 +393,27 @@ export default function CompressionPage() {
         </CardBody>
       </Card>
       <div className="mt-8 md:mt-10">
+      <div id="actions">
       <CalculatorActionRail
         mobileOnly
         subtitle="Compression actions"
+        savedKey="ssc:ts:compression"
+        saving={saving}
+        savedAt={savedAt}
+        compare={{
+          storageKey: "ssc:compare:compression",
+          getCurrent: () => ({
+            title: `Compression — ${shapeName}`,
+            lines: [
+              `Method: ${designMethod} · Material: ${mat.key}`,
+              `Pu/Pa = ${Pu} kips · L = ${L} in · K = ${k} · built-up = ${builtUpFactor}`,
+              `Governing: ${out.governingCase}`,
+              `Capacity: ${out.controllingStrength.toFixed(3)} kips`,
+              `Demand: ${out.demand.toFixed(3)} kips`,
+              `Utilization: ${out.controllingStrength > 0 ? ((out.demand / out.controllingStrength) * 100).toFixed(1) : "-"}%`,
+            ],
+          }),
+        }}
         copyText={() =>
           [
             "Compression",
@@ -353,26 +425,13 @@ export default function CompressionPage() {
             `Demand: ${out.demand.toFixed(3)} kips`,
           ].join("\n")
         }
+        onGoResults={() => scrollTo("results")}
         onGoSteps={() => scrollTo("compression-steps")}
         csv={{ filename: "compression-export.csv", rows: csvRows }}
         json={{ data: { result: out, inputs: { material, shapeName, designMethod, k, L, Pu } } }}
-        compare={{
-          storageKey: "ssc:compare:compression",
-          getCurrent: () => ({
-            title: `Compression — ${shapeName}`,
-            lines: [
-              `Method: ${designMethod} · Material: ${mat.key}`,
-              `K: ${k} · L: ${L} in`,
-              `Pu: ${Pu} kips`,
-              `Governing: ${String(out.governingCase)}`,
-              `Capacity: ${out.controllingStrength.toFixed(3)} kips`,
-              `Demand: ${out.demand.toFixed(3)} kips`,
-              `Utilization: ${out.controllingStrength > 0 ? ((out.demand / out.controllingStrength) * 100).toFixed(1) : "-"}%`,
-            ],
-          }),
-        }}
         onReset={resetInputs}
       />
+      </div>
       </div>
       <PageFooterNav currentHref="/compression" />
     </AppShell>

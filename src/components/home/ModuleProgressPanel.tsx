@@ -74,7 +74,7 @@ export function ModuleProgressPanel() {
               <Link
                 key={m.key}
                 href={m.href}
-                className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-[#0818A8]/35 hover:bg-slate-50"
+                className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-[color:var(--brand)]/35 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10"
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">

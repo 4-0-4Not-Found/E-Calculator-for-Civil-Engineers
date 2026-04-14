@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   calculateBoltShearBearingCombinedLRFD,
   calculateBoltShearTensionInteractionLRFD,
@@ -25,6 +25,7 @@ import { PageFooterNav } from "@/components/navigation/PageFooterNav";
 import { TextInputWithUnit } from "@/components/ui/InputGroup";
 import { Button } from "@/components/ui/Button";
 import { CalculatorActionRail } from "@/components/actions/CalculatorActionRail";
+import { PageSectionNav } from "@/components/navigation/PageSectionNav";
 
 export default function ConnectionsPage() {
   const [hydrated, setHydrated] = useState(false);
@@ -59,6 +60,9 @@ export default function ConnectionsPage() {
   const [pryingBPrimeIn, setPryingBPrimeIn] = useState("1.5");
   const [pryingStripWidthIn, setPryingStripWidthIn] = useState("4");
   const [pryingFyKsi, setPryingFyKsi] = useState("50");
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const saveTimer = useRef<number | null>(null);
 
   useEffect(() => {
     try {
@@ -133,11 +137,16 @@ export default function ConnectionsPage() {
       pryingFyKsi,
     };
     try {
+      setSaving(true);
       localStorage.setItem(STORAGE.connections, JSON.stringify(payload));
-      localStorage.setItem("ssc:ts:connections", String(Date.now()));
+      const ts = Date.now();
+      localStorage.setItem("ssc:ts:connections", String(ts));
+      setSavedAt(ts);
     } catch {
       /* ignore */
     }
+    if (saveTimer.current) window.clearTimeout(saveTimer.current);
+    saveTimer.current = window.setTimeout(() => setSaving(false), 450);
   }, [
     hydrated,
     designMethod,
@@ -378,7 +387,8 @@ export default function ConnectionsPage() {
 
   function scrollTo(id: string) {
     try {
-      document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+      document.getElementById(id)?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
     } catch {
       /* ignore */
     }
@@ -417,6 +427,11 @@ export default function ConnectionsPage() {
     setPryingBPrimeIn("1.5");
     setPryingStripWidthIn("4");
     setPryingFyKsi("50");
+  };
+
+  const invalid = (v: string, min = 0) => {
+    const n = Number(v);
+    return !Number.isFinite(n) || n < min;
   };
 
   const csvRows = useMemo(() => {
@@ -495,11 +510,39 @@ export default function ConnectionsPage() {
           title="Bolted & welded connections"
           description="LRFD or ASD — bolts, welds, and optional groove/prying helpers. Inputs auto-save in this browser."
         />
-        <CardBody className="flex flex-col gap-6 p-4 sm:p-6">
+        <CardBody className="flex flex-col gap-6">
+          <PageSectionNav
+            sections={[
+              { id: "conn-inputs", label: "Inputs" },
+              { id: "conn-results", label: "Bolt results" },
+              { id: "conn-weld", label: "Fillet weld" },
+              { id: "conn-optional", label: "Optional" },
+            ]}
+          />
           <CalculatorActionRail
             hideMobileBar
             title="Actions"
             subtitle={`${designMethod} · ${shearMode === "slip" ? "Slip-critical" : "Bearing"} · ${boltGroup} d=${dBolt} in`}
+            savedKey="ssc:ts:connections"
+            saving={saving}
+            savedAt={savedAt}
+            compare={{
+              storageKey: "ssc:compare:connections",
+              getCurrent: () => ({
+                title: "Connections",
+                lines: [
+                  `Method: ${designMethod} · Shear mode: ${shearMode}`,
+                  `Vu: ${vu} kips · Tu: ${tu} kips`,
+                  `Bolt: ${boltGroup} d=${dBolt} in n=${nBolts} planes=${shearPlanes} threads=${threadMode}`,
+                  interactionOut && Number(tu) > 0 ? `Interaction Σ: ${interactionOut.interactionSum.toFixed(6)}` : null,
+                  shearMode === "slip" && slipOut ? `Available slip: ${slipOut.availableSlip.toFixed(6)} kips` : null,
+                  boltOut ? `Governing shear/bearing: ${boltOut.phiRnTotalGoverning.toFixed(6)} kips` : null,
+                  tensionOut ? `Bolt tension φRn total: ${tensionOut.phiRnTotal.toFixed(6)} kips` : null,
+                  weldOut ? `Fillet weld φRn: ${weldOut.phiRn.toFixed(6)} kips` : null,
+                  grooveOut ? `Groove weld: ${grooveOut.phiRnOrAllowableKips.toFixed(6)} kips` : null,
+                ].filter(Boolean) as string[],
+              }),
+            }}
             copyText={() =>
               [
                 "Connections",
@@ -518,6 +561,7 @@ export default function ConnectionsPage() {
                 .filter(Boolean)
                 .join("\n")
             }
+            onGoResults={() => scrollTo("results")}
             onGoSteps={() => scrollTo("conn-results")}
             csv={{ filename: "connections-export.csv", rows: csvRows }}
             json={{
@@ -561,6 +605,7 @@ export default function ConnectionsPage() {
             }}
             onReset={resetInputs}
           />
+          <div id="results">
           <ResultHero
             status={overallStatus}
             title="Overall"
@@ -599,12 +644,16 @@ export default function ConnectionsPage() {
                     : undefined
             }
           />
+          </div>
 
           <details open className="rounded-2xl border border-slate-200 bg-white" id="conn-inputs">
             <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
               1 · Demands & bolt layout
               <span className="mt-1 block text-xs font-semibold text-slate-600">
                 V<sub>u</sub>, T<sub>u</sub>, bolt group and slip/bearing choices.
+              </span>
+              <span className="mt-2 inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+                Units: kips, in, ksi
               </span>
             </summary>
             <div className="border-t border-slate-200 p-5">
@@ -638,10 +687,10 @@ export default function ConnectionsPage() {
                   <option value="ASD">ASD</option>
                 </SelectInput>
               </Field>
-              <Field label="Required shear V_u" hint="kips — on bolt group">
+              <Field label="Required shear V_u" hint="kips — on bolt group" error={invalid(vu, 0) ? "Enter a number ≥ 0." : undefined}>
                 <TextInputWithUnit value={vu} onChange={setVu} unit="kips" placeholder="e.g. 120" inputMode="decimal" />
               </Field>
-              <Field label="Required tension T_u" hint="kips — on bolt group (0 if shear-only)">
+              <Field label="Required tension T_u" hint="kips — on bolt group (0 if shear-only)" error={invalid(tu, 0) ? "Enter a number ≥ 0." : undefined}>
                 <TextInputWithUnit value={tu} onChange={setTu} unit="kips" placeholder="0" inputMode="decimal" />
               </Field>
               <Field label="Bolt ASTM type" hint={shearMode === "slip" ? "Slip-critical: A325 or A490 (T_b from Table J3.1)." : "Table J3.2"}>
@@ -679,7 +728,14 @@ export default function ConnectionsPage() {
                   ))}
                 </SelectInput>
               </Field>
-              <Field label="Number of bolts n" hint="Equal share">
+              <Field
+                label="Number of bolts n"
+                hint="Equal share"
+                error={(() => {
+                  const n = Number(nBolts);
+                  return !Number.isFinite(n) || n < 1 ? "Enter an integer ≥ 1." : undefined;
+                })()}
+              >
                 <TextInput value={nBolts} onChange={setNBolts} placeholder="e.g. 4" />
               </Field>
               <Field label="Shear planes per bolt" hint="Single = 1, double = 2">
@@ -698,15 +754,16 @@ export default function ConnectionsPage() {
               ) : null}
               {shearMode === "bearing" ? (
                 <>
-                  <Field label="Plate F_u" hint="ksi">
+                  <Field label="Plate F_u" hint="ksi" error={invalid(plateFu, 0) ? "Enter a number ≥ 0." : undefined}>
                     <TextInputWithUnit value={plateFu} onChange={setPlateFu} unit="ksi" placeholder="65" inputMode="decimal" />
                   </Field>
-                  <Field label="Plate thickness t" hint="in">
+                  <Field label="Plate thickness t" hint="in" error={invalid(plateT, 0) ? "Enter a number ≥ 0." : undefined}>
                     <TextInputWithUnit value={plateT} onChange={setPlateT} unit="in" placeholder="0.5" inputMode="decimal" />
                   </Field>
                   <Field
                     label="Min clear L_c"
                     hint="in — clear distance in load direction (J3.10(a)); governs bearing / hole tear-out vs 2.4 d t cap"
+                    error={invalid(lcMin, 0) ? "Enter a number ≥ 0." : undefined}
                   >
                     <TextInputWithUnit value={lcMin} onChange={setLcMin} unit="in" placeholder="1.25" inputMode="decimal" />
                   </Field>
@@ -759,6 +816,9 @@ export default function ConnectionsPage() {
               2 · Bolt check results
               <span className="mt-1 block text-xs font-semibold text-slate-600">
                 Capacities vs V<sub>u</sub> and T<sub>u</sub>; interaction applies when T<sub>u</sub> &gt; 0.
+              </span>
+              <span className="mt-2 inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+                Output: capacity, demand, utilization
               </span>
             </summary>
             <div className="border-t border-slate-200 p-5">
@@ -914,7 +974,7 @@ export default function ConnectionsPage() {
               </div>
           </details>
 
-          <details className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/40 open:border-slate-400 open:bg-white">
+          <details id="conn-optional" className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/40 open:border-slate-400 open:bg-white">
             <summary className="cursor-pointer list-none px-5 py-4 text-base font-bold text-slate-900 [&::-webkit-details-marker]:hidden">
               Optional — groove weld &amp; plate prying
               <span className="mt-1 block text-sm font-normal text-slate-600">
@@ -994,9 +1054,30 @@ export default function ConnectionsPage() {
         </CardBody>
       </Card>
       <div className="mt-8 md:mt-10">
+      <div id="actions">
       <CalculatorActionRail
         mobileOnly
         subtitle="Connections actions"
+        savedKey="ssc:ts:connections"
+        saving={saving}
+        savedAt={savedAt}
+        compare={{
+          storageKey: "ssc:compare:connections",
+          getCurrent: () => ({
+            title: "Connections",
+            lines: [
+              `Method: ${designMethod} · Shear mode: ${shearMode}`,
+              `Vu: ${vu} kips · Tu: ${tu} kips`,
+              `Bolt: ${boltGroup} d=${dBolt} in n=${nBolts} planes=${shearPlanes} threads=${threadMode}`,
+              interactionOut && Number(tu) > 0 ? `Interaction Σ: ${interactionOut.interactionSum.toFixed(6)}` : null,
+              shearMode === "slip" && slipOut ? `Available slip: ${slipOut.availableSlip.toFixed(6)} kips` : null,
+              boltOut ? `Governing shear/bearing: ${boltOut.phiRnTotalGoverning.toFixed(6)} kips` : null,
+              tensionOut ? `Bolt tension φRn total: ${tensionOut.phiRnTotal.toFixed(6)} kips` : null,
+              weldOut ? `Fillet weld φRn: ${weldOut.phiRn.toFixed(6)} kips` : null,
+              grooveOut ? `Groove weld: ${grooveOut.phiRnOrAllowableKips.toFixed(6)} kips` : null,
+            ].filter(Boolean) as string[],
+          }),
+        }}
         copyText={() =>
           [
             "Connections",
@@ -1009,6 +1090,7 @@ export default function ConnectionsPage() {
             .filter(Boolean)
             .join("\n")
         }
+        onGoResults={() => scrollTo("results")}
         onGoSteps={() => scrollTo("conn-results")}
         csv={{ filename: "connections-export.csv", rows: csvRows }}
         json={{
@@ -1022,24 +1104,9 @@ export default function ConnectionsPage() {
             pryingPlate: pryingOut,
           },
         }}
-        compare={{
-          storageKey: "ssc:compare:connections",
-          getCurrent: () => ({
-            title: "Connections",
-            lines: [
-              `Method: ${designMethod} · Shear mode: ${shearMode}`,
-              `Vu: ${vu} kips · Tu: ${tu} kips`,
-              `Bolt: ${boltGroup} d=${dBolt} in · n=${nBolts} · planes=${shearPlanes} · threads=${threadMode}`,
-              interactionOut && Number(tu) > 0 ? `Interaction Σ: ${interactionOut.interactionSum.toFixed(4)}` : "Interaction: —",
-              shearMode === "slip" && slipOut ? `Available slip: ${slipOut.availableSlip.toFixed(3)} kips` : "Slip: —",
-              boltOut ? `Governing shear/bearing: ${boltOut.phiRnTotalGoverning.toFixed(3)} kips` : "Bolt check: —",
-              tensionOut ? `Bolt tension φRn total: ${tensionOut.phiRnTotal.toFixed(3)} kips` : "Tension: —",
-              weldOut ? `Fillet weld φRn: ${weldOut.phiRn.toFixed(3)} kips` : "Fillet weld: —",
-            ],
-          }),
-        }}
         onReset={resetInputs}
       />
+      </div>
       </div>
       <PageFooterNav currentHref="/connections" />
     </AppShell>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { aiscShapes } from "@/lib/aisc/data";
 import {
   filterShapesByFamily,
@@ -22,6 +22,7 @@ import { TextInputWithUnit } from "@/components/ui/InputGroup";
 import { Button } from "@/components/ui/Button";
 import { UtilizationBar } from "@/components/ui/UtilizationBar";
 import { CalculatorActionRail } from "@/components/actions/CalculatorActionRail";
+import { PageSectionNav } from "@/components/navigation/PageSectionNav";
 
 const toNumber = (v: string) => Number(v) || 0;
 /** Client preference: ~3 decimals on final strengths / demands. */
@@ -38,7 +39,8 @@ function isInvalidNumber(v: string, opts?: { min?: number; allowBlank?: boolean 
 
 function scrollTo(id: string) {
   try {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    document.getElementById(id)?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
   } catch {
     /* ignore */
   }
@@ -67,6 +69,9 @@ export default function TensionModulePage() {
   const [designMethod, setDesignMethod] = useState<"LRFD" | "ASD">("LRFD");
   const [mode, setMode] = useState<"check" | "design">("check");
   const [hydrated, setHydrated] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const saveTimer = useRef<number | null>(null);
 
   useEffect(() => {
     try {
@@ -129,11 +134,16 @@ export default function TensionModulePage() {
       mode,
     };
     try {
+      setSaving(true);
       localStorage.setItem(STORAGE.tension, JSON.stringify(payload));
-      localStorage.setItem("ssc:ts:tension", String(Date.now()));
+      const ts = Date.now();
+      localStorage.setItem("ssc:ts:tension", String(ts));
+      setSavedAt(ts);
     } catch {
       /* ignore */
     }
+    if (saveTimer.current) window.clearTimeout(saveTimer.current);
+    saveTimer.current = window.setTimeout(() => setSaving(false), 450);
   }, [
     hydrated,
     material,
@@ -330,12 +340,25 @@ export default function TensionModulePage() {
           description="Yielding, rupture, block shear (J4.3), optional staggered net width. Check or design mode. Inputs save in this browser."
         />
         <CardBody className="grid gap-6 md:grid-cols-12 md:gap-8">
+          <div className="md:col-span-12">
+            <PageSectionNav
+              sections={[
+                { id: "tension-general", label: "General" },
+                { id: "tension-net-area", label: "Net area" },
+                { id: "tension-block-shear", label: "Block shear" },
+                { id: "tension-steps", label: "Steps" },
+              ]}
+            />
+          </div>
           <div className="md:col-span-8 grid gap-4">
             <details open className="rounded-2xl border border-slate-200 bg-white" id="tension-general">
-              <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
+              <summary className="min-h-11 cursor-pointer px-4 py-3.5 text-sm font-extrabold tracking-tight text-slate-950 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10 sm:px-5 sm:py-4">
                 1 · General
                 <span className="mt-1 block text-xs font-semibold text-slate-600">
                   Steel, shape selection, method, and required Pu. These drive everything else.
+                </span>
+                <span className="mt-2 inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+                  Units: kips, ksi, in²
                 </span>
               </summary>
               <div className="border-t border-slate-200 p-5">
@@ -389,7 +412,11 @@ export default function TensionModulePage() {
                     </SelectInput>
                   </Field>
 
-                  <Field label="Required Pu / Pa" hint="Required axial (kips) — LRFD Pu or ASD Pa depending on method.">
+                  <Field
+                    label="Required Pu / Pa"
+                    hint="Required axial (kips) — LRFD Pu or ASD Pa depending on method."
+                    error={isInvalidNumber(Pu, { min: 0 }) ? "Enter a number ≥ 0." : undefined}
+                  >
                     <TextInputWithUnit
                       value={Pu}
                       onChange={setPu}
@@ -424,6 +451,9 @@ export default function TensionModulePage() {
                 <span className="mt-1 block text-xs font-semibold text-slate-600">
                   Enter areas and U. Use quick defaults for early sizing.
                 </span>
+                <span className="mt-2 inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+                  Units: in²
+                </span>
               </summary>
               <div className="border-t border-slate-200 p-5">
                 <div className="mb-3 flex flex-wrap gap-2">
@@ -453,7 +483,7 @@ export default function TensionModulePage() {
                       placeholder="e.g. 0.90"
                     />
                   </Field>
-                  <Field label="Ag" hint="gross area (in²)">
+                  <Field label="Ag" hint="gross area (in²)" error={isInvalidNumber(Ag, { min: 0 }) ? "Enter a number ≥ 0." : undefined}>
                     <TextInputWithUnit
                       value={Ag}
                       onChange={setAg}
@@ -462,7 +492,7 @@ export default function TensionModulePage() {
                       className={isInvalidNumber(Ag, { min: 0 }) ? "border-rose-300 focus:border-rose-400 focus:ring-rose-500/10" : undefined}
                     />
                   </Field>
-                  <Field label="An" hint="net area (in²)">
+                  <Field label="An" hint="net area (in²)" error={isInvalidNumber(An, { min: 0 }) ? "Enter a number ≥ 0." : undefined}>
                     <TextInputWithUnit
                       value={An}
                       onChange={setAn}
@@ -482,7 +512,7 @@ export default function TensionModulePage() {
             </details>
 
             {designSuggestion ? (
-              <Card className="border-[#0818A8]/20 bg-[#0818A8]/5">
+              <Card className="border-[color:var(--brand)]/20 bg-[color:var(--brand)]/5">
                 <CardBody>
                   <p className="text-sm font-semibold text-slate-950">Suggested section (lightest in family that passes)</p>
                   <p className="mt-1 text-xl font-extrabold tracking-tight text-slate-950">{designSuggestion.shape}</p>
@@ -531,7 +561,7 @@ export default function TensionModulePage() {
               </Card>
             ) : null}
 
-            <details className="rounded-2xl border border-slate-200 bg-white">
+            <details id="tension-block-shear" className="rounded-2xl border border-slate-200 bg-white">
               <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
                 3 · Block shear + stagger helper
                 <span className="mt-1 block text-xs font-semibold text-slate-600">
@@ -653,6 +683,9 @@ export default function TensionModulePage() {
                   Governing: <span className="text-slate-900">{result.governingCase}</span> · Capacity{" "}
                   <span className="tabular-nums text-slate-900">{fmt(result.controllingStrength)} kips</span>
                 </span>
+                <span className="mt-2 inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+                  Tip: use “Key steps only” for faster review
+                </span>
               </summary>
               <div className="border-t border-slate-200 p-5">
                 <StepsTable steps={result.steps} governingCase={String(result.governingCase)} tools />
@@ -661,12 +694,32 @@ export default function TensionModulePage() {
           </div>
 
           <aside className="md:col-span-4">
-            <div className="sticky top-6 space-y-4">
+            <div className="sticky top-6 md:top-[calc(var(--app-header-h,104px)+16px)] space-y-4">
               <CalculatorActionRail
                 desktopClassName="hidden md:block"
                 hideMobileBar
                 title="Actions"
                 subtitle={`${shapeName} · ${designMethod} · ${mode === "design" ? "Design" : "Check"}`}
+                savedKey="ssc:ts:tension"
+                saving={saving}
+                savedAt={savedAt}
+                compare={{
+                  storageKey: "ssc:compare:tension",
+                  getCurrent: () => ({
+                    title: `Tension — ${shapeName}`,
+                    lines: [
+                      `Method: ${designMethod} · Material: ${selectedMaterial.key}`,
+                      `Mode: ${mode}`,
+                      `Pu = ${Pu} kips`,
+                      `Governing: ${result.governingCase}`,
+                      `Capacity: ${fmt(result.controllingStrength)} kips`,
+                      `Demand: ${fmt(result.demand)} kips`,
+                      `Utilization: ${
+                        result.controllingStrength > 0 ? ((result.demand / result.controllingStrength) * 100).toFixed(1) : "-"
+                      }%`,
+                    ],
+                  }),
+                }}
                 copyText={() =>
                   [
                     `Tension — ${shapeName}`,
@@ -681,11 +734,13 @@ export default function TensionModulePage() {
                     }%`,
                   ].join("\n")
                 }
+                onGoResults={() => scrollTo("results")}
                 onGoSteps={() => scrollTo("tension-steps")}
                 csv={{ filename: "tension-export.csv", rows: csvRows }}
                 json={{ data: { result, inputs: { material, shapeName, designMethod, mode, Ag, An, U, Pu, Agv, Anv, Agt, Ant, ubs } } }}
                 onReset={resetInputs}
               />
+              <div id="results">
               <ResultHero
                 status={result.isSafe ? "safe" : "unsafe"}
                 governing={result.governingCase}
@@ -696,6 +751,7 @@ export default function TensionModulePage() {
                 utilization={result.controllingStrength > 0 ? result.demand / result.controllingStrength : undefined}
                 metaRight={<Badge tone="info">{selectedMaterial.key}</Badge>}
               />
+              </div>
 
               <Card className="border-slate-200">
                 <CardBody>
@@ -706,8 +762,8 @@ export default function TensionModulePage() {
                         key={row.key}
                         className={[
                           "rounded-xl border p-3",
-                          row.name.toLowerCase().includes(String(result.governingCase).toLowerCase())
-                            ? "border-[#0818A8]/25 bg-[#0818A8]/5"
+                        row.name.toLowerCase().includes(String(result.governingCase).toLowerCase())
+                            ? "border-[color:var(--brand)]/25 bg-[color:var(--brand)]/5"
                             : "border-slate-200 bg-slate-50",
                         ].join(" ")}
                       >
@@ -754,9 +810,30 @@ export default function TensionModulePage() {
         </CardBody>
       </Card>
       <div className="mt-8 md:mt-10">
+      <div id="actions">
       <CalculatorActionRail
         mobileOnly
         subtitle="Tension actions"
+        savedKey="ssc:ts:tension"
+        saving={saving}
+        savedAt={savedAt}
+        compare={{
+          storageKey: "ssc:compare:tension",
+          getCurrent: () => ({
+            title: `Tension — ${shapeName}`,
+            lines: [
+              `Method: ${designMethod} · Material: ${selectedMaterial.key}`,
+              `Mode: ${mode}`,
+              `Pu = ${Pu} kips`,
+              `Governing: ${result.governingCase}`,
+              `Capacity: ${fmt(result.controllingStrength)} kips`,
+              `Demand: ${fmt(result.demand)} kips`,
+              `Utilization: ${
+                result.controllingStrength > 0 ? ((result.demand / result.controllingStrength) * 100).toFixed(1) : "-"
+              }%`,
+            ],
+          }),
+        }}
         copyText={() =>
           [
             `Tension — ${shapeName}`,
@@ -768,27 +845,13 @@ export default function TensionModulePage() {
             `Demand: ${fmt(result.demand)} kips`,
           ].join("\n")
         }
+        onGoResults={() => scrollTo("results")}
         onGoSteps={() => scrollTo("tension-steps")}
         csv={{ filename: "tension-export.csv", rows: csvRows }}
         json={{ data: { result, inputs: { material, shapeName, designMethod, mode, Ag, An, U, Pu, Agv, Anv, Agt, Ant, ubs } } }}
-        compare={{
-          storageKey: "ssc:compare:tension",
-          getCurrent: () => ({
-            title: `Tension — ${shapeName}`,
-            lines: [
-              `Method: ${designMethod} · Material: ${selectedMaterial.key} · Mode: ${mode}`,
-              `Pu: ${Pu} kips`,
-              `Governing: ${String(result.governingCase)}`,
-              `Capacity: ${fmt(result.controllingStrength)} kips`,
-              `Demand: ${fmt(result.demand)} kips`,
-              `Utilization: ${
-                result.controllingStrength > 0 ? ((result.demand / result.controllingStrength) * 100).toFixed(1) : "-"
-              }%`,
-            ],
-          }),
-        }}
         onReset={resetInputs}
       />
+      </div>
       </div>
       <PageFooterNav currentHref="/tension" />
     </AppShell>

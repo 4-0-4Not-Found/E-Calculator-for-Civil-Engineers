@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageFooterNav } from "@/components/navigation/PageFooterNav";
+import { PageSectionNav } from "@/components/navigation/PageSectionNav";
 
 /** Help: capabilities, limits, units, and tips for students. */
 export default function InfoPage() {
@@ -13,8 +14,17 @@ export default function InfoPage() {
           description="AISC 360–based steel checks using the v16 shape database. Works offline after the first load (PWA). Use Summary to print or review inputs and key results together."
         />
         <CardBody className="max-w-none space-y-4 text-slate-800">
-          <details open className="rounded-2xl border border-slate-200 bg-white">
-            <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
+          <PageSectionNav
+            sections={[
+              { id: "info-capabilities", label: "Capabilities" },
+              { id: "info-limits", label: "Limitations" },
+              { id: "info-units", label: "Units" },
+              { id: "info-tips", label: "Tips" },
+            ]}
+          />
+
+          <details id="info-capabilities" open className="rounded-2xl border border-slate-200 bg-white">
+            <summary className="min-h-11 cursor-pointer px-4 py-3.5 text-sm font-extrabold tracking-tight text-slate-950 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10 sm:px-5 sm:py-4">
               What you can do
               <span className="mt-1 block text-xs font-semibold text-slate-600">
                 A quick map of each module and what it checks.
@@ -46,8 +56,8 @@ export default function InfoPage() {
             </div>
           </details>
 
-          <details open className="rounded-2xl border border-slate-200 bg-white">
-            <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
+          <details id="info-limits" open className="rounded-2xl border border-slate-200 bg-white">
+            <summary className="min-h-11 cursor-pointer px-4 py-3.5 text-sm font-extrabold tracking-tight text-slate-950 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10 sm:px-5 sm:py-4">
               What this app does not replace
               <span className="mt-1 block text-xs font-semibold text-slate-600">
                 Limits and what to verify outside the tool.
@@ -70,8 +80,8 @@ export default function InfoPage() {
             </div>
           </details>
 
-          <details open className="rounded-2xl border border-slate-200 bg-white">
-            <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
+          <details id="info-units" open className="rounded-2xl border border-slate-200 bg-white">
+            <summary className="min-h-11 cursor-pointer px-4 py-3.5 text-sm font-extrabold tracking-tight text-slate-950 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10 sm:px-5 sm:py-4">
               Units & conventions
               <span className="mt-1 block text-xs font-semibold text-slate-600">
                 Consistent units used across the calculators.
@@ -95,8 +105,8 @@ export default function InfoPage() {
             </div>
           </details>
 
-          <details open className="rounded-2xl border border-slate-200 bg-white">
-            <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
+          <details id="info-tips" open className="rounded-2xl border border-slate-200 bg-white">
+            <summary className="min-h-11 cursor-pointer px-4 py-3.5 text-sm font-extrabold tracking-tight text-slate-950 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10 sm:px-5 sm:py-4">
               Tips
               <span className="mt-1 block text-xs font-semibold text-slate-600">
                 Faster workflow and where to print/export.
@@ -105,8 +115,8 @@ export default function InfoPage() {
             <div className="border-t border-slate-200 p-5">
               <ul className="list-disc space-y-2 pl-5 text-sm">
               <li>
-                Open each calculator from <Link href="/" className="text-blue-700 hover:underline">Home</Link> — each module has
-                its own full-width layout. Use <Link href="/report" className="text-blue-700 hover:underline">Summary</Link> for a
+                Open each calculator from <Link href="/" className="text-[color:var(--brand)] hover:underline">Home</Link> — each module has
+                its own full-width layout. Use <Link href="/report" className="text-[color:var(--brand)] hover:underline">Report</Link> for a
                 combined view of saved inputs.
               </li>
               <li>
@@ -117,7 +127,7 @@ export default function InfoPage() {
                 backup file.
               </li>
               <li>
-                Use <Link href="/report" className="text-blue-700 hover:underline">Summary</Link> (also linked on Home) for a
+                Use <Link href="/report" className="text-[color:var(--brand)] hover:underline">Report</Link> (also linked on Home) for a
                 printable overview when you have saved inputs.
               </li>
               </ul>

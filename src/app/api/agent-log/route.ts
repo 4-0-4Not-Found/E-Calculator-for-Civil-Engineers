@@ -1,14 +1,16 @@
 import { NextResponse } from "next/server";
 import { appendFile, mkdir } from "node:fs/promises";
 import { URL } from "node:url";
+import { join } from "node:path";
+import { cwd } from "node:process";
 
 export const runtime = "nodejs";
 
 async function appendLine(line: unknown) {
+  if (process.env.NODE_ENV === "production") return;
   try {
-    const logDir = "C:\\Users\\Asus\\OneDrive\\Desktop\\Civil-E-Cal\\.cursor";
-    const logPath =
-      "C:\\Users\\Asus\\OneDrive\\Desktop\\Civil-E-Cal\\.cursor\\debug-fd44da.log";
+    const logDir = join(cwd(), ".cursor");
+    const logPath = join(logDir, "debug-fd44da.log");
     await mkdir(logDir, { recursive: true });
     await appendFile(logPath, `${JSON.stringify(line)}\n`, "utf8");
   } catch {
@@ -17,6 +19,7 @@ async function appendLine(line: unknown) {
 }
 
 export async function GET(req: Request) {
+  if (process.env.NODE_ENV === "production") return new NextResponse(null, { status: 204 });
   // #region agent log
   const url = new URL(req.url);
   const runId = url.searchParams.get("runId") ?? "get";
@@ -41,6 +44,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  if (process.env.NODE_ENV === "production") return NextResponse.json({ ok: true });
   try {
     let body: unknown = null;
     try {
@@ -66,43 +70,11 @@ export async function POST(req: Request) {
     // #endregion agent log
 
     // #region agent log
-    await fetch(
-      "http://127.0.0.1:7464/ingest/ca13048c-9d98-4bcc-a485-2fd46d0652e4",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Debug-Session-Id": "fd44da",
-        },
-        body: JSON.stringify({
-          sessionId: "fd44da",
-          runId: "route",
-          hypothesisId: "H10",
-          location: "src/app/api/agent-log/route.ts:POST",
-          message: "agent-log route hit",
-          data: {
-            hasBody: body !== null,
-            bodyType: body === null ? "null" : typeof body,
-            contentType: req.headers.get("content-type"),
-          },
-          timestamp: Date.now(),
-        }),
-      },
-    ).catch(() => {});
+    // NOTE: local Cursor ingest forwarding intentionally disabled for deploy safety.
     // #endregion agent log
 
     // #region agent log
-    await fetch(
-      "http://127.0.0.1:7464/ingest/ca13048c-9d98-4bcc-a485-2fd46d0652e4",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Debug-Session-Id": "fd44da",
-        },
-        body: JSON.stringify(body),
-      },
-    );
+    // NOTE: local Cursor ingest forwarding intentionally disabled for deploy safety.
     // #endregion agent log
   } catch {
     // ignore

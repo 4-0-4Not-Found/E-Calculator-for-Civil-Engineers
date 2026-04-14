@@ -35,7 +35,7 @@ export function TextInputWithUnit(
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className={cn(
-          "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-950 shadow-sm outline-none placeholder:text-slate-400 focus:border-[#0818A8]/40 focus:ring-4 focus:ring-[#0818A8]/10 md:text-base",
+          "w-full min-h-11 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-base text-slate-950 shadow-sm outline-none placeholder:text-slate-400 focus:border-[color:var(--brand)]/40 focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10",
           hasRight ? "pr-16" : undefined,
           className,
         )}

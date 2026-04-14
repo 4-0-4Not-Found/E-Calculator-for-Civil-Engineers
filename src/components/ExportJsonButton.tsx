@@ -1,5 +1,8 @@
 "use client";
 
+import { Button } from "@/components/ui/Button";
+import { useToast } from "@/components/ui/Toast";
+
 type Props = {
   data: unknown;
   label?: string;
@@ -7,20 +10,24 @@ type Props = {
 
 /** Copies a JSON snapshot of results to the clipboard for reports / checking. */
 export function ExportJsonButton(props: Props) {
+  const toast = useToast();
   return (
-    <button
+    <Button
       type="button"
-      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:border-slate-300 hover:bg-slate-50"
+      variant="secondary"
+      size="sm"
       onClick={async () => {
         try {
           const text = JSON.stringify(props.data, null, 2);
           await navigator.clipboard.writeText(text);
+          toast.push({ title: "Copied", message: "Results JSON copied to clipboard.", tone: "good" });
         } catch {
+          toast.push({ title: "Copy failed", message: "Clipboard permission blocked.", tone: "bad" });
           /* ignore */
         }
       }}
     >
       {props.label ?? "Copy results (JSON)"}
-    </button>
+    </Button>
   );
 }

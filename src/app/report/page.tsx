@@ -6,6 +6,7 @@ import type { BeamLimitStates, CalculationOutput, CalculationResult, Calculation
 import { readModuleStoresFromLocalStorage, summarizeModuleStores } from "@/lib/report/snapshot-store";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageFooterNav } from "@/components/navigation/PageFooterNav";
+import { PageSectionNav } from "@/components/navigation/PageSectionNav";
 
 function formatNumberForReport(v: number): string {
   if (!Number.isFinite(v)) {
@@ -36,14 +37,14 @@ function CalculationStepsTable({ steps, title }: { steps: CalculationStep[]; tit
         <table className="w-full border-collapse border border-slate-300 text-xs print:text-[10px]">
           <thead>
             <tr className="bg-slate-100">
-              <th className="border border-slate-300 px-2 py-1.5 text-left font-medium">Item</th>
-              <th className="border border-slate-300 px-2 py-1.5 text-left font-medium">Formula / reference</th>
-              <th className="border border-slate-300 px-2 py-1.5 text-right font-medium">Result</th>
+              <th scope="col" className="border border-slate-300 px-2 py-1.5 text-left font-medium">Item</th>
+              <th scope="col" className="border border-slate-300 px-2 py-1.5 text-left font-medium">Formula / reference</th>
+              <th scope="col" className="border border-slate-300 px-2 py-1.5 text-right font-medium">Result</th>
             </tr>
           </thead>
           <tbody>
-            {steps.map((s) => (
-              <tr key={s.id} className="align-top">
+            {steps.map((s, idx) => (
+              <tr key={s.id} className={idx % 2 === 1 ? "align-top bg-slate-50/60" : "align-top"}>
                 <td className="border border-slate-300 px-2 py-1.5">{s.label}</td>
                 <td className="border border-slate-300 px-2 py-1.5 text-slate-600">{s.formula ?? "—"}</td>
                 <td className="border border-slate-300 px-2 py-1.5 text-right font-mono tabular-nums text-slate-900">
@@ -75,24 +76,26 @@ function LimitStatesResultsTable({ results }: { results: Record<string, Calculat
   return (
     <div className="mt-3 print:break-inside-avoid">
       <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-700 print:text-[10px]">Limit states (capacities)</h4>
-      <table className="mt-1 w-full border-collapse border border-slate-300 text-xs print:text-[10px]">
-        <thead>
-          <tr className="bg-slate-100">
-            <th className="border border-slate-300 px-2 py-1.5 text-left">Mode</th>
-            <th className="border border-slate-300 px-2 py-1.5 text-right">φR_n or allowable</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={r.name}>
-              <td className="border border-slate-300 px-2 py-1.5">{r.name}</td>
-              <td className="border border-slate-300 px-2 py-1.5 text-right font-mono tabular-nums">
-                {formatNumberForReport(r.phiPn)} {r.unit}
-              </td>
+      <div className="mt-1 overflow-x-auto">
+        <table className="w-full min-w-[28rem] border-collapse border border-slate-300 text-xs print:min-w-0 print:text-[10px]">
+          <thead>
+            <tr className="bg-slate-100">
+              <th scope="col" className="border border-slate-300 px-2 py-1.5 text-left">Mode</th>
+              <th scope="col" className="border border-slate-300 px-2 py-1.5 text-right">φR_n or allowable</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((r, idx) => (
+              <tr key={r.name} className={idx % 2 === 1 ? "bg-slate-50/60" : undefined}>
+                <td className="border border-slate-300 px-2 py-1.5">{r.name}</td>
+                <td className="border border-slate-300 px-2 py-1.5 text-right font-mono tabular-nums">
+                  {formatNumberForReport(r.phiPn)} {r.unit}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -102,42 +105,44 @@ function BeamLimitStatesBlock({ beamLimitStates, overallSafe }: { beamLimitState
   return (
     <div className="mt-3 space-y-2 rounded-lg border border-slate-200 bg-slate-50/80 p-3 text-xs print:break-inside-avoid print:bg-transparent">
       <h4 className="font-semibold text-slate-900">Demand / capacity by limit state</h4>
-      <table className="w-full border-collapse border border-slate-300 print:text-[10px]">
-        <thead>
-          <tr className="bg-slate-100">
-            <th className="border border-slate-300 px-2 py-1.5 text-left">Check</th>
-            <th className="border border-slate-300 px-2 py-1.5 text-right">Demand</th>
-            <th className="border border-slate-300 px-2 py-1.5 text-right">Capacity</th>
-            <th className="border border-slate-300 px-2 py-1.5 text-right">D/C / ratio</th>
-            <th className="border border-slate-300 px-2 py-1.5 text-left">Notes</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td className="border border-slate-300 px-2 py-1.5">Flexure</td>
-            <td className="border border-slate-300 px-2 py-1.5 text-right font-mono">{formatNumberForReport(b.bending.demand)}</td>
-            <td className="border border-slate-300 px-2 py-1.5 text-right font-mono">{formatNumberForReport(b.bending.capacity)}</td>
-            <td className="border border-slate-300 px-2 py-1.5 text-right font-mono">{formatNumberForReport(b.bending.ratio)}</td>
-            <td className="border border-slate-300 px-2 py-1.5 text-slate-600">{b.bending.unit}</td>
-          </tr>
-          <tr>
-            <td className="border border-slate-300 px-2 py-1.5">Shear</td>
-            <td className="border border-slate-300 px-2 py-1.5 text-right font-mono">{formatNumberForReport(b.shear.demand)}</td>
-            <td className="border border-slate-300 px-2 py-1.5 text-right font-mono">{formatNumberForReport(b.shear.capacity)}</td>
-            <td className="border border-slate-300 px-2 py-1.5 text-right font-mono">{formatNumberForReport(b.shear.ratio)}</td>
-            <td className="border border-slate-300 px-2 py-1.5 text-slate-600">
-              {b.shear.unit}; {b.shear.cvCase}; C_v = {formatNumberForReport(b.shear.cv)}
-            </td>
-          </tr>
-          <tr>
-            <td className="border border-slate-300 px-2 py-1.5">Deflection</td>
-            <td className="border border-slate-300 px-2 py-1.5 text-right font-mono">{formatNumberForReport(b.deflection.demand)}</td>
-            <td className="border border-slate-300 px-2 py-1.5 text-right font-mono">{formatNumberForReport(b.deflection.capacity)}</td>
-            <td className="border border-slate-300 px-2 py-1.5 text-right font-mono">{formatNumberForReport(b.deflection.ratio)}</td>
-            <td className="border border-slate-300 px-2 py-1.5 text-slate-600">{b.deflection.unit} (demand = δ, capacity = δ_allow)</td>
-          </tr>
-        </tbody>
-      </table>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[38rem] border-collapse border border-slate-300 print:min-w-0 print:text-[10px]">
+          <thead>
+            <tr className="bg-slate-100">
+              <th scope="col" className="border border-slate-300 px-2 py-1.5 text-left">Check</th>
+              <th scope="col" className="border border-slate-300 px-2 py-1.5 text-right">Demand</th>
+              <th scope="col" className="border border-slate-300 px-2 py-1.5 text-right">Capacity</th>
+              <th scope="col" className="border border-slate-300 px-2 py-1.5 text-right">D/C / ratio</th>
+              <th scope="col" className="border border-slate-300 px-2 py-1.5 text-left">Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="bg-slate-50/60">
+              <td className="border border-slate-300 px-2 py-1.5">Flexure</td>
+              <td className="border border-slate-300 px-2 py-1.5 text-right font-mono">{formatNumberForReport(b.bending.demand)}</td>
+              <td className="border border-slate-300 px-2 py-1.5 text-right font-mono">{formatNumberForReport(b.bending.capacity)}</td>
+              <td className="border border-slate-300 px-2 py-1.5 text-right font-mono">{formatNumberForReport(b.bending.ratio)}</td>
+              <td className="border border-slate-300 px-2 py-1.5 text-slate-600">{b.bending.unit}</td>
+            </tr>
+            <tr>
+              <td className="border border-slate-300 px-2 py-1.5">Shear</td>
+              <td className="border border-slate-300 px-2 py-1.5 text-right font-mono">{formatNumberForReport(b.shear.demand)}</td>
+              <td className="border border-slate-300 px-2 py-1.5 text-right font-mono">{formatNumberForReport(b.shear.capacity)}</td>
+              <td className="border border-slate-300 px-2 py-1.5 text-right font-mono">{formatNumberForReport(b.shear.ratio)}</td>
+              <td className="border border-slate-300 px-2 py-1.5 text-slate-600">
+                {b.shear.unit}; {b.shear.cvCase}; C_v = {formatNumberForReport(b.shear.cv)}
+              </td>
+            </tr>
+            <tr className="bg-slate-50/60">
+              <td className="border border-slate-300 px-2 py-1.5">Deflection</td>
+              <td className="border border-slate-300 px-2 py-1.5 text-right font-mono">{formatNumberForReport(b.deflection.demand)}</td>
+              <td className="border border-slate-300 px-2 py-1.5 text-right font-mono">{formatNumberForReport(b.deflection.capacity)}</td>
+              <td className="border border-slate-300 px-2 py-1.5 text-right font-mono">{formatNumberForReport(b.deflection.ratio)}</td>
+              <td className="border border-slate-300 px-2 py-1.5 text-slate-600">{b.deflection.unit} (demand = δ, capacity = δ_allow)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
       <p className="text-slate-800">
         <span className="font-semibold">Governing (max ratio):</span> {b.governing} ·{" "}
         <span className="font-semibold">Overall member:</span> {overallSafe ? "SAFE" : "NOT SAFE"}
@@ -193,7 +198,7 @@ export default function ReportPage() {
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="rounded-lg bg-[#FF5F1F] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#e24f16]"
+                className="min-h-11 rounded-lg bg-[color:var(--action)] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#e24f16] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--action)]/20"
               >
                 Print / Save PDF
               </button>
@@ -201,11 +206,20 @@ export default function ReportPage() {
           }
         />
         <CardBody className="space-y-4 text-sm text-slate-800">
+          <PageSectionNav
+            sections={[
+              { id: "report-tension", label: "Tension" },
+              { id: "report-compression", label: "Compression" },
+              { id: "report-beam", label: "Beam" },
+              { id: "report-connections", label: "Connections" },
+            ]}
+            className="print:hidden"
+          />
           {!mounted ? (
             <p className="text-slate-600">Loading…</p>
           ) : (
             <>
-              <details open className="rounded-2xl border border-slate-200 bg-white print:break-inside-avoid">
+              <details id="report-tension" open className="rounded-2xl border border-slate-200 bg-white print:break-inside-avoid">
                 <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
                   Tension
                   <span className="mt-1 block text-xs font-semibold text-slate-600">
@@ -226,7 +240,7 @@ export default function ReportPage() {
                 </div>
               </details>
 
-              <details open className="rounded-2xl border border-slate-200 bg-white print:break-inside-avoid">
+              <details id="report-compression" open className="rounded-2xl border border-slate-200 bg-white print:break-inside-avoid">
                 <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
                   Compression
                   <span className="mt-1 block text-xs font-semibold text-slate-600">
@@ -251,7 +265,7 @@ export default function ReportPage() {
                 </div>
               </details>
 
-              <details open className="rounded-2xl border border-slate-200 bg-white print:break-inside-avoid">
+              <details id="report-beam" open className="rounded-2xl border border-slate-200 bg-white print:break-inside-avoid">
                 <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
                   Beam (bending / shear / deflection)
                   <span className="mt-1 block text-xs font-semibold text-slate-600">
@@ -284,7 +298,7 @@ export default function ReportPage() {
                 </div>
               </details>
 
-              <details open className="rounded-2xl border border-slate-200 bg-white print:break-inside-avoid">
+              <details id="report-connections" open className="rounded-2xl border border-slate-200 bg-white print:break-inside-avoid">
                 <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
                   Connections
                   <span className="mt-1 block text-xs font-semibold text-slate-600">

@@ -18,7 +18,10 @@ export function PageBreadcrumbs() {
   }
 
   return (
-    <nav aria-label="Breadcrumb" className="border-t border-slate-100 bg-slate-50/80 px-2 py-2 dark:border-slate-800 dark:bg-slate-900/50">
+    <nav
+      aria-label="Breadcrumb"
+      className="border-t border-slate-100 bg-slate-50/80 px-2 pb-2 pt-3 dark:border-slate-800 dark:bg-slate-900/50"
+    >
       <ol className="mx-auto flex max-w-6xl flex-wrap items-center gap-1 px-2 text-xs font-semibold text-slate-600 md:px-6 dark:text-slate-400">
         {crumbs.map((c, i) => (
           <li key={c.href} className="flex items-center gap-1">
@@ -26,7 +29,10 @@ export function PageBreadcrumbs() {
             {i === crumbs.length - 1 ? (
               <span className="text-slate-900 dark:text-slate-100">{c.label}</span>
             ) : (
-              <Link href={c.href} className="text-[#0818A8] hover:underline dark:text-blue-300">
+              <Link
+                href={c.href}
+                className="text-[color:var(--brand)] hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10 dark:text-blue-300"
+              >
                 {c.label}
               </Link>
             )}

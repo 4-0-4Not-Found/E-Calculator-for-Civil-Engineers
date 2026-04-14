@@ -1,14 +1,16 @@
 import { NextResponse } from "next/server";
 import { appendFile, mkdir } from "node:fs/promises";
 import { URL } from "node:url";
+import { join } from "node:path";
+import { cwd } from "node:process";
 
 export const runtime = "nodejs";
 
 async function appendLine(line: unknown) {
+  if (process.env.NODE_ENV === "production") return;
   try {
-    const logDir = "C:\\Users\\Asus\\OneDrive\\Desktop\\Civil-E-Cal\\.cursor";
-    const logPath =
-      "C:\\Users\\Asus\\OneDrive\\Desktop\\Civil-E-Cal\\.cursor\\debug-fd44da.log";
+    const logDir = join(cwd(), ".cursor");
+    const logPath = join(logDir, "debug-fd44da.log");
     await mkdir(logDir, { recursive: true });
     await appendFile(logPath, `${JSON.stringify(line)}\n`, "utf8");
   } catch {
@@ -17,6 +19,7 @@ async function appendLine(line: unknown) {
 }
 
 export async function GET(req: Request) {
+  if (process.env.NODE_ENV === "production") return new NextResponse(null, { status: 204 });
   const url = new URL(req.url);
   const runId = url.searchParams.get("runId") ?? "beacon";
   const location =
