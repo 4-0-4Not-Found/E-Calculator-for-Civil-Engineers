@@ -317,26 +317,30 @@ export function HomeDashboard() {
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="grid gap-2 sm:flex sm:flex-wrap md:justify-end">
               {resumeHref ? (
-                <Link href={resumeHref}>
-                  <Button variant="primary">Continue</Button>
+                <Link href={resumeHref} className="w-full sm:w-auto">
+                  <Button variant="primary" className="w-full sm:w-auto">
+                    Continue
+                  </Button>
                 </Link>
               ) : null}
-              <a href="#modules">
-                <Button variant="secondary">Start a calculation</Button>
+              <a href="#modules" className="w-full sm:w-auto">
+                <Button variant="secondary" className="w-full sm:w-auto">
+                  Start a calculation
+                </Button>
               </a>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <Link href="/report">
-              <Button variant="secondary" size="sm">
+          <div className="grid gap-2 sm:flex sm:flex-wrap sm:items-center">
+            <Link href="/report" className="w-full sm:w-auto">
+              <Button variant="secondary" size="sm" className="w-full sm:w-auto">
                 Report (Print/PDF)
               </Button>
             </Link>
-            <Link href="/info">
-              <Button variant="secondary" size="sm">
+            <Link href="/info" className="w-full sm:w-auto">
+              <Button variant="secondary" size="sm" className="w-full sm:w-auto">
                 Info & units
               </Button>
             </Link>

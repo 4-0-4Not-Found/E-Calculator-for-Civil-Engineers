@@ -66,11 +66,11 @@ export function InstallAppButton() {
   };
 
   return (
-    <div className="space-y-1">
+    <div className="w-full space-y-1 sm:w-auto">
       <button
         type="button"
         onClick={onInstall}
-        className="inline-flex items-center rounded-xl bg-[color:var(--action)] px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#e24f16] focus:outline-none focus:ring-4 focus:ring-[color:var(--action)]/20"
+        className="inline-flex w-full items-center justify-center rounded-xl bg-[color:var(--action)] px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#e24f16] focus:outline-none focus:ring-4 focus:ring-[color:var(--action)]/20 sm:w-auto"
       >
         Install app
       </button>
