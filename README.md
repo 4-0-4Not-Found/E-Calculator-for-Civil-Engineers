@@ -1,6 +1,6 @@
 # Structural Steel Calculators
 
-**Repository:** [github.com/charlsbarquin/structural-steel-calculators](https://github.com/charlsbarquin/structural-steel-calculators)
+**Repository:** **[Civil-E-Cal](https://github.com/4-0-4Not-Found/Civil-E-Cal)** — `github.com/4-0-4Not-Found/Civil-E-Cal`
 
 Structural Steel Calculators is a Next.js PWA for civil engineering students to run AISC-style tension, compression, beam, and connection checks in the browser, with local TypeScript calculations and offline support after first load.
 
@@ -77,8 +77,8 @@ Use the **header navigation** or **Home** to switch modules. **Footer links** on
 
 ```bash
 # Clone the repository
-git clone https://github.com/charlsbarquin/structural-steel-calculators.git
-cd structural-steel-calculators
+git clone https://github.com/4-0-4Not-Found/Civil-E-Cal.git
+cd Civil-E-Cal
 
 # Install dependencies
 npm install
@@ -141,15 +141,15 @@ After the app loads once, the **service worker** caches assets so core routes ca
 Use **this project folder** as the Git root (File → Add Local Repository → choose the folder that contains `package.json` and `.git`).
 
 - **Do not** place this whole project inside another Git repo as a subfolder that still has its own `.git` — GitHub Desktop will show errors like “nothing added to commit” or refuse to stage nested repos correctly.
-- If you already copied **`Civil-E-Cal` inside** a `structural-steel-calculators` clone: either develop only in this Desktop folder, or copy **files only** (not the `.git` folder) into the other repo if you want one combined tree.
+- If you already copied this project **inside** another clone: either develop only in one folder, or copy **files only** (not the `.git` folder) into the other repo if you want one combined tree.
 
-Remote `origin` should be [charlsbarquin/structural-steel-calculators](https://github.com/charlsbarquin/structural-steel-calculators). After changing remotes, run `git fetch origin` and reconcile history (`git pull --rebase origin main` or follow GitHub’s merge instructions if histories differ) before pushing.
+Remote `origin` should be [4-0-4Not-Found/Civil-E-Cal](https://github.com/4-0-4Not-Found/Civil-E-Cal). After changing remotes, run `git fetch origin` and reconcile history (`git pull --rebase origin main` or follow GitHub’s merge instructions if histories differ) before pushing.
 
 ---
 
 ## Contributing
 
-1. **Fork** [charlsbarquin/structural-steel-calculators](https://github.com/charlsbarquin/structural-steel-calculators) and create a **feature branch** from `main`.  
+1. **Fork** [4-0-4Not-Found/Civil-E-Cal](https://github.com/4-0-4Not-Found/Civil-E-Cal) and create a **feature branch** from `main` (or branch directly if you have write access).  
 2. Keep changes **focused**; avoid unrelated refactors.  
 3. Run **`npm run lint`**, **`npm test`**, and **`npm run build`** before opening a PR.  
 4. Describe **what** changed and **why** in the PR.  
