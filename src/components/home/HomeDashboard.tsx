@@ -361,7 +361,7 @@ export function HomeDashboard() {
                 <Link
                   key={m.key}
                   href={m.href}
-                  className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm transition hover:border-[color:var(--brand)]/35 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10"
+                  className="no-underline rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm transition hover:border-[color:var(--brand)]/35 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -494,7 +494,7 @@ export function HomeDashboard() {
               <Link
                 key={m.key}
                 href={m.href}
-                className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm transition hover:border-[color:var(--brand)]/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10"
+                className="no-underline rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm transition hover:border-[color:var(--brand)]/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
