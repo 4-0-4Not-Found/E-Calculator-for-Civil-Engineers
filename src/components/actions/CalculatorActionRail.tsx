@@ -182,14 +182,18 @@ export function CalculatorActionRail(props: {
               </Button>
             ) : null}
             {props.onGoSteps ? (
-              <Button variant="secondary" size="sm" onClick={props.onGoSteps}>
-                Steps
-              </Button>
+              <div className="hidden sm:block">
+                <Button variant="secondary" size="sm" onClick={props.onGoSteps}>
+                  Steps
+                </Button>
+              </div>
             ) : null}
             {props.compare ? (
-              <Button variant="secondary" size="sm" type="button" onClick={() => setCompareOpen(true)}>
-                Compare
-              </Button>
+              <div className="hidden sm:block">
+                <Button variant="secondary" size="sm" type="button" onClick={() => setCompareOpen(true)}>
+                  Compare
+                </Button>
+              </div>
             ) : null}
             <CopySummaryButton getText={props.copyText} label="Copy" />
             {hasExport || props.onReset ? (
