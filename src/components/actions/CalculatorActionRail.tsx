@@ -168,14 +168,14 @@ export function CalculatorActionRail(props: {
       {/* Mobile bottom bar */}
       {!props.hideMobileBar ? (
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/90 backdrop-blur md:hidden">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-2.5 pb-[calc(env(safe-area-inset-bottom,0px)+10px)]">
+        <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-2.5 pb-[calc(env(safe-area-inset-bottom,0px)+10px)]">
           <div className="min-w-0">
             {props.subtitle ? <p className="truncate text-xs font-semibold text-slate-800">{props.subtitle}</p> : null}
-            <p className="text-[11px] font-medium text-slate-600">
+            <p className="hidden text-[11px] font-medium text-slate-600 sm:block">
               {savedLabel ? `${savedLabel} · ` : ""}Copy, jump to steps, export, or reset.
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex w-full flex-wrap items-center justify-end gap-2">
             {props.onGoResults ? (
               <Button variant="secondary" size="sm" onClick={props.onGoResults}>
                 Results
