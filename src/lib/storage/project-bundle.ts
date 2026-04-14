@@ -24,17 +24,22 @@ export function collectBundle() {
 export function applyBundle(data: unknown) {
   if (!data || typeof data !== "object") return false;
   const o = data as Record<string, unknown>;
+  let wrote = false;
   if (typeof o.tension === "object" && o.tension !== null) {
     localStorage.setItem(STORAGE.tension, JSON.stringify(o.tension));
+    wrote = true;
   }
   if (typeof o.compression === "object" && o.compression !== null) {
     localStorage.setItem(STORAGE.compression, JSON.stringify(o.compression));
+    wrote = true;
   }
   if (typeof o.bending === "object" && o.bending !== null) {
     localStorage.setItem(STORAGE.bending, JSON.stringify(o.bending));
+    wrote = true;
   }
   if (typeof o.connections === "object" && o.connections !== null) {
     localStorage.setItem(STORAGE.connections, JSON.stringify(o.connections));
+    wrote = true;
   }
-  return true;
+  return wrote;
 }
