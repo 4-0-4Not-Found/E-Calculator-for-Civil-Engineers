@@ -13,6 +13,7 @@ const OFFLINE_SHELL_ROUTES = [
   "/workspace",
   "/offline",
 ];
+const APP_SHELL_REVISION = "app-shell-v2";
 
 const withPWA = withPWAInit({
   dest: "public",
@@ -27,7 +28,7 @@ const withPWA = withPWAInit({
     document: "/offline",
   },
   ignoreURLParametersMatching: [/^utm_/, /^fbclid$/, /^source$/, /^ref$/],
-  additionalManifestEntries: OFFLINE_SHELL_ROUTES.map((url) => ({ url, revision: "app-shell-v1" })),
+  additionalManifestEntries: OFFLINE_SHELL_ROUTES.map((url) => ({ url, revision: APP_SHELL_REVISION })),
   runtimeCaching: [
     {
       urlPattern: ({ url }: { url: URL }) => url.origin === self.location.origin && url.pathname.startsWith("/_next/static/"),
