@@ -20,11 +20,13 @@ const withPWA = withPWAInit({
   register: true,
   skipWaiting: true,
   cacheStartUrl: true,
+  cacheOnFrontEndNav: true,
   dynamicStartUrl: false,
   reloadOnOnline: true,
   fallbacks: {
     document: "/offline",
   },
+  ignoreURLParametersMatching: [/^utm_/, /^fbclid$/, /^source$/, /^ref$/],
   additionalManifestEntries: OFFLINE_SHELL_ROUTES.map((url) => ({ url, revision: "app-shell-v1" })),
   runtimeCaching: [
     {
@@ -61,6 +63,25 @@ const withPWA = withPWAInit({
         cacheName: "app-pages",
         expiration: {
           maxEntries: 64,
+          maxAgeSeconds: 60 * 60 * 24 * 30,
+        },
+      },
+    },
+    {
+      // Next.js App Router uses RSC/flight requests during client-side navigation.
+      // Cache these so module transitions still work when app is launched offline.
+      urlPattern: ({ request, url }: { request: Request; url: URL }) => {
+        if (url.origin !== self.location.origin || request.method !== "GET") return false;
+        const hasRscParam = url.searchParams.has("_rsc") || url.searchParams.has("__nextDataReq");
+        const hasRscHeaders = request.headers.get("RSC") === "1" || request.headers.get("Next-Router-State-Tree") !== null;
+        return hasRscParam || hasRscHeaders;
+      },
+      handler: "StaleWhileRevalidate",
+      method: "GET",
+      options: {
+        cacheName: "next-app-router-data",
+        expiration: {
+          maxEntries: 256,
           maxAgeSeconds: 60 * 60 * 24 * 30,
         },
       },
