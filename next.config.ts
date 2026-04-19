@@ -5,7 +5,12 @@ import withPWAInit from "next-pwa";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pwaDefaultRuntimeCaching = require("next-pwa/cache") as Array<Record<string, unknown>>;
 
-/** Core screens users should be able to open after install, even offline. */
+/**
+ * App routes that must be available offline after one online visit.
+ * NOTE: Do NOT pass these as `additionalManifestEntries: [...]` — that replaces next-pwa’s
+ * default `public/**` glob and drops manifest.json, icons, and other static precache entries,
+ * which breaks offline installs. Use `manifestTransforms` below to append instead.
+ */
 const OFFLINE_SHELL_ROUTES = [
   "/",
   "/tension",
@@ -17,7 +22,8 @@ const OFFLINE_SHELL_ROUTES = [
   "/workspace",
   "/offline",
 ];
-const APP_SHELL_REVISION = "app-shell-v3";
+
+const APP_SHELL_REVISION = "app-shell-v4";
 
 const withPWA = withPWAInit({
   dest: "public",
@@ -32,11 +38,25 @@ const withPWA = withPWAInit({
     document: "/offline",
   },
   ignoreURLParametersMatching: [/^utm_/, /^fbclid$/, /^source$/, /^ref$/],
-  additionalManifestEntries: OFFLINE_SHELL_ROUTES.map((url) => ({ url, revision: APP_SHELL_REVISION })),
   /**
-   * next-pwa/register.js fills the `others` cache on client navigation (history.pushState).
-   * Do NOT replace default runtime rules with a different cache name for HTML (e.g. `app-pages`).
+   * Omit `additionalManifestEntries` so next-pwa keeps the default precache of everything
+   * under `public/` (icons, manifest.json, etc.) plus webpack-emitted assets.
    */
+  manifestTransforms: [
+    async (manifestEntries: Array<{ url: string; revision?: string | null }>) => {
+      const normalize = (u: string) => u.replace(/%5B/g, "[").replace(/%5D/g, "]").split("?")[0];
+      const seen = new Set(manifestEntries.map((m) => normalize(m.url)));
+      const extra: Array<{ url: string; revision: string }> = [];
+      for (const path of OFFLINE_SHELL_ROUTES) {
+        const url = path.startsWith("/") ? path : `/${path}`;
+        if (!seen.has(url)) {
+          extra.push({ url, revision: APP_SHELL_REVISION });
+          seen.add(url);
+        }
+      }
+      return { manifest: [...manifestEntries, ...extra], warnings: [] };
+    },
+  ],
   runtimeCaching: [
     {
       urlPattern: ({ url }: { url: URL }) => url.origin === self.location.origin && url.pathname.startsWith("/_next/static/"),
