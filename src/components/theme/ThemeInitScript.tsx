@@ -1,8 +1,10 @@
+import { CLIENT_PERSISTENCE } from "@/lib/client-persistence";
+
 /** Inline boot script — keep logic aligned with `ThemeProvider` + `readStored`. */
 export const THEME_BOOT_JS = `
 (function(){
   try {
-    var k="ssc:theme";
+    var k="${CLIENT_PERSISTENCE.theme}";
     var v=localStorage.getItem(k);
     var dark=false;
     if(v==="dark") dark=true;

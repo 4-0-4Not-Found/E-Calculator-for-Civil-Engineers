@@ -1,4 +1,6 @@
-const STORAGE_KEY = "ssc:recentRoutes";
+import { CLIENT_PERSISTENCE } from "@/lib/client-persistence";
+
+const STORAGE_KEY = CLIENT_PERSISTENCE.recentRoutes;
 const MAX = 5;
 
 /** Remember last few distinct routes for command palette (client-only). */

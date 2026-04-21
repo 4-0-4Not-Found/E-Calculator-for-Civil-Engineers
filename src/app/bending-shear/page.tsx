@@ -1,20 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { calculateBendingShearDesign } from "@/lib/calculations/bending";
+import { useEffect, useMemo, useState } from "react";
 import {
   asdStrengthUniformLoadKlf,
   lrfdFactoredUniformLoadKlf,
   serviceUniformLoadKlf,
 } from "@/lib/excel-parity";
 import { fmtKipFt, fmtKips } from "@/lib/format/display";
-import { flangeWebSlenderness } from "@/lib/calculations/section-slenderness";
+import { flangeWebSlenderness } from "@/lib/limit-state-engine/section-slenderness";
 import { aiscShapes } from "@/lib/aisc/data";
 import { steelMaterialMap, steelMaterials, type SteelMaterialKey } from "@/lib/data/materials";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Field, SelectInput, TextInput } from "@/components/ui/Field";
 import { StepsTable } from "@/components/StepsTable";
+import { CLIENT_PERSISTENCE } from "@/lib/client-persistence";
 import { STORAGE } from "@/lib/storage/keys";
 import { AppShell } from "@/components/layout/AppShell";
 import { ResultHero } from "@/components/results/ResultHero";
@@ -23,101 +23,60 @@ import { UtilizationBar } from "@/components/ui/UtilizationBar";
 import { TextInputWithUnit } from "@/components/ui/InputGroup";
 import { CalculatorActionRail } from "@/components/actions/CalculatorActionRail";
 import { PageSectionNav } from "@/components/navigation/PageSectionNav";
+import { useBrowserDraft } from "@/features/module-runtime/useBrowserDraft";
+import { smoothScrollTo } from "@/features/module-runtime/scroll";
+import { bendingDefaults, bendingDraftSchema, evaluateBending } from "@/features/steel/bending/module-config";
 
 export default function BendingShearPage() {
-  const [designMethod, setDesignMethod] = useState<"LRFD" | "ASD">("LRFD");
-  const [material, setMaterial] = useState<SteelMaterialKey>("A36");
-  const [shapeName, setShapeName] = useState("W30X90");
-  const [Mu, setMu] = useState("450");
-  const [Vu, setVu] = useState("120");
-  const [L, setL] = useState("360");
-  const [wLive, setWLive] = useState("0.1");
-  const [deadLoadKft, setDeadLoadKft] = useState("");
-  const [liveLoadKft, setLiveLoadKft] = useState("");
-  const [spanFt, setSpanFt] = useState("");
-  const [unbracedLbIn, setUnbracedLbIn] = useState("");
-  const [cbFactor, setCbFactor] = useState("1.14");
-  const [mode, setMode] = useState<"check" | "design">("check");
-  const [hydrated, setHydrated] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [savedAt, setSavedAt] = useState<number | null>(null);
-  const saveTimer = useRef<number | null>(null);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE.bending);
-      if (!raw) {
-        queueMicrotask(() => setHydrated(true));
-        return;
-      }
-      const p = JSON.parse(raw) as Record<string, string>;
-      queueMicrotask(() => {
-        if (p.designMethod === "LRFD" || p.designMethod === "ASD") setDesignMethod(p.designMethod);
-        if (typeof p.material === "string") setMaterial(p.material as SteelMaterialKey);
-        if (typeof p.shapeName === "string") setShapeName(p.shapeName);
-        if (typeof p.Mu === "string") setMu(p.Mu);
-        if (typeof p.Vu === "string") setVu(p.Vu);
-        if (typeof p.L === "string") setL(p.L);
-        if (typeof p.wLive === "string") setWLive(p.wLive);
-        if (typeof p.deadLoadKft === "string") setDeadLoadKft(p.deadLoadKft);
-        if (typeof p.liveLoadKft === "string") setLiveLoadKft(p.liveLoadKft);
-        if (typeof p.spanFt === "string") setSpanFt(p.spanFt);
-        if (typeof p.unbracedLbIn === "string") setUnbracedLbIn(p.unbracedLbIn);
-        if (typeof p.cbFactor === "string") setCbFactor(p.cbFactor);
-        if (p.mode === "check" || p.mode === "design") setMode(p.mode);
-      });
-    } catch {
-      /* ignore */
-    }
-    queueMicrotask(() => setHydrated(true));
-  }, []);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    try {
-      setSaving(true);
-      localStorage.setItem(
-        STORAGE.bending,
-        JSON.stringify({
-          designMethod,
-          material,
-          shapeName,
-          Mu,
-          Vu,
-          L,
-          wLive,
-          deadLoadKft,
-          liveLoadKft,
-          spanFt,
-          unbracedLbIn,
-          cbFactor,
-          mode,
-        }),
-      );
-      const ts = Date.now();
-      localStorage.setItem("ssc:ts:bending", String(ts));
-      setSavedAt(ts);
-    } catch {
-      /* ignore */
-    }
-    if (saveTimer.current) window.clearTimeout(saveTimer.current);
-    saveTimer.current = window.setTimeout(() => setSaving(false), 450);
-  }, [
-    hydrated,
-    designMethod,
-    material,
-    shapeName,
-    Mu,
-    Vu,
-    L,
-    wLive,
-    deadLoadKft,
-    liveLoadKft,
-    spanFt,
-    unbracedLbIn,
-    cbFactor,
-    mode,
-  ]);
+  const [designMethod, setDesignMethod] = useState<"LRFD" | "ASD">(bendingDefaults.designMethod);
+  const [material, setMaterial] = useState<SteelMaterialKey>(bendingDefaults.material as SteelMaterialKey);
+  const [shapeName, setShapeName] = useState(bendingDefaults.shapeName);
+  const [Mu, setMu] = useState(bendingDefaults.Mu);
+  const [Vu, setVu] = useState(bendingDefaults.Vu);
+  const [L, setL] = useState(bendingDefaults.L);
+  const [wLive, setWLive] = useState(bendingDefaults.wLive);
+  const [deadLoadKft, setDeadLoadKft] = useState(bendingDefaults.deadLoadKft);
+  const [liveLoadKft, setLiveLoadKft] = useState(bendingDefaults.liveLoadKft);
+  const [spanFt, setSpanFt] = useState(bendingDefaults.spanFt);
+  const [unbracedLbIn, setUnbracedLbIn] = useState(bendingDefaults.unbracedLbIn);
+  const [cbFactor, setCbFactor] = useState(bendingDefaults.cbFactor);
+  const [mode, setMode] = useState<"check" | "design">(bendingDefaults.mode);
+  const { saving, savedAt, clearDraft } = useBrowserDraft({
+    storageKey: STORAGE.bending,
+    savedAtKey: CLIENT_PERSISTENCE.savedAt("bending"),
+    schema: bendingDraftSchema,
+    hydrate: (p) => {
+      if (p.designMethod === "LRFD" || p.designMethod === "ASD") setDesignMethod(p.designMethod);
+      if (typeof p.material === "string") setMaterial(p.material as SteelMaterialKey);
+      if (typeof p.shapeName === "string") setShapeName(p.shapeName);
+      if (typeof p.Mu === "string") setMu(p.Mu);
+      if (typeof p.Vu === "string") setVu(p.Vu);
+      if (typeof p.L === "string") setL(p.L);
+      if (typeof p.wLive === "string") setWLive(p.wLive);
+      if (typeof p.deadLoadKft === "string") setDeadLoadKft(p.deadLoadKft);
+      if (typeof p.liveLoadKft === "string") setLiveLoadKft(p.liveLoadKft);
+      if (typeof p.spanFt === "string") setSpanFt(p.spanFt);
+      if (typeof p.unbracedLbIn === "string") setUnbracedLbIn(p.unbracedLbIn);
+      if (typeof p.cbFactor === "string") setCbFactor(p.cbFactor);
+      if (p.mode === "check" || p.mode === "design") setMode(p.mode);
+    },
+    serialize: () => ({
+      designMethod,
+      material,
+      shapeName,
+      Mu,
+      Vu,
+      L,
+      wLive,
+      deadLoadKft,
+      liveLoadKft,
+      spanFt,
+      unbracedLbIn,
+      cbFactor,
+      mode,
+    }),
+    watch: [designMethod, material, shapeName, Mu, Vu, L, wLive, deadLoadKft, liveLoadKft, spanFt, unbracedLbIn, cbFactor, mode],
+  });
 
   const shape = aiscShapes.find((s) => s.shape === shapeName);
   const mat = steelMaterialMap[material];
@@ -185,7 +144,7 @@ export default function BendingShearPage() {
     const LbUse = unbracedLbIn.trim() !== "" && Number.isFinite(lbParsed) && lbParsed > 0 ? lbParsed : Lin;
     const cbParsed = Number(cbFactor);
     const CbUse = Number.isFinite(cbParsed) && cbParsed > 0 ? cbParsed : 1;
-    return calculateBendingShearDesign({
+    return evaluateBending({
       designMethod,
       E: 29000,
       Fy: mat.Fy,
@@ -229,7 +188,7 @@ export default function BendingShearPage() {
       .filter((s) => s.type === "W")
       .map((s) => {
         const delta = (5 / 384) * w * (Lin ** 4) / (29000 * (s.Ix || 1));
-        const check = calculateBendingShearDesign({
+        const check = evaluateBending({
           designMethod,
           E: 29000,
           Fy: mat.Fy,
@@ -264,35 +223,21 @@ export default function BendingShearPage() {
     return candidates[0] ?? null;
   }, [mode, Mu, Vu, mat, L, wLive, designMethod, derivedFromLoads, unbracedLbIn, cbFactor]);
 
-  function scrollTo(id: string) {
-    try {
-      const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
-      document.getElementById(id)?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
-    } catch {
-      /* ignore */
-    }
-  }
-
   const resetInputs = () => {
-    try {
-      localStorage.removeItem(STORAGE.bending);
-      localStorage.removeItem("ssc:ts:bending");
-    } catch {
-      /* ignore */
-    }
-    setDesignMethod("LRFD");
-    setMaterial("A36");
-    setShapeName("W30X90");
-    setMu("450");
-    setVu("120");
-    setL("360");
-    setWLive("0.1");
-    setDeadLoadKft("");
-    setLiveLoadKft("");
-    setSpanFt("");
-    setUnbracedLbIn("");
-    setCbFactor("1.14");
-    setMode("check");
+    clearDraft();
+    setDesignMethod(bendingDefaults.designMethod);
+    setMaterial(bendingDefaults.material as SteelMaterialKey);
+    setShapeName(bendingDefaults.shapeName);
+    setMu(bendingDefaults.Mu);
+    setVu(bendingDefaults.Vu);
+    setL(bendingDefaults.L);
+    setWLive(bendingDefaults.wLive);
+    setDeadLoadKft(bendingDefaults.deadLoadKft);
+    setLiveLoadKft(bendingDefaults.liveLoadKft);
+    setSpanFt(bendingDefaults.spanFt);
+    setUnbracedLbIn(bendingDefaults.unbracedLbIn);
+    setCbFactor(bendingDefaults.cbFactor);
+    setMode(bendingDefaults.mode);
   };
 
   const invalid = (v: string, min = 0, allowBlank = false) => {
@@ -550,11 +495,11 @@ export default function BendingShearPage() {
                   hideMobileBar
                   title="Actions"
                   subtitle={`${shapeName} · ${designMethod} · ${mode === "design" ? "Design" : "Check"}`}
-                  savedKey="ssc:ts:bending"
+                  savedKey={CLIENT_PERSISTENCE.savedAt("bending")}
                   saving={saving}
                   savedAt={savedAt}
                   compare={{
-                    storageKey: "ssc:compare:beam",
+                    storageKey: CLIENT_PERSISTENCE.compareSnapshot("beam"),
                     getCurrent: () => {
                       const gov = out?.beamLimitStates?.governing ?? out?.governingCase ?? "—";
                       const lines: string[] = [
@@ -596,8 +541,8 @@ export default function BendingShearPage() {
                     }
                     return lines.join("\n");
                   }}
-                  onGoResults={() => scrollTo("results")}
-                  onGoSteps={() => scrollTo("beam-steps")}
+                  onGoResults={() => smoothScrollTo("results")}
+                  onGoSteps={() => smoothScrollTo("beam-steps")}
                   json={{ data: { result: out, inputs: { material, shapeName, Mu, Vu, L, wLive, designMethod, unbracedLbIn, cbFactor } } }}
                   onReset={resetInputs}
                 />
@@ -704,7 +649,7 @@ export default function BendingShearPage() {
       <CalculatorActionRail
         mobileOnly
         subtitle="Beam actions"
-        savedKey="ssc:ts:bending"
+        savedKey={CLIENT_PERSISTENCE.savedAt("bending")}
         saving={saving}
         savedAt={savedAt}
         copyText={() => {
@@ -728,8 +673,8 @@ export default function BendingShearPage() {
           }
           return lines.join("\n");
         }}
-        onGoResults={() => scrollTo("results")}
-        onGoSteps={() => scrollTo("beam-steps")}
+        onGoResults={() => smoothScrollTo("results")}
+        onGoSteps={() => smoothScrollTo("beam-steps")}
         json={
           out
             ? {
@@ -741,7 +686,7 @@ export default function BendingShearPage() {
             : undefined
         }
         compare={{
-          storageKey: "ssc:compare:beam",
+          storageKey: CLIENT_PERSISTENCE.compareSnapshot("beam"),
           getCurrent: () => {
             const gov = out?.beamLimitStates?.governing ?? out?.governingCase ?? "—";
             const lines: string[] = [

@@ -10,8 +10,8 @@
  */
 import { describe, expect, it } from "vitest";
 import shapes from "@/data/aisc-shapes-v16.json";
-import { calculateBendingShearDesign } from "@/lib/calculations/bending";
-import { calculateCompressionDesign } from "@/lib/calculations/compression";
+import { calculateBendingShearDesign } from "@/lib/limit-state-engine/bending";
+import { calculateCompressionDesign } from "@/lib/limit-state-engine/compression";
 import {
   calculateBoltShearBearingCombinedLRFD,
   calculateBoltShearTensionInteractionLRFD,
@@ -19,9 +19,9 @@ import {
   calculateBoltTensionLRFD,
   calculateFilletWeldLRFD,
   lrfdToAsdSamePhiOmega,
-} from "@/lib/calculations/connections";
-import { calculateTensionDesign } from "@/lib/calculations/tension";
-import { staggeredNetWidthInches } from "@/lib/calculations/net-area";
+} from "@/lib/limit-state-engine/connections";
+import { calculateTensionDesign } from "@/lib/limit-state-engine/tension";
+import { staggeredNetWidthInches } from "@/lib/limit-state-engine/net-area";
 import { summarizeConnectionsFromStorage, summarizeTension } from "@/lib/report/build-summary";
 import type { AiscShape } from "@/lib/aisc/types";
 

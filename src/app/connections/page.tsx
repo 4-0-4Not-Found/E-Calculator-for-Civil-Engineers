@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   calculateBoltShearBearingCombinedLRFD,
   calculateBoltShearTensionInteractionLRFD,
@@ -9,15 +9,16 @@ import {
   calculateFilletWeldLRFD,
   filletWeldMinLegInForDemand,
   lrfdToAsdSamePhiOmega,
-} from "@/lib/calculations/connections";
+} from "@/lib/limit-state-engine/connections";
 import {
   approximateMinPlateThicknessForPryingLRFD,
   calculateGrooveWeldShearLRFD,
-} from "@/lib/calculations/connections-advanced";
+} from "@/lib/limit-state-engine/connections-advanced";
 import { boltDiametersIn, type BoltGroup, type BoltThreadMode } from "@/lib/data/bolts";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Field, SelectInput, TextInput } from "@/components/ui/Field";
+import { CLIENT_PERSISTENCE } from "@/lib/client-persistence";
 import { STORAGE } from "@/lib/storage/keys";
 import { AppShell } from "@/components/layout/AppShell";
 import { ResultHero } from "@/components/results/ResultHero";
@@ -26,89 +27,75 @@ import { TextInputWithUnit } from "@/components/ui/InputGroup";
 import { Button } from "@/components/ui/Button";
 import { CalculatorActionRail } from "@/components/actions/CalculatorActionRail";
 import { PageSectionLayout } from "@/components/navigation/PageSectionLayout";
+import { useBrowserDraft } from "@/features/module-runtime/useBrowserDraft";
+import { smoothScrollTo } from "@/features/module-runtime/scroll";
+import { connectionsDefaults, connectionsDraftSchema } from "@/features/steel/connections/module-config";
 
 export default function ConnectionsPage() {
-  const [hydrated, setHydrated] = useState(false);
-  const [designMethod, setDesignMethod] = useState<"LRFD" | "ASD">("LRFD");
-  const [shearMode, setShearMode] = useState<"bearing" | "slip">("bearing");
-  const [surfaceClass, setSurfaceClass] = useState<"A" | "B">("A");
-  const [slipHf, setSlipHf] = useState("1");
-  const [vu, setVu] = useState("120");
-  const [tu, setTu] = useState("0");
-  const [boltGroup, setBoltGroup] = useState<BoltGroup>("A325");
-  const [dBolt, setDBolt] = useState("0.75");
-  const [nBolts, setNBolts] = useState("4");
-  const [shearPlanes, setShearPlanes] = useState<"1" | "2">("2");
-  const [threadMode, setThreadMode] = useState<BoltThreadMode>("N");
+  const [designMethod, setDesignMethod] = useState<"LRFD" | "ASD">(connectionsDefaults.designMethod);
+  const [shearMode, setShearMode] = useState<"bearing" | "slip">(connectionsDefaults.shearMode);
+  const [surfaceClass, setSurfaceClass] = useState<"A" | "B">(connectionsDefaults.surfaceClass);
+  const [slipHf, setSlipHf] = useState(connectionsDefaults.slipHf);
+  const [vu, setVu] = useState(connectionsDefaults.vu);
+  const [tu, setTu] = useState(connectionsDefaults.tu);
+  const [boltGroup, setBoltGroup] = useState<BoltGroup>(connectionsDefaults.boltGroup as BoltGroup);
+  const [dBolt, setDBolt] = useState(connectionsDefaults.dBolt);
+  const [nBolts, setNBolts] = useState(connectionsDefaults.nBolts);
+  const [shearPlanes, setShearPlanes] = useState<"1" | "2">(connectionsDefaults.shearPlanes);
+  const [threadMode, setThreadMode] = useState<BoltThreadMode>(connectionsDefaults.threadMode as BoltThreadMode);
 
-  const [checkBearing, setCheckBearing] = useState(true);
-  const [plateFu, setPlateFu] = useState("65");
-  const [plateT, setPlateT] = useState("0.5");
-  const [lcMin, setLcMin] = useState("1.25");
+  const [checkBearing, setCheckBearing] = useState(connectionsDefaults.checkBearing);
+  const [plateFu, setPlateFu] = useState(connectionsDefaults.plateFu);
+  const [plateT, setPlateT] = useState(connectionsDefaults.plateT);
+  const [lcMin, setLcMin] = useState(connectionsDefaults.lcMin);
 
-  const [fexx, setFexx] = useState("70");
-  const [legIn, setLegIn] = useState("0.25");
-  const [weldLen, setWeldLen] = useState("4");
-  const [weldDemand, setWeldDemand] = useState("50");
+  const [fexx, setFexx] = useState(connectionsDefaults.fexx);
+  const [legIn, setLegIn] = useState(connectionsDefaults.legIn);
+  const [weldLen, setWeldLen] = useState(connectionsDefaults.weldLen);
+  const [weldDemand, setWeldDemand] = useState(connectionsDefaults.weldDemand);
 
   /** Groove/CJP weld metal in shear on user-entered effective throat × length. */
-  const [grooveThroatIn, setGrooveThroatIn] = useState("0.25");
-  const [grooveLenIn, setGrooveLenIn] = useState("4");
-  const [grooveDemand, setGrooveDemand] = useState("50");
+  const [grooveThroatIn, setGrooveThroatIn] = useState(connectionsDefaults.grooveThroatIn);
+  const [grooveLenIn, setGrooveLenIn] = useState(connectionsDefaults.grooveLenIn);
+  const [grooveDemand, setGrooveDemand] = useState(connectionsDefaults.grooveDemand);
   /** Blank → use T_u / n when T_u &gt; 0. */
-  const [pryingTPerBoltOverride, setPryingTPerBoltOverride] = useState("");
-  const [pryingBPrimeIn, setPryingBPrimeIn] = useState("1.5");
-  const [pryingStripWidthIn, setPryingStripWidthIn] = useState("4");
-  const [pryingFyKsi, setPryingFyKsi] = useState("50");
-  const [saving, setSaving] = useState(false);
-  const [savedAt, setSavedAt] = useState<number | null>(null);
-  const saveTimer = useRef<number | null>(null);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE.connections);
-      if (!raw) {
-        queueMicrotask(() => setHydrated(true));
-        return;
-      }
-      const p = JSON.parse(raw) as Record<string, string>;
-      queueMicrotask(() => {
-        if (typeof p.designMethod === "string") setDesignMethod(p.designMethod as "LRFD" | "ASD");
-        if (typeof p.shearMode === "string") setShearMode(p.shearMode as "bearing" | "slip");
-        if (typeof p.surfaceClass === "string") setSurfaceClass(p.surfaceClass as "A" | "B");
-        if (typeof p.slipHf === "string") setSlipHf(p.slipHf);
-        if (typeof p.vu === "string") setVu(p.vu);
-        if (typeof p.tu === "string") setTu(p.tu);
-        if (typeof p.boltGroup === "string") setBoltGroup(p.boltGroup as BoltGroup);
-        if (typeof p.dBolt === "string") setDBolt(p.dBolt);
-        if (typeof p.nBolts === "string") setNBolts(p.nBolts);
-        if (typeof p.shearPlanes === "string") setShearPlanes(p.shearPlanes as "1" | "2");
-        if (typeof p.threadMode === "string") setThreadMode(p.threadMode as BoltThreadMode);
-        if (typeof p.checkBearing === "boolean") setCheckBearing(p.checkBearing);
-        if (typeof p.plateFu === "string") setPlateFu(p.plateFu);
-        if (typeof p.plateT === "string") setPlateT(p.plateT);
-        if (typeof p.lcMin === "string") setLcMin(p.lcMin);
-        if (typeof p.fexx === "string") setFexx(p.fexx);
-        if (typeof p.legIn === "string") setLegIn(p.legIn);
-        if (typeof p.weldLen === "string") setWeldLen(p.weldLen);
-        if (typeof p.weldDemand === "string") setWeldDemand(p.weldDemand);
-        if (typeof p.grooveThroatIn === "string") setGrooveThroatIn(p.grooveThroatIn);
-        if (typeof p.grooveLenIn === "string") setGrooveLenIn(p.grooveLenIn);
-        if (typeof p.grooveDemand === "string") setGrooveDemand(p.grooveDemand);
-        if (typeof p.pryingTPerBoltOverride === "string") setPryingTPerBoltOverride(p.pryingTPerBoltOverride);
-        if (typeof p.pryingBPrimeIn === "string") setPryingBPrimeIn(p.pryingBPrimeIn);
-        if (typeof p.pryingStripWidthIn === "string") setPryingStripWidthIn(p.pryingStripWidthIn);
-        if (typeof p.pryingFyKsi === "string") setPryingFyKsi(p.pryingFyKsi);
-      });
-    } catch {
-      /* ignore */
-    }
-    queueMicrotask(() => setHydrated(true));
-  }, []);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    const payload = {
+  const [pryingTPerBoltOverride, setPryingTPerBoltOverride] = useState(connectionsDefaults.pryingTPerBoltOverride);
+  const [pryingBPrimeIn, setPryingBPrimeIn] = useState(connectionsDefaults.pryingBPrimeIn);
+  const [pryingStripWidthIn, setPryingStripWidthIn] = useState(connectionsDefaults.pryingStripWidthIn);
+  const [pryingFyKsi, setPryingFyKsi] = useState(connectionsDefaults.pryingFyKsi);
+  const { saving, savedAt, clearDraft } = useBrowserDraft({
+    storageKey: STORAGE.connections,
+    savedAtKey: CLIENT_PERSISTENCE.savedAt("connections"),
+    schema: connectionsDraftSchema,
+    hydrate: (p) => {
+      if (typeof p.designMethod === "string") setDesignMethod(p.designMethod as "LRFD" | "ASD");
+      if (typeof p.shearMode === "string") setShearMode(p.shearMode as "bearing" | "slip");
+      if (typeof p.surfaceClass === "string") setSurfaceClass(p.surfaceClass as "A" | "B");
+      if (typeof p.slipHf === "string") setSlipHf(p.slipHf);
+      if (typeof p.vu === "string") setVu(p.vu);
+      if (typeof p.tu === "string") setTu(p.tu);
+      if (typeof p.boltGroup === "string") setBoltGroup(p.boltGroup as BoltGroup);
+      if (typeof p.dBolt === "string") setDBolt(p.dBolt);
+      if (typeof p.nBolts === "string") setNBolts(p.nBolts);
+      if (typeof p.shearPlanes === "string") setShearPlanes(p.shearPlanes as "1" | "2");
+      if (typeof p.threadMode === "string") setThreadMode(p.threadMode as BoltThreadMode);
+      if (typeof p.checkBearing === "boolean") setCheckBearing(p.checkBearing);
+      if (typeof p.plateFu === "string") setPlateFu(p.plateFu);
+      if (typeof p.plateT === "string") setPlateT(p.plateT);
+      if (typeof p.lcMin === "string") setLcMin(p.lcMin);
+      if (typeof p.fexx === "string") setFexx(p.fexx);
+      if (typeof p.legIn === "string") setLegIn(p.legIn);
+      if (typeof p.weldLen === "string") setWeldLen(p.weldLen);
+      if (typeof p.weldDemand === "string") setWeldDemand(p.weldDemand);
+      if (typeof p.grooveThroatIn === "string") setGrooveThroatIn(p.grooveThroatIn);
+      if (typeof p.grooveLenIn === "string") setGrooveLenIn(p.grooveLenIn);
+      if (typeof p.grooveDemand === "string") setGrooveDemand(p.grooveDemand);
+      if (typeof p.pryingTPerBoltOverride === "string") setPryingTPerBoltOverride(p.pryingTPerBoltOverride);
+      if (typeof p.pryingBPrimeIn === "string") setPryingBPrimeIn(p.pryingBPrimeIn);
+      if (typeof p.pryingStripWidthIn === "string") setPryingStripWidthIn(p.pryingStripWidthIn);
+      if (typeof p.pryingFyKsi === "string") setPryingFyKsi(p.pryingFyKsi);
+    },
+    serialize: () => ({
       designMethod,
       shearMode,
       surfaceClass,
@@ -135,47 +122,36 @@ export default function ConnectionsPage() {
       pryingBPrimeIn,
       pryingStripWidthIn,
       pryingFyKsi,
-    };
-    try {
-      setSaving(true);
-      localStorage.setItem(STORAGE.connections, JSON.stringify(payload));
-      const ts = Date.now();
-      localStorage.setItem("ssc:ts:connections", String(ts));
-      setSavedAt(ts);
-    } catch {
-      /* ignore */
-    }
-    if (saveTimer.current) window.clearTimeout(saveTimer.current);
-    saveTimer.current = window.setTimeout(() => setSaving(false), 450);
-  }, [
-    hydrated,
-    designMethod,
-    shearMode,
-    surfaceClass,
-    slipHf,
-    vu,
-    tu,
-    boltGroup,
-    dBolt,
-    nBolts,
-    shearPlanes,
-    threadMode,
-    checkBearing,
-    plateFu,
-    plateT,
-    lcMin,
-    fexx,
-    legIn,
-    weldLen,
-    weldDemand,
-    grooveThroatIn,
-    grooveLenIn,
-    grooveDemand,
-    pryingTPerBoltOverride,
-    pryingBPrimeIn,
-    pryingStripWidthIn,
-    pryingFyKsi,
-  ]);
+    }),
+    watch: [
+      designMethod,
+      shearMode,
+      surfaceClass,
+      slipHf,
+      vu,
+      tu,
+      boltGroup,
+      dBolt,
+      nBolts,
+      shearPlanes,
+      threadMode,
+      checkBearing,
+      plateFu,
+      plateT,
+      lcMin,
+      fexx,
+      legIn,
+      weldLen,
+      weldDemand,
+      grooveThroatIn,
+      grooveLenIn,
+      grooveDemand,
+      pryingTPerBoltOverride,
+      pryingBPrimeIn,
+      pryingStripWidthIn,
+      pryingFyKsi,
+    ],
+  });
 
   const boltOut = useMemo(() => {
     if (shearMode !== "bearing") return null;
@@ -385,48 +361,34 @@ export default function ConnectionsPage() {
     return checks.every((c) => c === true) ? ("safe" as const) : ("unsafe" as const);
   }, [shearAdequate, tu, tensionAdequate, interactionOut, weldDemandOk, grooveOut]);
 
-  function scrollTo(id: string) {
-    try {
-      const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
-      document.getElementById(id)?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
-    } catch {
-      /* ignore */
-    }
-  }
-
   const resetInputs = () => {
-    try {
-      localStorage.removeItem(STORAGE.connections);
-      localStorage.removeItem("ssc:ts:connections");
-    } catch {
-      /* ignore */
-    }
-    setDesignMethod("LRFD");
-    setShearMode("bearing");
-    setSurfaceClass("A");
-    setSlipHf("1");
-    setVu("120");
-    setTu("0");
-    setBoltGroup("A325");
-    setDBolt("0.75");
-    setNBolts("4");
-    setShearPlanes("2");
-    setThreadMode("N");
-    setCheckBearing(true);
-    setPlateFu("65");
-    setPlateT("0.5");
-    setLcMin("1.25");
-    setFexx("70");
-    setLegIn("0.25");
-    setWeldLen("4");
-    setWeldDemand("50");
-    setGrooveThroatIn("0.25");
-    setGrooveLenIn("4");
-    setGrooveDemand("50");
-    setPryingTPerBoltOverride("");
-    setPryingBPrimeIn("1.5");
-    setPryingStripWidthIn("4");
-    setPryingFyKsi("50");
+    clearDraft();
+    setDesignMethod(connectionsDefaults.designMethod);
+    setShearMode(connectionsDefaults.shearMode);
+    setSurfaceClass(connectionsDefaults.surfaceClass);
+    setSlipHf(connectionsDefaults.slipHf);
+    setVu(connectionsDefaults.vu);
+    setTu(connectionsDefaults.tu);
+    setBoltGroup(connectionsDefaults.boltGroup as BoltGroup);
+    setDBolt(connectionsDefaults.dBolt);
+    setNBolts(connectionsDefaults.nBolts);
+    setShearPlanes(connectionsDefaults.shearPlanes);
+    setThreadMode(connectionsDefaults.threadMode as BoltThreadMode);
+    setCheckBearing(connectionsDefaults.checkBearing);
+    setPlateFu(connectionsDefaults.plateFu);
+    setPlateT(connectionsDefaults.plateT);
+    setLcMin(connectionsDefaults.lcMin);
+    setFexx(connectionsDefaults.fexx);
+    setLegIn(connectionsDefaults.legIn);
+    setWeldLen(connectionsDefaults.weldLen);
+    setWeldDemand(connectionsDefaults.weldDemand);
+    setGrooveThroatIn(connectionsDefaults.grooveThroatIn);
+    setGrooveLenIn(connectionsDefaults.grooveLenIn);
+    setGrooveDemand(connectionsDefaults.grooveDemand);
+    setPryingTPerBoltOverride(connectionsDefaults.pryingTPerBoltOverride);
+    setPryingBPrimeIn(connectionsDefaults.pryingBPrimeIn);
+    setPryingStripWidthIn(connectionsDefaults.pryingStripWidthIn);
+    setPryingFyKsi(connectionsDefaults.pryingFyKsi);
   };
 
   const invalid = (v: string, min = 0) => {
@@ -524,11 +486,11 @@ export default function ConnectionsPage() {
                 hideMobileBar
                 title="Actions"
                 subtitle={`${designMethod} · ${shearMode === "slip" ? "Slip-critical" : "Bearing"} · ${boltGroup} d=${dBolt} in`}
-                savedKey="ssc:ts:connections"
+                savedKey={CLIENT_PERSISTENCE.savedAt("connections")}
                 saving={saving}
                 savedAt={savedAt}
                 compare={{
-                  storageKey: "ssc:compare:connections",
+                  storageKey: CLIENT_PERSISTENCE.compareSnapshot("connections"),
                   getCurrent: () => ({
                     title: "Connections",
                     lines: [
@@ -562,8 +524,8 @@ export default function ConnectionsPage() {
                     .filter(Boolean)
                     .join("\n")
                 }
-                onGoResults={() => scrollTo("results")}
-                onGoSteps={() => scrollTo("conn-results")}
+                onGoResults={() => smoothScrollTo("results")}
+                onGoSteps={() => smoothScrollTo("conn-results")}
                 csv={{ filename: "connections-export.csv", rows: csvRows }}
                 json={{
                   data: {
@@ -1061,11 +1023,11 @@ export default function ConnectionsPage() {
       <CalculatorActionRail
         mobileOnly
         subtitle="Connections actions"
-        savedKey="ssc:ts:connections"
+        savedKey={CLIENT_PERSISTENCE.savedAt("connections")}
         saving={saving}
         savedAt={savedAt}
         compare={{
-          storageKey: "ssc:compare:connections",
+          storageKey: CLIENT_PERSISTENCE.compareSnapshot("connections"),
           getCurrent: () => ({
             title: "Connections",
             lines: [
@@ -1093,8 +1055,8 @@ export default function ConnectionsPage() {
             .filter(Boolean)
             .join("\n")
         }
-        onGoResults={() => scrollTo("results")}
-        onGoSteps={() => scrollTo("conn-results")}
+        onGoResults={() => smoothScrollTo("results")}
+        onGoSteps={() => smoothScrollTo("conn-results")}
         csv={{ filename: "connections-export.csv", rows: csvRows }}
         json={{
           data: {

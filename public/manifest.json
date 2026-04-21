@@ -1,7 +1,7 @@
 {
-  "name": "AISC Structural Engineering PWA",
-  "short_name": "AISC PWA",
-  "description": "AISC 16th Edition structural design and analysis toolkit.",
+  "name": "SpanLedger Steel",
+  "short_name": "SpanLedger",
+  "description": "Steel member design calculators for civil engineering coursework — local-first PWA.",
   "id": "/",
   "scope": "/",
   "lang": "en",
@@ -11,7 +11,7 @@
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
   "background_color": "#f8fafc",
-  "theme_color": "#1d4ed8",
+  "theme_color": "#0f766e",
   "categories": ["education", "productivity", "utilities"],
   "icons": [
     {

@@ -1,5 +1,5 @@
 /**
- * Quick sanity check: LRFD factored uniform load matches typical course Excel (Jason-style).
+ * Quick sanity check: LRFD factored uniform load alignment helper.
  * Run: npx tsx scripts/verify-excel-parity.ts
  */
 import {

@@ -8,12 +8,11 @@ import { InstallAppButton } from "@/components/InstallAppButton";
 import { ProjectBackupPanel } from "@/components/ProjectBackupPanel";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { BrandLink } from "@/components/ui/BrandLink";
+import { PRODUCT_BRAND } from "@/lib/brand";
+import { AUTOSAVE_MODULE_KEYS, CLIENT_PERSISTENCE, type AutosaveModuleKey } from "@/lib/client-persistence";
 import { STORAGE } from "@/lib/storage/keys";
 
 type ModuleKey = keyof typeof STORAGE;
-
-const STORAGE_FAVORITES = "ssc:favorites";
-const STORAGE_HOME_ORDER = "ssc:home:moduleOrder";
 
 const modules: Array<{
   key: ModuleKey;
@@ -53,7 +52,7 @@ const modules: Array<{
 ];
 
 function tsKey(m: ModuleKey) {
-  return `ssc:ts:${m}`;
+  return CLIENT_PERSISTENCE.savedAt(m as AutosaveModuleKey);
 }
 
 function formatSaved(ts: number | null) {
@@ -78,7 +77,7 @@ function readJson<T>(raw: string | null): T | null {
 
 function readFavorites(): string[] {
   try {
-    const raw = localStorage.getItem(STORAGE_FAVORITES);
+    const raw = localStorage.getItem(CLIENT_PERSISTENCE.favorites);
     const arr = raw ? (JSON.parse(raw) as unknown) : [];
     return Array.isArray(arr) ? arr.filter((x) => typeof x === "string") : [];
   } catch {
@@ -88,7 +87,7 @@ function readFavorites(): string[] {
 
 function writeFavorites(favs: string[]) {
   try {
-    localStorage.setItem(STORAGE_FAVORITES, JSON.stringify(favs));
+    localStorage.setItem(CLIENT_PERSISTENCE.favorites, JSON.stringify(favs));
   } catch {
     /* ignore */
   }
@@ -96,7 +95,7 @@ function writeFavorites(favs: string[]) {
 
 function readHomeOrder(): string[] | null {
   try {
-    const raw = localStorage.getItem(STORAGE_HOME_ORDER);
+    const raw = localStorage.getItem(CLIENT_PERSISTENCE.homeModuleOrder);
     const arr = raw ? (JSON.parse(raw) as unknown) : null;
     if (!Array.isArray(arr)) return null;
     const out = arr.filter((x) => typeof x === "string") as string[];
@@ -108,7 +107,7 @@ function readHomeOrder(): string[] | null {
 
 function writeHomeOrder(order: string[]) {
   try {
-    localStorage.setItem(STORAGE_HOME_ORDER, JSON.stringify(order));
+    localStorage.setItem(CLIENT_PERSISTENCE.homeModuleOrder, JSON.stringify(order));
   } catch {
     /* ignore */
   }
@@ -191,7 +190,7 @@ export function HomeDashboard() {
     if (!mounted) return null;
     void tick;
     try {
-      const last = localStorage.getItem("ssc:lastRoute");
+      const last = localStorage.getItem(CLIENT_PERSISTENCE.lastRoute);
       if (!last || last === "/") return null;
       return last;
     } catch {
@@ -203,7 +202,7 @@ export function HomeDashboard() {
     if (!mounted) return;
     try {
       const hasAny = Object.values(STORAGE).some((k) => Boolean(localStorage.getItem(k)));
-      const last = localStorage.getItem("ssc:lastRoute");
+      const last = localStorage.getItem(CLIENT_PERSISTENCE.lastRoute);
       if (hasAny && last && last !== "/") setRestoreOpen(true);
     } catch {
       /* ignore */
@@ -284,8 +283,8 @@ export function HomeDashboard() {
           setRestoreOpen(false);
           try {
             Object.values(STORAGE).forEach((k) => localStorage.removeItem(k));
-            ["tension", "compression", "bending", "connections"].forEach((m) => localStorage.removeItem(`ssc:ts:${m}`));
-            localStorage.removeItem("ssc:lastRoute");
+            AUTOSAVE_MODULE_KEYS.forEach((m) => localStorage.removeItem(CLIENT_PERSISTENCE.savedAt(m)));
+            localStorage.removeItem(CLIENT_PERSISTENCE.lastRoute);
           } catch {
             /* ignore */
           }
@@ -299,7 +298,7 @@ export function HomeDashboard() {
       <Card className="border-slate-200">
         <CardBody className="space-y-4">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge tone="info">AISC 16th Edition</Badge>
+            <Badge tone="info">{PRODUCT_BRAND.standardsBlurb}</Badge>
             <Badge>Offline-first PWA</Badge>
             {networkOnline === null ? (
               <Badge tone="neutral">…</Badge>
@@ -313,10 +312,10 @@ export function HomeDashboard() {
           <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div className="min-w-0">
               <h1 className="text-2xl font-extrabold tracking-tight text-slate-950 md:text-3xl">
-                Structural Steel Calculators
+                {PRODUCT_BRAND.name}
               </h1>
               <p className="mt-2 max-w-3xl text-sm text-slate-700 md:text-base">
-                Fast AISC-based checks for students. Inputs save locally in your browser. Export results and print a combined report.
+                {PRODUCT_BRAND.tagline}
               </p>
             </div>
 
@@ -474,7 +473,7 @@ export function HomeDashboard() {
                       type="button"
                       onClick={() => {
                         try {
-                          localStorage.removeItem(STORAGE_HOME_ORDER);
+                          localStorage.removeItem(CLIENT_PERSISTENCE.homeModuleOrder);
                         } catch {
                           /* ignore */
                         }

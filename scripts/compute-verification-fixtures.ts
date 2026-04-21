@@ -3,17 +3,17 @@
  * Run: npx tsx scripts/compute-verification-fixtures.ts
  */
 import shapes from "../src/data/aisc-shapes-v16.json";
-import { calculateBendingShearDesign } from "../src/lib/calculations/bending";
-import { calculateCompressionDesign } from "../src/lib/calculations/compression";
+import { calculateBendingShearDesign } from "../src/lib/limit-state-engine/bending";
+import { calculateCompressionDesign } from "../src/lib/limit-state-engine/compression";
 import {
   calculateBoltShearBearingCombinedLRFD,
   calculateBoltSlipCritical,
   calculateBoltTensionLRFD,
   calculateBoltShearTensionInteractionLRFD,
   calculateFilletWeldLRFD,
-} from "../src/lib/calculations/connections";
-import { calculateTensionDesign } from "../src/lib/calculations/tension";
-import { staggeredNetWidthInches } from "../src/lib/calculations/net-area";
+} from "../src/lib/limit-state-engine/connections";
+import { calculateTensionDesign } from "../src/lib/limit-state-engine/tension";
+import { staggeredNetWidthInches } from "../src/lib/limit-state-engine/net-area";
 import type { AiscShape } from "../src/lib/aisc/types";
 
 const round = (n: number, d: number) => Number(n.toFixed(d));

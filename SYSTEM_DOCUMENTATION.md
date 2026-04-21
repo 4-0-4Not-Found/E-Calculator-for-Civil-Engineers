@@ -70,11 +70,11 @@ Reusable UI and feature components live under `src/components/`. Examples includ
 All engineering logic is implemented as local, importable TypeScript functions under `src/lib/`. These modules do not depend on a remote API for computations.
 
 Key calculation entry points include:
-- `src/lib/calculations/tension.ts`: `calculateTensionDesign(...)`
-- `src/lib/calculations/compression.ts`: `calculateCompressionDesign(...)`
-- `src/lib/calculations/bending.ts`: `calculateBendingShearDesign(...)`
-- `src/lib/calculations/connections.ts`: bolt and weld checks (e.g., `calculateBoltShearBearingCombinedLRFD`, `calculateBoltSlipCritical`, `calculateFilletWeldLRFD`)
-- `src/lib/calculations/connections-advanced.ts`: optional helpers (e.g., groove weld shear, approximate prying thickness helper)
+- `src/lib/limit-state-engine/tension.ts`: `calculateTensionDesign(...)`
+- `src/lib/limit-state-engine/compression.ts`: `calculateCompressionDesign(...)`
+- `src/lib/limit-state-engine/bending.ts`: `calculateBendingShearDesign(...)`
+- `src/lib/limit-state-engine/connections.ts`: bolt and weld checks (e.g., `calculateBoltShearBearingCombinedLRFD`, `calculateBoltSlipCritical`, `calculateFilletWeldLRFD`)
+- `src/lib/limit-state-engine/connections-advanced.ts`: optional helpers (e.g., groove weld shear, approximate prying thickness helper)
 
 Calculation functions return a structured output (see `src/lib/types/calculation`) that includes:
 - a numeric **capacity/strength** (and demand),
@@ -102,8 +102,8 @@ These routes are intentionally restricted in production builds to keep deploymen
 **Purpose**: Evaluate axial tension member capacity using gross yielding, net-section rupture, and block shear checks, and provide learning-focused steps.
 
 **Key functions (calculation layer)**:
-- `calculateTensionDesign(...)` (`src/lib/calculations/tension.ts`)
-- `staggeredNetWidthInches(...)` (`src/lib/calculations/net-area.ts`) — helper used by the UI tool
+- `calculateTensionDesign(...)` (`src/lib/limit-state-engine/tension.ts`)
+- `staggeredNetWidthInches(...)` (`src/lib/limit-state-engine/net-area.ts`) — helper used by the UI tool
 
 **Key inputs (UI-level)**:
 - Material (Fy, Fu) via `src/lib/data/materials.ts`
@@ -122,7 +122,7 @@ These routes are intentionally restricted in production builds to keep deploymen
 **Purpose**: Evaluate axial compression capacity with a focus on member buckling behavior and KL/r sensitivity.
 
 **Key functions (calculation layer)**:
-- `calculateCompressionDesign(...)` (`src/lib/calculations/compression.ts`)
+- `calculateCompressionDesign(...)` (`src/lib/limit-state-engine/compression.ts`)
 
 **Key inputs (UI-level)**:
 - Material (Fy) via `src/lib/data/materials.ts`
@@ -139,9 +139,9 @@ These routes are intentionally restricted in production builds to keep deploymen
 **Purpose**: Evaluate a simply supported strong-axis member for flexure, shear, and deflection, and provide a quick load-to-demand helper workflow.
 
 **Key functions (calculation layer)**:
-- `calculateBendingShearDesign(...)` (`src/lib/calculations/bending.ts`)
+- `calculateBendingShearDesign(...)` (`src/lib/limit-state-engine/bending.ts`)
 - Load helper utilities under `src/lib/excel-parity` (used to convert D/L inputs into demands)
-- `flangeWebSlenderness(...)` (`src/lib/calculations/section-slenderness.ts`) — classification info displayed in UI
+- `flangeWebSlenderness(...)` (`src/lib/limit-state-engine/section-slenderness.ts`) — classification info displayed in UI
 
 **Key inputs (UI-level)**:
 - Material selection (Fy)
@@ -165,7 +165,7 @@ These routes are intentionally restricted in production builds to keep deploymen
 - Bolt tension: `calculateBoltTensionLRFD(...)`
 - Interaction: `calculateBoltShearTensionInteractionLRFD(...)`
 - Fillet weld: `calculateFilletWeldLRFD(...)`, helper `filletWeldMinLegInForDemand(...)`
-- Optional helpers: groove weld shear + approximate prying thickness (`src/lib/calculations/connections-advanced.ts`)
+- Optional helpers: groove weld shear + approximate prying thickness (`src/lib/limit-state-engine/connections-advanced.ts`)
 
 **Key inputs (UI-level)**:
 - Design method (LRFD/ASD where supported by the module)
@@ -208,7 +208,7 @@ These routes are intentionally restricted in production builds to keep deploymen
 ## Data and calculations
 
 ### How calculations are handled
-- Calculations are executed locally by calling deterministic TypeScript functions in `src/lib/calculations/`.
+- Calculations are executed locally by calling deterministic TypeScript functions in `src/lib/limit-state-engine/`.
 - UI pages pass parsed numeric inputs (strings from inputs → numbers) to calculation functions.
 - Calculation functions return a structured output including:
   - limit-state results and governing case
@@ -254,7 +254,7 @@ Reusable presentation and interaction components: layout shells, UI primitives, 
 
 ### `src/lib/`
 Domain logic and shared utilities:
-- calculation engines (`src/lib/calculations/`)
+- calculation engines (`src/lib/limit-state-engine/`)
 - engineering data access (`src/lib/aisc/`, `src/lib/data/`)
 - report summarization (`src/lib/report/`)
 - persistence keys (`src/lib/storage/`)

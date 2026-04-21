@@ -1,11 +1,14 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { CommandPaletteButton, CommandPaletteHost } from "@/components/command/CommandPalette";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
+import { PRODUCT_BRAND } from "@/lib/brand";
+import { AUTOSAVE_MODULE_KEYS, CLIENT_PERSISTENCE, type AutosaveModuleKey } from "@/lib/client-persistence";
 import { STORAGE } from "@/lib/storage/keys";
 
 type NavItem = { href: string; label: string; short?: string };
@@ -31,7 +34,7 @@ function isActive(pathname: string, href: string) {
 
 function readLastSaved(): LastSaved {
   try {
-    const pairs: Array<{ key: string; label: string }> = [
+    const pairs: Array<{ key: AutosaveModuleKey; label: string }> = [
       { key: "tension", label: "Tension" },
       { key: "compression", label: "Compression" },
       { key: "bending", label: "Beam" },
@@ -39,7 +42,7 @@ function readLastSaved(): LastSaved {
     ];
     let best: LastSaved = null;
     for (const p of pairs) {
-      const raw = localStorage.getItem(`ssc:ts:${p.key}`);
+      const raw = localStorage.getItem(CLIENT_PERSISTENCE.savedAt(p.key));
       const ts = raw ? Number(raw) : NaN;
       if (!Number.isFinite(ts)) continue;
       if (!best || ts > best.ts) best = { label: p.label, ts };
@@ -148,14 +151,14 @@ export function AppHeader() {
     void pathname;
     if (!mounted) return { items: [], completed: 0, total: 4 };
     try {
-      const keys: Array<{ k: string; label: string; href: string }> = [
+      const keys: Array<{ k: AutosaveModuleKey; label: string; href: string }> = [
         { k: "tension", label: "Tension", href: "/tension" },
         { k: "compression", label: "Compression", href: "/compression" },
         { k: "bending", label: "Beam", href: "/bending-shear" },
         { k: "connections", label: "Connections", href: "/connections" },
       ];
       const items = keys.map((x) => {
-        const raw = localStorage.getItem(`ssc:ts:${x.k}`);
+        const raw = localStorage.getItem(CLIENT_PERSISTENCE.savedAt(x.k));
         const ts = raw ? Number(raw) : NaN;
         return { ...x, ts: Number.isFinite(ts) ? ts : null };
       });
@@ -170,7 +173,7 @@ export function AppHeader() {
   // UI-only preference, no calculation logic.
   useEffect(() => {
     try {
-      localStorage.setItem("ssc:lastRoute", pathname);
+      localStorage.setItem(CLIENT_PERSISTENCE.lastRoute, pathname);
     } catch {
       /* ignore */
     }
@@ -193,9 +196,8 @@ export function AppHeader() {
           setClearOpen(false);
           try {
             Object.values(STORAGE).forEach((k) => localStorage.removeItem(k));
-            const keys = ["tension", "compression", "bending", "connections"];
-            for (const k of keys) localStorage.removeItem(`ssc:ts:${k}`);
-            localStorage.removeItem("ssc:lastRoute");
+            for (const k of AUTOSAVE_MODULE_KEYS) localStorage.removeItem(CLIENT_PERSISTENCE.savedAt(k));
+            localStorage.removeItem(CLIENT_PERSISTENCE.lastRoute);
           } catch {
             /* ignore */
           }
@@ -206,27 +208,26 @@ export function AppHeader() {
       {/* Top row: branding + key status controls */}
       <div className="mx-auto flex w-full max-w-6xl items-center gap-4 px-4 py-2.5 md:px-8">
         <div className="min-w-0">
-          <a
+          <Link
             href="/"
             className="group flex min-w-0 items-center gap-4 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10"
-            aria-label="Structural Steel Calculators — Home"
+            aria-label={`${PRODUCT_BRAND.name} — Home`}
           >
             <Image
-              src="/brand/bu_logo.png"
-              alt="Bulacan University"
-              width={160}
-              height={160}
-              sizes="(min-width: 1024px) 68px, (min-width: 768px) 60px, (min-width: 640px) 52px, 48px"
-              quality={100}
+              src="/brand/spanledger-mark.svg"
+              alt=""
+              width={64}
+              height={64}
+              unoptimized
               priority
-              className="h-12 w-12 shrink-0 object-contain sm:h-[52px] sm:w-[52px] md:h-[60px] md:w-[60px] lg:h-[68px] lg:w-[68px]"
+              className="h-12 w-12 shrink-0 sm:h-[52px] sm:w-[52px] md:h-[60px] md:w-[60px] lg:h-[68px] lg:w-[68px]"
             />
             <span className="block min-w-0">
               <span className="block truncate text-base font-extrabold tracking-tight text-slate-950 group-hover:text-[color:var(--brand)] md:text-lg">
-                Structural Steel Calculators
+                {PRODUCT_BRAND.name}
               </span>
             </span>
-          </a>
+          </Link>
         </div>
 
         <div className="ml-auto flex items-center gap-2">

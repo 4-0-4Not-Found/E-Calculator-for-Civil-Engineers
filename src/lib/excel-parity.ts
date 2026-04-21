@@ -1,9 +1,7 @@
 /**
- * Conventions aligned with the course Excel workbooks (formula snapshots under
- * `src/data/excel-logic/Steel Design Programs (Jason, Shaine, Kyla).formulas.json`).
- *
- * Typical patterns: `IF(L9="LRFD", 0.75*..., .../2)` for φ/Ω; uniform beam LRFD uses
- * `max(1.4*D, 1.2*D + 1.6*L)` klf for factored w (same as AISC B2 combinations for DL/LL only).
+ * Load-combination helpers aligned with common spreadsheet-style steel course workbooks.
+ * LRFD factored uniform load uses `max(1.4*D, 1.2*D + 1.6*L)` klf for dead + live only
+ * (AISC ASCE 7–style combination subset used in many class sheets).
  */
 
 /** Factored uniform load (kips/ft) for LRFD — DL and LL in klf. */

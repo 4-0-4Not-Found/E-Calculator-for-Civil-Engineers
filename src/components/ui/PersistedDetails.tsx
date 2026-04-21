@@ -2,9 +2,10 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { CLIENT_PERSISTENCE } from "@/lib/client-persistence";
 
 function storageKey(id: string) {
-  return `ssc:ui:details:${id}`;
+  return CLIENT_PERSISTENCE.uiDetails(id);
 }
 
 /**

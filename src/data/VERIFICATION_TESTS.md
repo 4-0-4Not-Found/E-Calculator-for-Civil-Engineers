@@ -1,6 +1,6 @@
 # Manual verification tests (four modules)
 
-**Automated:** The same numerical expectations are asserted in Vitest — `src/lib/calculations/calculations-verification.test.ts`. Run **`npm run test`** in `aisc-pwa` (no browser required).
+**Automated:** The same numerical expectations are asserted in Vitest — `src/lib/limit-state-engine/calculations-verification.test.ts`. Run **`npm run test`** in `aisc-pwa` (no browser required).
 
 **Purpose:** Regression-style checks for the app’s calculation engine. **Numbers** follow AISC 360 in TypeScript; final answers are typically **~3 decimals** in the UI.
 
@@ -18,7 +18,7 @@
 
 - **Inputs** = fields in the PWA at the route shown.
 - **Expected (app engine)** = values produced by the same calculation code the UI uses (run `npx tsx scripts/compute-verification-fixtures.ts` to regenerate).
-- **“Like Excel”:** Enter the same inputs in the **Jason** (members) or **Jaypee** (connections) workbook. The app should **agree within rounding**; Excel may differ slightly if cells round at each step.
+- **“Like Excel”:** Enter the same inputs in the client workbook used for parity checks. The app should **agree within rounding**; spreadsheet results may differ slightly if cells round at each step.
 
 ---
 

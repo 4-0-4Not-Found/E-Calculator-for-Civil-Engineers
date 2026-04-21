@@ -1,6 +1,6 @@
 import { aiscShapes } from "@/lib/aisc/data";
-import { calculateBendingShearDesign } from "@/lib/calculations/bending";
-import { calculateCompressionDesign } from "@/lib/calculations/compression";
+import { calculateBendingShearDesign } from "@/lib/limit-state-engine/bending";
+import { calculateCompressionDesign } from "@/lib/limit-state-engine/compression";
 import {
   calculateBoltShearBearingCombinedLRFD,
   calculateBoltShearTensionInteractionLRFD,
@@ -8,12 +8,12 @@ import {
   calculateBoltTensionLRFD,
   calculateFilletWeldLRFD,
   lrfdToAsdSamePhiOmega,
-} from "@/lib/calculations/connections";
+} from "@/lib/limit-state-engine/connections";
 import {
   approximateMinPlateThicknessForPryingLRFD,
   calculateGrooveWeldShearLRFD,
-} from "@/lib/calculations/connections-advanced";
-import { calculateTensionDesign } from "@/lib/calculations/tension";
+} from "@/lib/limit-state-engine/connections-advanced";
+import { calculateTensionDesign } from "@/lib/limit-state-engine/tension";
 import type { CalculationOutput, CalculationStep } from "@/lib/types/calculation";
 import type { BoltGroup, BoltThreadMode } from "@/lib/data/bolts";
 import { steelMaterialMap, type SteelMaterialKey } from "@/lib/data/materials";

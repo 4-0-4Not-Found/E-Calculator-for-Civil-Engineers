@@ -8,6 +8,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { PageFooterNav } from "@/components/navigation/PageFooterNav";
 import { PageSectionLayout } from "@/components/navigation/PageSectionLayout";
 import { Button } from "@/components/ui/Button";
+import { PRODUCT_BRAND } from "@/lib/brand";
 
 function formatNumberForReport(v: number): string {
   if (!Number.isFinite(v)) {
@@ -192,8 +193,8 @@ export default function ReportPage() {
     <AppShell>
       <Card className="print:border-0 print:shadow-none">
         <CardHeader
-          title="Project summary"
-          description="Snapshot from inputs saved in this browser. Detailed steps below match the calculators. Use Print to save as PDF."
+          title={`${PRODUCT_BRAND.shortName} — project summary`}
+          description="Snapshot from inputs saved in this browser only. Sections below mirror each calculator (governing case, capacities, demand, status, and steps). Use Print to save as PDF for review."
           right={
             <div className="flex gap-2 print:hidden">
               <Button variant="primary" size="sm" type="button" onClick={() => window.print()}>

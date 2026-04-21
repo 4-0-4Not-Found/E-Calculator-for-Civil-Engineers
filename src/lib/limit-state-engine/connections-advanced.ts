@@ -2,7 +2,7 @@
  * Additional connection checks (groove welds, prying plate thickness) — introductory / educational.
  * Fillet welds remain in `connections.ts`. Verify critical work against AISC 360 & project specs.
  */
-import { lrfdToAsdSamePhiOmega } from "@/lib/calculations/connections";
+import { lrfdToAsdSamePhiOmega } from "@/lib/limit-state-engine/connections";
 
 const PHI_WELD = 0.75;
 

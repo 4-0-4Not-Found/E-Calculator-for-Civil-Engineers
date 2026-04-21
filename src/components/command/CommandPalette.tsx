@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { CLIENT_PERSISTENCE } from "@/lib/client-persistence";
 import { modalHeaderClass, modalOverlayClass, modalPanelClass, modalSubtitleClass, modalTitleClass, useModalA11y } from "@/components/ui/modal";
 
 export type CommandAction = {
@@ -14,11 +15,9 @@ export type CommandAction = {
   run: () => void | Promise<void>;
 };
 
-const STORAGE_FAVORITES = "ssc:favorites";
-
 function readFavorites(): string[] {
   try {
-    const raw = localStorage.getItem(STORAGE_FAVORITES);
+    const raw = localStorage.getItem(CLIENT_PERSISTENCE.favorites);
     const arr = raw ? (JSON.parse(raw) as unknown) : [];
     return Array.isArray(arr) ? arr.filter((x) => typeof x === "string") : [];
   } catch {
@@ -28,7 +27,7 @@ function readFavorites(): string[] {
 
 function writeFavorites(favs: string[]) {
   try {
-    localStorage.setItem(STORAGE_FAVORITES, JSON.stringify(favs));
+    localStorage.setItem(CLIENT_PERSISTENCE.favorites, JSON.stringify(favs));
   } catch {
     /* ignore */
   }
@@ -67,10 +66,10 @@ export function CommandPalette() {
     function onOpen() {
       setOpen(true);
     }
-    window.addEventListener("ssc:command-palette:open", onOpen);
+    window.addEventListener(CLIENT_PERSISTENCE.commandPaletteOpen, onOpen);
     return () => {
       window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("ssc:command-palette:open", onOpen);
+      window.removeEventListener(CLIENT_PERSISTENCE.commandPaletteOpen, onOpen);
     };
   }, []);
 
@@ -292,7 +291,7 @@ export function CommandPaletteButton() {
       type="button"
       onClick={() => {
         // Dispatch a custom event so the single palette instance can open.
-        window.dispatchEvent(new Event("ssc:command-palette:open"));
+        window.dispatchEvent(new Event(CLIENT_PERSISTENCE.commandPaletteOpen));
       }}
       className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 shadow-sm hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10"
       aria-label="Open command palette"

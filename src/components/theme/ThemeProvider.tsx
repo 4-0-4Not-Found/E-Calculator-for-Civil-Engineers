@@ -1,10 +1,11 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { CLIENT_PERSISTENCE } from "@/lib/client-persistence";
 
 export type ThemeMode = "light" | "dark" | "system";
 
-const STORAGE_KEY = "ssc:theme";
+const STORAGE_KEY = CLIENT_PERSISTENCE.theme;
 
 type Ctx = {
   mode: ThemeMode;

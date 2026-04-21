@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { aiscShapes } from "@/lib/aisc/data";
 import {
   filterShapesByFamily,
@@ -8,12 +8,12 @@ import {
   type ShapeFamilyKey,
 } from "@/lib/aisc/shape-filters";
 import { steelMaterialMap, steelMaterials, type SteelMaterialKey } from "@/lib/data/materials";
-import { calculateTensionDesign } from "@/lib/calculations/tension";
-import { staggeredNetWidthInches } from "@/lib/calculations/net-area";
+import { staggeredNetWidthInches } from "@/lib/limit-state-engine/net-area";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Field, SelectInput, TextInput } from "@/components/ui/Field";
 import { Badge } from "@/components/ui/Badge";
 import { StepsTable } from "@/components/StepsTable";
+import { CLIENT_PERSISTENCE } from "@/lib/client-persistence";
 import { STORAGE } from "@/lib/storage/keys";
 import { AppShell } from "@/components/layout/AppShell";
 import { ResultHero } from "@/components/results/ResultHero";
@@ -23,6 +23,9 @@ import { Button } from "@/components/ui/Button";
 import { UtilizationBar } from "@/components/ui/UtilizationBar";
 import { CalculatorActionRail } from "@/components/actions/CalculatorActionRail";
 import { PageSectionNav } from "@/components/navigation/PageSectionNav";
+import { useBrowserDraft } from "@/features/module-runtime/useBrowserDraft";
+import { smoothScrollTo } from "@/features/module-runtime/scroll";
+import { evaluateTension, tensionDefaults, tensionDraftSchema } from "@/features/steel/tension/module-config";
 
 const toNumber = (v: string) => Number(v) || 0;
 /** Client preference: ~3 decimals on final strengths / demands. */
@@ -37,81 +40,55 @@ function isInvalidNumber(v: string, opts?: { min?: number; allowBlank?: boolean 
   return false;
 }
 
-function scrollTo(id: string) {
-  try {
-    const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
-    document.getElementById(id)?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
-  } catch {
-    /* ignore */
-  }
-}
-
 export default function TensionModulePage() {
-  const [material, setMaterial] = useState<SteelMaterialKey>("A992");
-  const [shapeName, setShapeName] = useState("W24X131");
-  const [Ag, setAg] = useState("38.5");
-  const [An, setAn] = useState("32");
-  const [U, setU] = useState("0.9");
-  const [Pu, setPu] = useState("900");
-  const [Agv, setAgv] = useState("24");
-  const [Anv, setAnv] = useState("20");
-  const [Agt, setAgt] = useState("8");
-  const [Ant, setAnt] = useState("6.5");
-  const [ubs, setUbs] = useState("0.5");
+  const [material, setMaterial] = useState<SteelMaterialKey>(tensionDefaults.material as SteelMaterialKey);
+  const [shapeName, setShapeName] = useState(tensionDefaults.shapeName);
+  const [Ag, setAg] = useState(tensionDefaults.Ag);
+  const [An, setAn] = useState(tensionDefaults.An);
+  const [U, setU] = useState(tensionDefaults.U);
+  const [Pu, setPu] = useState(tensionDefaults.Pu);
+  const [Agv, setAgv] = useState(tensionDefaults.Agv);
+  const [Anv, setAnv] = useState(tensionDefaults.Anv);
+  const [Agt, setAgt] = useState(tensionDefaults.Agt);
+  const [Ant, setAnt] = useState(tensionDefaults.Ant);
+  const [ubs, setUbs] = useState(tensionDefaults.ubs);
 
-  const [stagW, setStagW] = useState("");
-  const [stagDh, setStagDh] = useState("0.875");
-  const [stagN, setStagN] = useState("2");
-  const [stagS, setStagS] = useState("3");
-  const [stagG, setStagG] = useState("3");
-  const [stagT, setStagT] = useState("0.75");
-  const [shapeFamily, setShapeFamily] = useState<ShapeFamilyKey>("all");
-  const [designMethod, setDesignMethod] = useState<"LRFD" | "ASD">("LRFD");
-  const [mode, setMode] = useState<"check" | "design">("check");
-  const [hydrated, setHydrated] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [savedAt, setSavedAt] = useState<number | null>(null);
-  const saveTimer = useRef<number | null>(null);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE.tension);
-      if (!raw) {
-        queueMicrotask(() => setHydrated(true));
-        return;
-      }
-      const p = JSON.parse(raw) as Record<string, string>;
-      queueMicrotask(() => {
-        if (typeof p.material === "string") setMaterial(p.material as SteelMaterialKey);
-        if (typeof p.shapeName === "string") setShapeName(p.shapeName);
-        if (typeof p.Ag === "string") setAg(p.Ag);
-        if (typeof p.An === "string") setAn(p.An);
-        if (typeof p.U === "string") setU(p.U);
-        if (typeof p.Pu === "string") setPu(p.Pu);
-        if (typeof p.Agv === "string") setAgv(p.Agv);
-        if (typeof p.Anv === "string") setAnv(p.Anv);
-        if (typeof p.Agt === "string") setAgt(p.Agt);
-        if (typeof p.Ant === "string") setAnt(p.Ant);
-        if (typeof p.ubs === "string") setUbs(p.ubs);
-        if (typeof p.stagW === "string") setStagW(p.stagW);
-        if (typeof p.stagDh === "string") setStagDh(p.stagDh);
-        if (typeof p.stagN === "string") setStagN(p.stagN);
-        if (typeof p.stagS === "string") setStagS(p.stagS);
-        if (typeof p.stagG === "string") setStagG(p.stagG);
-        if (typeof p.stagT === "string") setStagT(p.stagT);
-        if (typeof p.shapeFamily === "string") setShapeFamily(p.shapeFamily as ShapeFamilyKey);
-        if (p.designMethod === "LRFD" || p.designMethod === "ASD") setDesignMethod(p.designMethod);
-        if (p.mode === "check" || p.mode === "design") setMode(p.mode);
-      });
-    } catch {
-      /* ignore */
-    }
-    queueMicrotask(() => setHydrated(true));
-  }, []);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    const payload = {
+  const [stagW, setStagW] = useState(tensionDefaults.stagW);
+  const [stagDh, setStagDh] = useState(tensionDefaults.stagDh);
+  const [stagN, setStagN] = useState(tensionDefaults.stagN);
+  const [stagS, setStagS] = useState(tensionDefaults.stagS);
+  const [stagG, setStagG] = useState(tensionDefaults.stagG);
+  const [stagT, setStagT] = useState(tensionDefaults.stagT);
+  const [shapeFamily, setShapeFamily] = useState<ShapeFamilyKey>(tensionDefaults.shapeFamily as ShapeFamilyKey);
+  const [designMethod, setDesignMethod] = useState<"LRFD" | "ASD">(tensionDefaults.designMethod);
+  const [mode, setMode] = useState<"check" | "design">(tensionDefaults.mode);
+  const { saving, savedAt, clearDraft } = useBrowserDraft({
+    storageKey: STORAGE.tension,
+    savedAtKey: CLIENT_PERSISTENCE.savedAt("tension"),
+    schema: tensionDraftSchema,
+    hydrate: (p) => {
+      if (typeof p.material === "string") setMaterial(p.material as SteelMaterialKey);
+      if (typeof p.shapeName === "string") setShapeName(p.shapeName);
+      if (typeof p.Ag === "string") setAg(p.Ag);
+      if (typeof p.An === "string") setAn(p.An);
+      if (typeof p.U === "string") setU(p.U);
+      if (typeof p.Pu === "string") setPu(p.Pu);
+      if (typeof p.Agv === "string") setAgv(p.Agv);
+      if (typeof p.Anv === "string") setAnv(p.Anv);
+      if (typeof p.Agt === "string") setAgt(p.Agt);
+      if (typeof p.Ant === "string") setAnt(p.Ant);
+      if (typeof p.ubs === "string") setUbs(p.ubs);
+      if (typeof p.stagW === "string") setStagW(p.stagW);
+      if (typeof p.stagDh === "string") setStagDh(p.stagDh);
+      if (typeof p.stagN === "string") setStagN(p.stagN);
+      if (typeof p.stagS === "string") setStagS(p.stagS);
+      if (typeof p.stagG === "string") setStagG(p.stagG);
+      if (typeof p.stagT === "string") setStagT(p.stagT);
+      if (typeof p.shapeFamily === "string") setShapeFamily(p.shapeFamily as ShapeFamilyKey);
+      if (p.designMethod === "LRFD" || p.designMethod === "ASD") setDesignMethod(p.designMethod);
+      if (p.mode === "check" || p.mode === "design") setMode(p.mode);
+    },
+    serialize: () => ({
       material,
       shapeName,
       Ag,
@@ -132,41 +109,30 @@ export default function TensionModulePage() {
       shapeFamily,
       designMethod,
       mode,
-    };
-    try {
-      setSaving(true);
-      localStorage.setItem(STORAGE.tension, JSON.stringify(payload));
-      const ts = Date.now();
-      localStorage.setItem("ssc:ts:tension", String(ts));
-      setSavedAt(ts);
-    } catch {
-      /* ignore */
-    }
-    if (saveTimer.current) window.clearTimeout(saveTimer.current);
-    saveTimer.current = window.setTimeout(() => setSaving(false), 450);
-  }, [
-    hydrated,
-    material,
-    shapeName,
-    Ag,
-    An,
-    U,
-    Pu,
-    Agv,
-    Anv,
-    Agt,
-    Ant,
-    ubs,
-    stagW,
-    stagDh,
-    stagN,
-    stagS,
-    stagG,
-    stagT,
-    shapeFamily,
-    designMethod,
-    mode,
-  ]);
+    }),
+    watch: [
+      material,
+      shapeName,
+      Ag,
+      An,
+      U,
+      Pu,
+      Agv,
+      Anv,
+      Agt,
+      Ant,
+      ubs,
+      stagW,
+      stagDh,
+      stagN,
+      stagS,
+      stagG,
+      stagT,
+      shapeFamily,
+      designMethod,
+      mode,
+    ],
+  });
 
   const selectedMaterial = steelMaterialMap[material];
   const shapeChoices = useMemo(
@@ -187,7 +153,7 @@ export default function TensionModulePage() {
   };
 
   const result = useMemo(() => {
-    return calculateTensionDesign({
+    return evaluateTension({
       designMethod,
       Fy: selectedMaterial.Fy,
       Fu: selectedMaterial.Fu,
@@ -209,7 +175,7 @@ export default function TensionModulePage() {
     const demand = toNumber(Pu);
     const list = [...shapeChoices].sort((a, b) => a.W - b.W);
     for (const s of list) {
-      const r = calculateTensionDesign({
+      const r = evaluateTension({
         designMethod,
         Fy: selectedMaterial.Fy,
         Fu: selectedMaterial.Fu,
@@ -236,7 +202,7 @@ export default function TensionModulePage() {
       .sort((a, b) => a.W - b.W)
       .slice(0, 16)
       .map((s) => {
-        const r = calculateTensionDesign({
+        const r = evaluateTension({
           designMethod,
           Fy: selectedMaterial.Fy,
           Fu: selectedMaterial.Fu,
@@ -304,32 +270,27 @@ export default function TensionModulePage() {
   }, [result]);
 
   const resetInputs = () => {
-    try {
-      localStorage.removeItem(STORAGE.tension);
-      localStorage.removeItem("ssc:ts:tension");
-    } catch {
-      /* ignore */
-    }
-    setMaterial("A992");
-    setShapeName("W24X131");
-    setAg("38.5");
-    setAn("32");
-    setU("0.9");
-    setPu("900");
-    setAgv("24");
-    setAnv("20");
-    setAgt("8");
-    setAnt("6.5");
-    setUbs("0.5");
-    setStagW("");
-    setStagDh("0.875");
-    setStagN("2");
-    setStagS("3");
-    setStagG("3");
-    setStagT("0.75");
-    setShapeFamily("all");
-    setDesignMethod("LRFD");
-    setMode("check");
+    clearDraft();
+    setMaterial(tensionDefaults.material as SteelMaterialKey);
+    setShapeName(tensionDefaults.shapeName);
+    setAg(tensionDefaults.Ag);
+    setAn(tensionDefaults.An);
+    setU(tensionDefaults.U);
+    setPu(tensionDefaults.Pu);
+    setAgv(tensionDefaults.Agv);
+    setAnv(tensionDefaults.Anv);
+    setAgt(tensionDefaults.Agt);
+    setAnt(tensionDefaults.Ant);
+    setUbs(tensionDefaults.ubs);
+    setStagW(tensionDefaults.stagW);
+    setStagDh(tensionDefaults.stagDh);
+    setStagN(tensionDefaults.stagN);
+    setStagS(tensionDefaults.stagS);
+    setStagG(tensionDefaults.stagG);
+    setStagT(tensionDefaults.stagT);
+    setShapeFamily(tensionDefaults.shapeFamily as ShapeFamilyKey);
+    setDesignMethod(tensionDefaults.designMethod);
+    setMode(tensionDefaults.mode);
   };
 
   return (
@@ -612,7 +573,7 @@ export default function TensionModulePage() {
                           Computes net width for a plate strip. Use as a helper, then copy A<sub>n</sub> to the net area field.
                         </p>
                       </div>
-                      <Button variant="ghost" size="sm" type="button" onClick={() => scrollTo("tension-net-area")}>
+                      <Button variant="ghost" size="sm" type="button" onClick={() => smoothScrollTo("tension-net-area")}>
                         Go to net area
                       </Button>
                     </div>
@@ -710,11 +671,11 @@ export default function TensionModulePage() {
                 hideMobileBar
                 title="Actions"
                 subtitle={`${shapeName} · ${designMethod} · ${mode === "design" ? "Design" : "Check"}`}
-                savedKey="ssc:ts:tension"
+                savedKey={CLIENT_PERSISTENCE.savedAt("tension")}
                 saving={saving}
                 savedAt={savedAt}
                 compare={{
-                  storageKey: "ssc:compare:tension",
+                  storageKey: CLIENT_PERSISTENCE.compareSnapshot("tension"),
                   getCurrent: () => ({
                     title: `Tension — ${shapeName}`,
                     lines: [
@@ -744,8 +705,8 @@ export default function TensionModulePage() {
                     }%`,
                   ].join("\n")
                 }
-                onGoResults={() => scrollTo("results")}
-                onGoSteps={() => scrollTo("tension-steps")}
+                onGoResults={() => smoothScrollTo("results")}
+                onGoSteps={() => smoothScrollTo("tension-steps")}
                 csv={{ filename: "tension-export.csv", rows: csvRows }}
                 json={{ data: { result, inputs: { material, shapeName, designMethod, mode, Ag, An, U, Pu, Agv, Anv, Agt, Ant, ubs } } }}
                 onReset={resetInputs}
@@ -824,11 +785,11 @@ export default function TensionModulePage() {
       <CalculatorActionRail
         mobileOnly
         subtitle="Tension actions"
-        savedKey="ssc:ts:tension"
+        savedKey={CLIENT_PERSISTENCE.savedAt("tension")}
         saving={saving}
         savedAt={savedAt}
         compare={{
-          storageKey: "ssc:compare:tension",
+          storageKey: CLIENT_PERSISTENCE.compareSnapshot("tension"),
           getCurrent: () => ({
             title: `Tension — ${shapeName}`,
             lines: [
@@ -855,8 +816,8 @@ export default function TensionModulePage() {
             `Demand: ${fmt(result.demand)} kips`,
           ].join("\n")
         }
-        onGoResults={() => scrollTo("results")}
-        onGoSteps={() => scrollTo("tension-steps")}
+        onGoResults={() => smoothScrollTo("results")}
+        onGoSteps={() => smoothScrollTo("tension-steps")}
         csv={{ filename: "tension-export.csv", rows: csvRows }}
         json={{ data: { result, inputs: { material, shapeName, designMethod, mode, Ag, An, U, Pu, Agv, Anv, Agt, Ant, ubs } } }}
         onReset={resetInputs}

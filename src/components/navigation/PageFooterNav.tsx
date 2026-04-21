@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 type Item = { href: string; label: string };
 
 const order: Item[] = [
@@ -10,6 +12,9 @@ const order: Item[] = [
   { href: "/info", label: "Info" },
 ];
 
+const navClassName =
+  "rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 shadow-sm hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10";
+
 export function PageFooterNav(props: { currentHref: string }) {
   const idx = order.findIndex((i) => i.href === props.currentHref);
   const prev = idx > 0 ? order[idx - 1] : null;
@@ -20,38 +25,25 @@ export function PageFooterNav(props: { currentHref: string }) {
   return (
     <footer className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-6">
       {unknown ? (
-        <a
-          href="/"
-          className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 shadow-sm hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10"
-        >
+        <Link href="/" className={navClassName}>
           ← Home
-        </a>
+        </Link>
       ) : prev ? (
-        <a
-          href={prev.href}
-          className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 shadow-sm hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10"
-        >
+        <Link href={prev.href} className={navClassName}>
           ← {prev.label}
-        </a>
+        </Link>
       ) : (
         <span />
       )}
       {unknown ? (
-        <a
-          href="/info"
-          className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 shadow-sm hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10"
-        >
+        <Link href="/info" className={navClassName}>
           Info →
-        </a>
+        </Link>
       ) : next ? (
-        <a
-          href={next.href}
-          className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 shadow-sm hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10"
-        >
+        <Link href={next.href} className={navClassName}>
           {next.label} →
-        </a>
+        </Link>
       ) : null}
     </footer>
   );
 }
-

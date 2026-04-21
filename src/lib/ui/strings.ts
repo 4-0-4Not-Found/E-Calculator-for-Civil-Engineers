@@ -1,7 +1,9 @@
+import { PRODUCT_BRAND } from "@/lib/brand";
+
 /** UI copy only — does not affect calculation logic. */
 export const UI = {
-  appTitle: "Structural Steel Calculators",
-  tagline: "Fast AISC-based checks for civil engineering students",
+  appTitle: PRODUCT_BRAND.name,
+  tagline: PRODUCT_BRAND.tagline,
   skipToContent: "Skip to content",
   themeLight: "Light theme",
   themeDark: "Dark theme",

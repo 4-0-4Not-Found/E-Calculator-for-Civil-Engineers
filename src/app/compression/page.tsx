@@ -1,18 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { aiscShapes } from "@/lib/aisc/data";
 import {
   filterShapesByFamily,
   shapeFamilyOptions,
   type ShapeFamilyKey,
 } from "@/lib/aisc/shape-filters";
-import { calculateCompressionDesign } from "@/lib/calculations/compression";
 import { steelMaterialMap, steelMaterials, type SteelMaterialKey } from "@/lib/data/materials";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Field, SelectInput, TextInput } from "@/components/ui/Field";
 import { StepsTable } from "@/components/StepsTable";
+import { CLIENT_PERSISTENCE } from "@/lib/client-persistence";
 import { STORAGE } from "@/lib/storage/keys";
 import { AppShell } from "@/components/layout/AppShell";
 import { ResultHero } from "@/components/results/ResultHero";
@@ -21,63 +21,41 @@ import { TextInputWithUnit } from "@/components/ui/InputGroup";
 import { Button } from "@/components/ui/Button";
 import { CalculatorActionRail } from "@/components/actions/CalculatorActionRail";
 import { PageSectionNav } from "@/components/navigation/PageSectionNav";
+import { useBrowserDraft } from "@/features/module-runtime/useBrowserDraft";
+import { smoothScrollTo } from "@/features/module-runtime/scroll";
+import {
+  compressionDefaults,
+  compressionDraftSchema,
+  evaluateCompression,
+} from "@/features/steel/compression/module-config";
 
 export default function CompressionPage() {
-  const [material, setMaterial] = useState<SteelMaterialKey>("A992");
-  const [shapeFamily, setShapeFamily] = useState<ShapeFamilyKey>("W");
-  const [shapeName, setShapeName] = useState("W24X131");
-  const [k, setK] = useState("1.0");
+  const [material, setMaterial] = useState<SteelMaterialKey>(compressionDefaults.material as SteelMaterialKey);
+  const [shapeFamily, setShapeFamily] = useState<ShapeFamilyKey>(compressionDefaults.shapeFamily as ShapeFamilyKey);
+  const [shapeName, setShapeName] = useState(compressionDefaults.shapeName);
+  const [k, setK] = useState(compressionDefaults.k);
   /** Multiplier on K for lacing / built-up notes (1.0 = as entered). */
-  const [builtUpFactor, setBuiltUpFactor] = useState("1.0");
-  const [L, setL] = useState("240");
-  const [Pu, setPu] = useState("700");
-  const [designMethod, setDesignMethod] = useState<"LRFD" | "ASD">("LRFD");
-  const [hydrated, setHydrated] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [savedAt, setSavedAt] = useState<number | null>(null);
-  const saveTimer = useRef<number | null>(null);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE.compression);
-      if (!raw) {
-        queueMicrotask(() => setHydrated(true));
-        return;
-      }
-      const p = JSON.parse(raw) as Record<string, string>;
-      queueMicrotask(() => {
-        if (typeof p.material === "string") setMaterial(p.material as SteelMaterialKey);
-        if (typeof p.shapeFamily === "string") setShapeFamily(p.shapeFamily as ShapeFamilyKey);
-        if (typeof p.shapeName === "string") setShapeName(p.shapeName);
-        if (typeof p.k === "string") setK(p.k);
-        if (typeof p.builtUpFactor === "string") setBuiltUpFactor(p.builtUpFactor);
-        if (typeof p.L === "string") setL(p.L);
-        if (typeof p.Pu === "string") setPu(p.Pu);
-        if (p.designMethod === "LRFD" || p.designMethod === "ASD") setDesignMethod(p.designMethod);
-      });
-    } catch {
-      /* ignore */
-    }
-    queueMicrotask(() => setHydrated(true));
-  }, []);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    try {
-      setSaving(true);
-      localStorage.setItem(
-        STORAGE.compression,
-        JSON.stringify({ material, shapeFamily, shapeName, k, builtUpFactor, L, Pu, designMethod }),
-      );
-      const ts = Date.now();
-      localStorage.setItem("ssc:ts:compression", String(ts));
-      setSavedAt(ts);
-    } catch {
-      /* ignore */
-    }
-    if (saveTimer.current) window.clearTimeout(saveTimer.current);
-    saveTimer.current = window.setTimeout(() => setSaving(false), 450);
-  }, [hydrated, material, shapeFamily, shapeName, k, builtUpFactor, L, Pu, designMethod]);
+  const [builtUpFactor, setBuiltUpFactor] = useState(compressionDefaults.builtUpFactor);
+  const [L, setL] = useState(compressionDefaults.L);
+  const [Pu, setPu] = useState(compressionDefaults.Pu);
+  const [designMethod, setDesignMethod] = useState<"LRFD" | "ASD">(compressionDefaults.designMethod);
+  const { saving, savedAt, clearDraft } = useBrowserDraft({
+    storageKey: STORAGE.compression,
+    savedAtKey: CLIENT_PERSISTENCE.savedAt("compression"),
+    schema: compressionDraftSchema,
+    hydrate: (p) => {
+      if (typeof p.material === "string") setMaterial(p.material as SteelMaterialKey);
+      if (typeof p.shapeFamily === "string") setShapeFamily(p.shapeFamily as ShapeFamilyKey);
+      if (typeof p.shapeName === "string") setShapeName(p.shapeName);
+      if (typeof p.k === "string") setK(p.k);
+      if (typeof p.builtUpFactor === "string") setBuiltUpFactor(p.builtUpFactor);
+      if (typeof p.L === "string") setL(p.L);
+      if (typeof p.Pu === "string") setPu(p.Pu);
+      if (p.designMethod === "LRFD" || p.designMethod === "ASD") setDesignMethod(p.designMethod);
+    },
+    serialize: () => ({ material, shapeFamily, shapeName, k, builtUpFactor, L, Pu, designMethod }),
+    watch: [material, shapeFamily, shapeName, k, builtUpFactor, L, Pu, designMethod],
+  });
 
   const shapeChoices = useMemo(
     () => filterShapesByFamily(aiscShapes, shapeFamily, "compression"),
@@ -99,7 +77,7 @@ export default function CompressionPage() {
 
   const out = useMemo(
     () =>
-      calculateCompressionDesign({
+      evaluateCompression({
         designMethod,
         Fy: mat.Fy,
         E: 29000,
@@ -129,30 +107,16 @@ export default function CompressionPage() {
     ];
   }, [material, shapeFamily, shapeName, Pu, designMethod, out.controllingStrength]);
 
-  function scrollTo(id: string) {
-    try {
-      const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
-      document.getElementById(id)?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
-    } catch {
-      /* ignore */
-    }
-  }
-
   const resetInputs = () => {
-    try {
-      localStorage.removeItem(STORAGE.compression);
-      localStorage.removeItem("ssc:ts:compression");
-    } catch {
-      /* ignore */
-    }
-    setMaterial("A992");
-    setShapeFamily("W");
-    setShapeName("W24X131");
-    setK("1.0");
-    setBuiltUpFactor("1.0");
-    setL("240");
-    setPu("700");
-    setDesignMethod("LRFD");
+    clearDraft();
+    setMaterial(compressionDefaults.material as SteelMaterialKey);
+    setShapeFamily(compressionDefaults.shapeFamily as ShapeFamilyKey);
+    setShapeName(compressionDefaults.shapeName);
+    setK(compressionDefaults.k);
+    setBuiltUpFactor(compressionDefaults.builtUpFactor);
+    setL(compressionDefaults.L);
+    setPu(compressionDefaults.Pu);
+    setDesignMethod(compressionDefaults.designMethod);
   };
 
   const invalid = (v: string, min = 0) => {
@@ -331,11 +295,11 @@ export default function CompressionPage() {
                 hideMobileBar
                 title="Actions"
                 subtitle={`${shapeName} · ${designMethod}`}
-                savedKey="ssc:ts:compression"
+                savedKey={CLIENT_PERSISTENCE.savedAt("compression")}
                 saving={saving}
                 savedAt={savedAt}
                 compare={{
-                  storageKey: "ssc:compare:compression",
+                  storageKey: CLIENT_PERSISTENCE.compareSnapshot("compression"),
                   getCurrent: () => ({
                     title: `Compression — ${shapeName}`,
                     lines: [
@@ -359,8 +323,8 @@ export default function CompressionPage() {
                     `Demand: ${out.demand.toFixed(3)} kips`,
                   ].join("\n")
                 }
-                onGoResults={() => scrollTo("results")}
-                onGoSteps={() => scrollTo("compression-steps")}
+                onGoResults={() => smoothScrollTo("results")}
+                onGoSteps={() => smoothScrollTo("compression-steps")}
                 csv={{ filename: "compression-export.csv", rows: csvRows }}
                 json={{ data: { result: out, inputs: { material, shapeName, designMethod, k, L, Pu } } }}
                 onReset={resetInputs}
@@ -406,11 +370,11 @@ export default function CompressionPage() {
       <CalculatorActionRail
         mobileOnly
         subtitle="Compression actions"
-        savedKey="ssc:ts:compression"
+        savedKey={CLIENT_PERSISTENCE.savedAt("compression")}
         saving={saving}
         savedAt={savedAt}
         compare={{
-          storageKey: "ssc:compare:compression",
+          storageKey: CLIENT_PERSISTENCE.compareSnapshot("compression"),
           getCurrent: () => ({
             title: `Compression — ${shapeName}`,
             lines: [
@@ -434,8 +398,8 @@ export default function CompressionPage() {
             `Demand: ${out.demand.toFixed(3)} kips`,
           ].join("\n")
         }
-        onGoResults={() => scrollTo("results")}
-        onGoSteps={() => scrollTo("compression-steps")}
+        onGoResults={() => smoothScrollTo("results")}
+        onGoSteps={() => smoothScrollTo("compression-steps")}
         csv={{ filename: "compression-export.csv", rows: csvRows }}
         json={{ data: { result: out, inputs: { material, shapeName, designMethod, k, L, Pu } } }}
         onReset={resetInputs}

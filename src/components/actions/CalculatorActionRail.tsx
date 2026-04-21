@@ -34,7 +34,7 @@ export function CalculatorActionRail(props: {
   hideMobileBar?: boolean;
   title?: string;
   subtitle?: string;
-  /** LocalStorage key for last-saved timestamp (e.g. `ssc:ts:tension`). */
+  /** LocalStorage key for last-saved timestamp (see `CLIENT_PERSISTENCE.savedAt`). */
   savedKey?: string;
   /** UI-only transient state from parent. If set, overrides savedKey-derived label. */
   saving?: boolean;

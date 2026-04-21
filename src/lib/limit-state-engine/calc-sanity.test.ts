@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { lrfdFactoredUniformLoadKlf, asdStrengthUniformLoadKlf, serviceUniformLoadKlf } from "@/lib/excel-parity";
-import { calculateTensionDesign } from "@/lib/calculations/tension";
+import { calculateTensionDesign } from "@/lib/limit-state-engine/tension";
 
 describe("excel-parity loads", () => {
   it("LRFD uniform load D=0.5, L=1.0 klf", () => {

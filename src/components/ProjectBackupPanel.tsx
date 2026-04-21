@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { AUTOSAVE_MODULE_KEYS, CLIENT_PERSISTENCE } from "@/lib/client-persistence";
 import { STORAGE } from "@/lib/storage/keys";
 import { applyBundle, collectBundle } from "@/lib/storage/project-bundle";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -18,7 +19,7 @@ export function ProjectBackupPanel() {
     const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `civilecal-project-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `spanledger-project-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
     setMsg("Download started — includes inputs saved from each module you have used.");
@@ -54,10 +55,8 @@ export function ProjectBackupPanel() {
 
   const doClearAll = useCallback(() => {
     Object.values(STORAGE).forEach((k) => localStorage.removeItem(k));
-    ["tension", "compression", "bending", "connections"].forEach((m) =>
-      localStorage.removeItem(`ssc:ts:${m}`),
-    );
-    localStorage.removeItem("ssc:lastRoute");
+    AUTOSAVE_MODULE_KEYS.forEach((m) => localStorage.removeItem(CLIENT_PERSISTENCE.savedAt(m)));
+    localStorage.removeItem(CLIENT_PERSISTENCE.lastRoute);
     setMsg("Saved inputs cleared for this browser.");
     toast.push({ title: "Cleared", message: "Saved inputs removed for this browser.", tone: "info" });
   }, [toast]);

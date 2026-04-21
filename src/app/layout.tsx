@@ -15,14 +15,15 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AISC Structural Engineering PWA",
-  description: "Progressive Web App for AISC-based structural engineering calculations.",
+  title: "SpanLedger Steel",
+  description:
+    "SpanLedger Steel — steel member calculators for coursework. Runs locally in your browser with offline-friendly PWA support.",
   manifest: "/manifest.json",
-  applicationName: "AISC Structural Engineering PWA",
+  applicationName: "SpanLedger Steel",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "AISC PWA",
+    title: "SpanLedger",
   },
   formatDetection: {
     telephone: false,
@@ -37,7 +38,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0818A8",
+  themeColor: "#0f766e",
 };
 
 export default function RootLayout({

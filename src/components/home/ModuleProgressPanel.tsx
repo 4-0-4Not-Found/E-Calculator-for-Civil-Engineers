@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { CLIENT_PERSISTENCE } from "@/lib/client-persistence";
 import { STORAGE } from "@/lib/storage/keys";
 import { Card, CardBody } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -36,7 +37,7 @@ export function ModuleProgressPanel() {
     void tick;
     try {
       if (typeof window === "undefined") return null;
-      const last = localStorage.getItem("ssc:lastRoute");
+      const last = localStorage.getItem(CLIENT_PERSISTENCE.lastRoute);
       return last && typeof last === "string" ? last : null;
     } catch {
       return null;
