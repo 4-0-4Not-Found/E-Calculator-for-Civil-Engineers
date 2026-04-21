@@ -13,7 +13,7 @@ const order: Item[] = [
 ];
 
 const navClassName =
-  "rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 shadow-sm hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10";
+  "rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-5 py-2.5 text-sm font-semibold text-slate-800 shadow-sm hover:bg-[color:var(--surface-3)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10";
 
 export function PageFooterNav(props: { currentHref: string }) {
   const idx = order.findIndex((i) => i.href === props.currentHref);
@@ -23,7 +23,7 @@ export function PageFooterNav(props: { currentHref: string }) {
   const unknown = idx < 0;
 
   return (
-    <footer className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-6">
+    <footer className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-[color:var(--border)]/35 pt-7">
       {unknown ? (
         <Link href="/" className={navClassName}>
           ← Home

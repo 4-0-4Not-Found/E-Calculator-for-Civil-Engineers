@@ -5,10 +5,9 @@ import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import type { BeamLimitStates, CalculationOutput, CalculationResult, CalculationStep } from "@/lib/types/calculation";
 import { readModuleStoresFromLocalStorage, summarizeModuleStores } from "@/lib/report/snapshot-store";
 import { AppShell } from "@/components/layout/AppShell";
-import { PageFooterNav } from "@/components/navigation/PageFooterNav";
-import { PageSectionLayout } from "@/components/navigation/PageSectionLayout";
 import { Button } from "@/components/ui/Button";
 import { PRODUCT_BRAND } from "@/lib/brand";
+import { ModuleHero } from "@/components/layout/ModuleHero";
 
 function formatNumberForReport(v: number): string {
   if (!Number.isFinite(v)) {
@@ -191,32 +190,31 @@ export default function ReportPage() {
 
   return (
     <AppShell>
-      <Card className="print:border-0 print:shadow-none">
-        <CardHeader
-          title={`${PRODUCT_BRAND.shortName} — project summary`}
-          description="Snapshot from inputs saved in this browser only. Sections below mirror each calculator (governing case, capacities, demand, status, and steps). Use Print to save as PDF for review."
-          right={
-            <div className="flex gap-2 print:hidden">
-              <Button variant="primary" size="sm" type="button" onClick={() => window.print()}>
-                Print / Save PDF
-              </Button>
-            </div>
-          }
-        />
-        <CardBody className="space-y-4 text-sm text-slate-800">
-          <PageSectionLayout
-            sections={[
-              { id: "report-tension", label: "Tension" },
-              { id: "report-compression", label: "Compression" },
-              { id: "report-beam", label: "Beam" },
-              { id: "report-connections", label: "Connections" },
-            ]}
-            navClassName="print:hidden"
-          >
-          {!mounted ? (
-            <p className="text-slate-600">Loading…</p>
-          ) : (
+      <div className="space-y-8 md:space-y-10">
+        <ModuleHero
+          eyebrow={PRODUCT_BRAND.shortName}
+          title={
             <>
+              Project{" "}
+              <span className="text-[color:var(--foreground)]">Summary</span>
+            </>
+          }
+          description="Snapshot from inputs saved in this browser only. Sections below mirror each calculator (governing case, capacities, demand, status, and steps). Use Print to save as PDF for review."
+          chips={[]}
+          right={
+            <Button variant="primary" size="sm" type="button" onClick={() => window.print()} className="print:hidden">
+              Print / Save PDF
+            </Button>
+          }
+          image={{ src: "/assets/combined.png" }}
+        />
+
+        <Card className="print:border-0 print:shadow-none">
+          <CardBody className="space-y-4 text-sm text-slate-800">
+            {!mounted ? (
+              <p className="text-slate-600">Loading…</p>
+            ) : (
+              <>
               <details id="report-tension" open className="rounded-2xl border border-slate-200 bg-white print:break-inside-avoid">
                 <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
                   Tension
@@ -373,11 +371,10 @@ export default function ReportPage() {
                 </div>
               </details>
             </>
-          )}
-          </PageSectionLayout>
-        </CardBody>
-      </Card>
-      <PageFooterNav currentHref="/report" />
+            )}
+          </CardBody>
+        </Card>
+      </div>
     </AppShell>
   );
 }

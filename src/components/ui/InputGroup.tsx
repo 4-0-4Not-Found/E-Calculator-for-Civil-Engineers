@@ -13,7 +13,9 @@ export function InputAdornment(props: { side: "left" | "right"; children: ReactN
         props.side === "left" ? "left-3" : "right-3",
       )}
     >
-      <span className="rounded-md bg-slate-100 px-2 py-0.5">{props.children}</span>
+      <span className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-2)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--muted)]">
+        {props.children}
+      </span>
     </div>
   );
 }
@@ -35,7 +37,7 @@ export function TextInputWithUnit(
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className={cn(
-          "w-full min-h-11 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-base text-slate-950 shadow-sm outline-none placeholder:text-slate-400 focus:border-[color:var(--brand)]/40 focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10",
+          "w-full min-h-11 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] px-3 py-2.5 text-sm text-slate-950 shadow-sm outline-none placeholder:text-slate-400 focus:border-[color:var(--brand)]/35 focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10",
           hasRight ? "pr-16" : undefined,
           className,
         )}

@@ -17,19 +17,23 @@ import { CLIENT_PERSISTENCE } from "@/lib/client-persistence";
 import { STORAGE } from "@/lib/storage/keys";
 import { AppShell } from "@/components/layout/AppShell";
 import { ResultHero } from "@/components/results/ResultHero";
-import { PageFooterNav } from "@/components/navigation/PageFooterNav";
 import { TextInputWithUnit } from "@/components/ui/InputGroup";
 import { Button } from "@/components/ui/Button";
 import { UtilizationBar } from "@/components/ui/UtilizationBar";
 import { CalculatorActionRail } from "@/components/actions/CalculatorActionRail";
-import { PageSectionNav } from "@/components/navigation/PageSectionNav";
 import { useBrowserDraft } from "@/features/module-runtime/useBrowserDraft";
 import { smoothScrollTo } from "@/features/module-runtime/scroll";
 import { evaluateTension, tensionDefaults, tensionDraftSchema } from "@/features/steel/tension/module-config";
+import { formatRelativeTime } from "@/lib/format/relativeTime";
+import { ModuleHero } from "@/components/layout/ModuleHero";
+import { ModuleDetailsTabs } from "@/components/layout/ModuleDetailsTabs";
 
 const toNumber = (v: string) => Number(v) || 0;
 /** Client preference: ~3 decimals on final strengths / demands. */
 const fmt = (n: number, digits = 3) => (Number.isFinite(n) ? n.toFixed(digits) : "-");
+/** Unified metadata chips (header rail). */
+const META_CHIP =
+  "inline-flex h-8 items-center rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-2)] px-2.5 text-[11px] font-semibold text-[color:var(--foreground)]/80 shadow-sm";
 
 function isInvalidNumber(v: string, opts?: { min?: number; allowBlank?: boolean }) {
   const allowBlank = opts?.allowBlank ?? false;
@@ -52,6 +56,7 @@ export default function TensionModulePage() {
   const [Agt, setAgt] = useState(tensionDefaults.Agt);
   const [Ant, setAnt] = useState(tensionDefaults.Ant);
   const [ubs, setUbs] = useState(tensionDefaults.ubs);
+  const [detailsTab, setDetailsTab] = useState<"steps" | "modes" | "section">("steps");
 
   const [stagW, setStagW] = useState(tensionDefaults.stagW);
   const [stagDh, setStagDh] = useState(tensionDefaults.stagDh);
@@ -295,35 +300,56 @@ export default function TensionModulePage() {
 
   return (
     <AppShell>
-      <Card>
-        <CardHeader
-          title="Tension Analysis & Design"
-          description="Yielding, rupture, block shear (J4.3), optional staggered net width. Check or design mode. Inputs save in this browser."
+      <div className="space-y-8 md:space-y-10">
+        <ModuleHero
+          eyebrow="steel module"
+          title={
+            <>
+              Tension{" "}
+              <span className="text-[color:var(--foreground)]">Analysis &amp; Design</span>
+            </>
+          }
+          description="Yielding, rupture, block shear (J4.3), with an optional stagger helper. Inputs save in this browser."
+          chips={[
+            {
+              key: "saved",
+              label: saving ? "Saving…" : savedAt ? `Saved ${formatRelativeTime(savedAt) ?? "recently"}` : "Not saved yet",
+            },
+            { key: "mat", label: selectedMaterial.key },
+            { key: "method", label: designMethod },
+            { key: "mode", label: mode === "design" ? "Design" : "Check" },
+          ]}
+          image={{ src: "/assets/tension.png" }}
         />
-        <CardBody className="grid gap-6 md:grid-cols-12 md:gap-8">
-          <div className="md:col-span-12 md:hidden">
-            <PageSectionNav
-              sections={[
-                { id: "tension-general", label: "General" },
-                { id: "tension-net-area", label: "Net area" },
-                { id: "tension-block-shear", label: "Block shear" },
-                { id: "tension-steps", label: "Steps" },
-              ]}
-            />
-          </div>
-          <div className="md:col-span-8 grid gap-4">
-            <details open className="rounded-2xl border border-slate-200 bg-white" id="tension-general">
-              <summary className="min-h-11 cursor-pointer px-4 py-3.5 text-sm font-extrabold tracking-tight text-slate-950 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10 sm:px-5 sm:py-4">
-                1 · General
-                <span className="mt-1 block text-xs font-semibold text-slate-600">
-                  Steel, shape selection, method, and required Pu. These drive everything else.
-                </span>
-                <span className="mt-2 inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
-                  Units: kips, ksi, in²
-                </span>
-              </summary>
-              <div className="border-t border-slate-200 p-5">
-                <div className="grid gap-4 md:grid-cols-2">
+
+        <div className="grid gap-6 lg:grid-cols-12 lg:items-start">
+          <div className="space-y-6 lg:col-span-7">
+            <Card id="tension-general">
+              <CardHeader title="General" description="Steel, shape selection, method, and required axial." right={<Badge tone="info">Inputs</Badge>} />
+              <CardBody>
+                <div className="grid gap-5 md:grid-cols-2">
+                  <Field
+                    label="Required Pu / Pa"
+                    hint="Required axial (kips) — LRFD Pu or ASD Pa depending on method."
+                    error={isInvalidNumber(Pu, { min: 0 }) ? "Enter a number ≥ 0." : undefined}
+                    className="md:col-span-2"
+                  >
+                    <div className="rounded-2xl bg-[color:var(--surface-2)] p-3 ring-1 ring-inset ring-[color:var(--border)]/60 sm:p-4">
+                      <TextInputWithUnit
+                        value={Pu}
+                        onChange={setPu}
+                        unit="kips"
+                        placeholder="e.g. 900"
+                        inputMode="decimal"
+                        className={
+                          isInvalidNumber(Pu, { min: 0 })
+                            ? "border-rose-300 focus:border-rose-400 focus:ring-rose-500/10"
+                            : undefined
+                        }
+                      />
+                    </div>
+                  </Field>
+
                   <Field label="Steel Type" hint="Auto-fills Fy and Fu (ksi).">
                     <SelectInput value={material} onChange={(v) => setMaterial(v as SteelMaterialKey)}>
                       {steelMaterials.map((m) => (
@@ -333,6 +359,7 @@ export default function TensionModulePage() {
                       ))}
                     </SelectInput>
                   </Field>
+
                   <Field label="Shape family" hint="Filter AISC v16 database (W, S, C, L, HSS, …).">
                     <SelectInput value={shapeFamily} onChange={(v) => handleShapeFamilyChange(v as ShapeFamilyKey)}>
                       {shapeFamilyOptions.map((o) => (
@@ -342,6 +369,7 @@ export default function TensionModulePage() {
                       ))}
                     </SelectInput>
                   </Field>
+
                   <Field label="AISC Shape" hint="Ag auto-updates from the database.">
                     <SelectInput
                       value={shapeName}
@@ -372,30 +400,15 @@ export default function TensionModulePage() {
                       <option value="ASD">ASD</option>
                     </SelectInput>
                   </Field>
-
-                  <Field
-                    label="Required Pu / Pa"
-                    hint="Required axial (kips) — LRFD Pu or ASD Pa depending on method."
-                    error={isInvalidNumber(Pu, { min: 0 }) ? "Enter a number ≥ 0." : undefined}
-                  >
-                    <TextInputWithUnit
-                      value={Pu}
-                      onChange={setPu}
-                      unit="kips"
-                      placeholder="e.g. 900"
-                      inputMode="decimal"
-                      className={isInvalidNumber(Pu, { min: 0 }) ? "border-rose-300 focus:border-rose-400 focus:ring-rose-500/10" : undefined}
-                    />
-                  </Field>
                 </div>
 
                 {shape ? (
-                  <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-800">
+                  <div className="mt-4 rounded-2xl bg-[color:var(--surface-2)] px-4 py-3 ring-1 ring-inset ring-[color:var(--border)]/60">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="font-semibold text-slate-900">Section context</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-[color:var(--muted)]">Section context</p>
                       <Badge tone="info">{shape.shape}</Badge>
                     </div>
-                    <div className="mt-2 grid grid-cols-2 gap-2 text-xs font-semibold text-slate-700 sm:grid-cols-4">
+                    <div className="mt-2 grid grid-cols-2 gap-2 text-xs font-semibold text-[color:var(--muted)] sm:grid-cols-4">
                       <span className="tabular-nums">W: {fmt(shape.W, 1)} plf</span>
                       <span className="tabular-nums">Ag: {fmt(shape.A, 3)} in²</span>
                       <span className="tabular-nums">rx: {fmt(shape.rx, 3)} in</span>
@@ -403,46 +416,23 @@ export default function TensionModulePage() {
                     </div>
                   </div>
                 ) : null}
-              </div>
-            </details>
+              </CardBody>
+            </Card>
 
-            <details open className="rounded-2xl border border-slate-200 bg-white" id="tension-net-area">
-              <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
-                2 · Net area (yielding / rupture)
-                <span className="mt-1 block text-xs font-semibold text-slate-600">
-                  Enter areas and U. Use quick defaults for early sizing.
-                </span>
-                <span className="mt-2 inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
-                  Units: in²
-                </span>
-              </summary>
-              <div className="border-t border-slate-200 p-5">
+            <Card id="tension-net-area">
+              <CardHeader title="Net area" description="Areas and shear lag factor (yielding / rupture)." />
+              <CardBody>
                 <div className="mb-3 flex flex-wrap gap-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    type="button"
-                    onClick={() => setU("0.90")}
-                  >
+                  <Button variant="secondary" size="sm" type="button" onClick={() => setU("0.90")}>
                     Typical U = 0.90
                   </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    type="button"
-                    onClick={() => setAn(Ag)}
-                  >
+                  <Button variant="secondary" size="sm" type="button" onClick={() => setAn(Ag)}>
                     Set An = Ag (no holes yet)
                   </Button>
                 </div>
-
                 <div className="grid gap-4 md:grid-cols-2">
                   <Field label="Shear lag factor U" hint="dimensionless">
-                    <TextInput
-                      value={U}
-                      onChange={setU}
-                      placeholder="e.g. 0.90"
-                    />
+                    <TextInput value={U} onChange={setU} placeholder="e.g. 0.90" />
                   </Field>
                   <Field label="Ag" hint="gross area (in²)" error={isInvalidNumber(Ag, { min: 0 }) ? "Enter a number ≥ 0." : undefined}>
                     <TextInputWithUnit
@@ -462,22 +452,22 @@ export default function TensionModulePage() {
                       className={isInvalidNumber(An, { min: 0 }) ? "border-rose-300 focus:border-rose-400 focus:ring-rose-500/10" : undefined}
                     />
                   </Field>
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
-                    <p className="font-semibold text-slate-900">Tip</p>
-                    <p className="mt-1 text-sm">
+                  <div className="rounded-2xl bg-[color:var(--surface-2)] p-4 text-sm text-[color:var(--muted)] ring-1 ring-inset ring-[color:var(--border)]/60">
+                    <p className="text-xs font-semibold uppercase tracking-wide">Tip</p>
+                    <p className="mt-2 text-sm">
                       If you don’t have hole details yet, use <strong>An ≈ Ag</strong> for quick sizing, then refine in Check mode.
                     </p>
                   </div>
                 </div>
-              </div>
-            </details>
+              </CardBody>
+            </Card>
 
             {designSuggestion ? (
-              <Card className="border-[color:var(--brand)]/20 bg-[color:var(--brand)]/5">
+              <Card id="tension-design-suggestion">
+                <CardHeader title="Suggested section" description="Lightest in family that passes (gross = net assumption)." />
                 <CardBody>
-                  <p className="text-sm font-semibold text-slate-950">Suggested section (lightest in family that passes)</p>
-                  <p className="mt-1 text-xl font-extrabold tracking-tight text-slate-950">{designSuggestion.shape}</p>
-                  <p className="mt-1 text-sm text-slate-700">
+                  <p className="text-2xl font-extrabold tracking-tight text-[color:var(--foreground)]">{designSuggestion.shape}</p>
+                  <p className="mt-2 text-sm text-[color:var(--muted)]">
                     {designSuggestion.W} lb/ft — uses gross = net areas and your block-shear inputs; switch to Check to enter real A<sub>n</sub> and holes.
                   </p>
                 </CardBody>
@@ -485,12 +475,12 @@ export default function TensionModulePage() {
             ) : null}
 
             {mode === "design" && designComparisonRows.length > 0 ? (
-              <Card className="shadow-none border border-slate-200">
-                <CardBody className="space-y-2">
-                  <p className="text-sm font-semibold text-slate-900">Section comparison (lightest first, gross = net)</p>
-                  <div className="overflow-x-auto rounded-lg border border-slate-200">
-                    <table className="w-full min-w-[28rem] text-left text-sm text-slate-800">
-                      <thead className="bg-slate-100 text-xs font-semibold uppercase text-slate-600">
+              <Card id="tension-section-compare">
+                <CardHeader title="Section comparison" description="Lightest first (gross = net assumption)." />
+                <CardBody>
+                  <div className="overflow-x-auto rounded-xl ring-1 ring-inset ring-[color:var(--border)]/70 bg-[color:var(--surface)]">
+                    <table className="w-full min-w-[28rem] text-left text-sm text-[color:var(--foreground)]">
+                      <thead className="sticky top-0 z-10 bg-[color:var(--surface-2)] text-xs font-semibold uppercase text-[color:var(--muted)] shadow-[0_1px_0_rgba(15,23,42,0.06)]">
                         <tr>
                           <th className="px-3 py-2">Shape</th>
                           <th className="px-3 py-2">W (plf)</th>
@@ -501,16 +491,16 @@ export default function TensionModulePage() {
                       </thead>
                       <tbody>
                         {designComparisonRows.map((row) => (
-                          <tr key={row.shape} className="border-t border-slate-200">
-                            <td className="px-3 py-2 font-medium">{row.shape}</td>
+                          <tr key={row.shape} className="border-t border-[color:var(--border)]/60">
+                            <td className="px-3 py-2 font-semibold">{row.shape}</td>
                             <td className="px-3 py-2">{fmt(row.W, 1)}</td>
                             <td className="px-3 py-2">{row.gov}</td>
                             <td className="px-3 py-2">{fmt(row.strength)} kips</td>
                             <td className="px-3 py-2">
                               {row.safe ? (
-                                <span className="font-semibold text-emerald-800">SAFE</span>
+                                <span className="font-semibold text-emerald-700">SAFE</span>
                               ) : (
-                                <span className="font-semibold text-rose-800">NOT SAFE</span>
+                                <span className="font-semibold text-rose-700">NOT SAFE</span>
                               )}
                             </td>
                           </tr>
@@ -522,22 +512,17 @@ export default function TensionModulePage() {
               </Card>
             ) : null}
 
-            <details id="tension-block-shear" className="rounded-2xl border border-slate-200 bg-white">
-              <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
-                3 · Block shear + stagger helper
-                <span className="mt-1 block text-xs font-semibold text-slate-600">
-                  Block shear (J4.3) and an optional staggered-net tool (D3) for plate strips.
-                </span>
-              </summary>
-              <div className="border-t border-slate-200 p-5 space-y-4">
+            <Card id="tension-block-shear">
+              <CardHeader title="Block shear + stagger helper" description="Block shear (J4.3) and optional stagger net width tool (D3)." />
+              <CardBody className="space-y-4">
                 <div className="flex flex-wrap gap-2">
                   <Button variant="secondary" size="sm" type="button" onClick={() => setUbs("0.50")}>
                     Typical Ubs = 0.50
                   </Button>
                 </div>
 
-                <Card className="shadow-none border border-slate-200">
-                  <CardBody className="grid gap-4 md:grid-cols-2">
+                <div className="rounded-2xl bg-[color:var(--surface-2)] p-4 ring-1 ring-inset ring-[color:var(--border)]/60">
+                  <div className="grid gap-4 md:grid-cols-2">
                     <Field label="Agv" hint="gross shear area (in²)">
                       <TextInputWithUnit value={Agv} onChange={setAgv} unit="in²" inputMode="decimal" />
                     </Field>
@@ -561,15 +546,14 @@ export default function TensionModulePage() {
                         placeholder="0.5"
                       />
                     </Field>
-                  </CardBody>
-                </Card>
+                  </div>
+                </div>
 
-                <Card className="shadow-none border border-dashed border-slate-300 bg-white">
-                  <CardBody className="space-y-3">
+                <div className="rounded-2xl bg-[color:var(--surface)] p-4 ring-1 ring-inset ring-[color:var(--border)]/60">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div>
-                        <p className="text-sm font-semibold text-slate-950">Tool — staggered net width (AISC D3)</p>
-                        <p className="mt-1 text-sm text-slate-700">
+                        <p className="text-sm font-semibold text-[color:var(--foreground)]">Tool — staggered net width (AISC D3)</p>
+                        <p className="mt-1 text-sm text-[color:var(--muted)]">
                           Computes net width for a plate strip. Use as a helper, then copy A<sub>n</sub> to the net area field.
                         </p>
                       </div>
@@ -600,7 +584,7 @@ export default function TensionModulePage() {
                     </div>
 
                     {staggerHelp ? (
-                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-800">
+                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-[color:var(--surface-2)] p-3 text-sm text-[color:var(--foreground)] ring-1 ring-inset ring-[color:var(--border)]/60">
                         <span className="tabular-nums">
                           Net width = {staggerHelp.netWidth.toFixed(4)} in → A<sub>n</sub> = {staggerHelp.an.toFixed(4)} in²
                         </span>
@@ -630,70 +614,36 @@ export default function TensionModulePage() {
                         </div>
                       </div>
                     ) : (
-                      <p className="text-sm text-slate-600">Enter W, d_h, t, and n to compute.</p>
+                      <p className="text-sm text-[color:var(--muted)]">Enter W, d_h, t, and n to compute.</p>
                     )}
-                  </CardBody>
-                </Card>
-              </div>
-            </details>
-
-            <details id="tension-steps" className="rounded-2xl border border-slate-200 bg-white">
-              <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
-                Steps (show math)
-                <span className="mt-1 block text-xs font-semibold text-slate-600">
-                  Governing: <span className="text-slate-900">{result.governingCase}</span> · Capacity{" "}
-                  <span className="tabular-nums text-slate-900">{fmt(result.controllingStrength)} kips</span>
-                </span>
-                <span className="mt-2 inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
-                  Tip: use “Key steps only” for faster review
-                </span>
-              </summary>
-              <div className="border-t border-slate-200 p-5">
-                <StepsTable steps={result.steps} governingCase={String(result.governingCase)} tools />
-              </div>
-            </details>
+                </div>
+              </CardBody>
+            </Card>
           </div>
 
-          <aside className="md:col-span-4">
-            <div className="sticky top-6 md:top-[calc(var(--app-header-h,104px)+16px)] space-y-4">
-              <div className="hidden md:block">
-                <PageSectionNav
-                  sections={[
-                    { id: "tension-general", label: "General" },
-                    { id: "tension-net-area", label: "Net area" },
-                    { id: "tension-block-shear", label: "Block shear" },
-                    { id: "tension-steps", label: "Steps" },
-                  ]}
-                />
-              </div>
-              <CalculatorActionRail
-                desktopClassName="hidden md:block"
-                hideMobileBar
-                title="Actions"
-                subtitle={`${shapeName} · ${designMethod} · ${mode === "design" ? "Design" : "Check"}`}
-                savedKey={CLIENT_PERSISTENCE.savedAt("tension")}
-                saving={saving}
-                savedAt={savedAt}
-                compare={{
-                  storageKey: CLIENT_PERSISTENCE.compareSnapshot("tension"),
-                  getCurrent: () => ({
-                    title: `Tension — ${shapeName}`,
-                    lines: [
-                      `Method: ${designMethod} · Material: ${selectedMaterial.key}`,
-                      `Mode: ${mode}`,
-                      `Pu = ${Pu} kips`,
-                      `Governing: ${result.governingCase}`,
-                      `Capacity: ${fmt(result.controllingStrength)} kips`,
-                      `Demand: ${fmt(result.demand)} kips`,
-                      `Utilization: ${
-                        result.controllingStrength > 0 ? ((result.demand / result.controllingStrength) * 100).toFixed(1) : "-"
-                      }%`,
-                    ],
-                  }),
-                }}
-                copyText={() =>
-                  [
-                    `Tension — ${shapeName}`,
+          <div className="space-y-4 lg:col-span-5 lg:sticky lg:top-28" id="results">
+            <ResultHero
+              status={result.isSafe ? "safe" : "unsafe"}
+              governing={result.governingCase}
+              capacityLabel={designMethod === "LRFD" ? "Design strength (φPn)" : "Allowable (Pa)"}
+              capacity={`${fmt(result.controllingStrength)} kips`}
+              demandLabel={designMethod === "LRFD" ? "Demand Pu" : "Demand Pa"}
+              demand={`${fmt(result.demand)} kips`}
+              utilization={result.controllingStrength > 0 ? result.demand / result.controllingStrength : undefined}
+              metaRight={<Badge tone="info">{selectedMaterial.key}</Badge>}
+            />
+
+            <CalculatorActionRail
+              title="Actions"
+              subtitle={`${shapeName} · ${designMethod} · ${mode === "design" ? "Design" : "Check"}`}
+              savedKey={CLIENT_PERSISTENCE.savedAt("tension")}
+              saving={saving}
+              savedAt={savedAt}
+              compare={{
+                storageKey: CLIENT_PERSISTENCE.compareSnapshot("tension"),
+                getCurrent: () => ({
+                  title: `Tension — ${shapeName}`,
+                  lines: [
                     `Method: ${designMethod} · Material: ${selectedMaterial.key}`,
                     `Mode: ${mode}`,
                     `Pu = ${Pu} kips`,
@@ -703,67 +653,105 @@ export default function TensionModulePage() {
                     `Utilization: ${
                       result.controllingStrength > 0 ? ((result.demand / result.controllingStrength) * 100).toFixed(1) : "-"
                     }%`,
-                  ].join("\n")
-                }
-                onGoResults={() => smoothScrollTo("results")}
-                onGoSteps={() => smoothScrollTo("tension-steps")}
-                csv={{ filename: "tension-export.csv", rows: csvRows }}
-                json={{ data: { result, inputs: { material, shapeName, designMethod, mode, Ag, An, U, Pu, Agv, Anv, Agt, Ant, ubs } } }}
-                onReset={resetInputs}
-              />
-              <div id="results">
-              <ResultHero
-                status={result.isSafe ? "safe" : "unsafe"}
-                governing={result.governingCase}
-                capacityLabel={designMethod === "LRFD" ? "Design strength (φPn)" : "Allowable (Pa)"}
-                capacity={`${fmt(result.controllingStrength)} kips`}
-                demandLabel={designMethod === "LRFD" ? "Demand Pu" : "Demand Pa"}
-                demand={`${fmt(result.demand)} kips`}
-                utilization={result.controllingStrength > 0 ? result.demand / result.controllingStrength : undefined}
-                metaRight={<Badge tone="info">{selectedMaterial.key}</Badge>}
-              />
-              </div>
+                  ],
+                }),
+              }}
+              copyText={() =>
+                [
+                  `Tension — ${shapeName}`,
+                  `Method: ${designMethod} · Material: ${selectedMaterial.key}`,
+                  `Mode: ${mode}`,
+                  `Pu = ${Pu} kips`,
+                  `Governing: ${result.governingCase}`,
+                  `Capacity: ${fmt(result.controllingStrength)} kips`,
+                  `Demand: ${fmt(result.demand)} kips`,
+                ].join("\n")
+              }
+              onGoResults={() => smoothScrollTo("results")}
+              onGoSteps={() => {
+                setDetailsTab("steps");
+                smoothScrollTo("details");
+              }}
+              csv={{ filename: "tension-export.csv", rows: csvRows }}
+              json={{ data: { result, inputs: { material, shapeName, designMethod, mode, Ag, An, U, Pu, Agv, Anv, Agt, Ant, ubs } } }}
+              onReset={resetInputs}
+            />
+          </div>
+        </div>
 
-              <Card className="border-slate-200">
-                <CardBody>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Failure modes</p>
-                  <div className="mt-3 space-y-2">
-                    {failureModeRows.map((row) => (
-                      <div
-                        key={row.key}
-                        className={[
-                          "rounded-xl border p-3",
-                        row.name.toLowerCase().includes(String(result.governingCase).toLowerCase())
-                            ? "border-[color:var(--brand)]/25 bg-[color:var(--brand)]/5"
-                            : "border-slate-200 bg-slate-50",
-                        ].join(" ")}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <div className="text-xs font-semibold text-slate-700">{row.name}</div>
-                            <div className="mt-1 text-base font-extrabold tabular-nums text-slate-950">
-                              {fmt(row.cap)} {row.unit}
-                            </div>
-                          </div>
-                          <div className="text-right text-xs font-semibold text-slate-700">
-                            <div>Util.</div>
-                            <div className="tabular-nums text-slate-950">{(row.ratio * 100).toFixed(1)}%</div>
-                          </div>
-                        </div>
-                        <div className="mt-2">
-                          <UtilizationBar ratio={row.ratio} />
+        <ModuleDetailsTabs
+          title="Details"
+          description="Review steps, capacity breakdown, and section snapshot."
+          value={detailsTab}
+          onChange={setDetailsTab}
+          tabs={[
+            {
+              id: "steps",
+              label: "Steps",
+              panel: (
+                <Card id="tension-steps">
+                  <CardHeader
+                    title="Steps"
+                    description={
+                      <>
+                        Governing: <span className="font-semibold text-[color:var(--foreground)]">{result.governingCase}</span> · Capacity{" "}
+                        <span className="font-semibold tabular-nums text-[color:var(--foreground)]">{fmt(result.controllingStrength)} kips</span>
+                      </>
+                    }
+                  />
+                  <CardBody>
+                    <StepsTable steps={result.steps} governingCase={String(result.governingCase)} tools />
+                  </CardBody>
+                </Card>
+              ),
+            },
+            {
+              id: "modes",
+              label: "Failure modes",
+              panel: (
+                <Card id="tension-failure-modes">
+                  <CardHeader title="Failure modes" description="Capacity breakdown by limit state." />
+                  <CardBody className="space-y-2">
+                {failureModeRows.map((row, idx) => (
+                  <div
+                    key={row.key}
+                    className={[
+                      "rounded-xl border p-3",
+                      idx % 2 === 1 ? "bg-[color:var(--surface-2)]/45" : "",
+                      row.name.toLowerCase().includes(String(result.governingCase).toLowerCase())
+                        ? "border-[color:var(--brand-ring)] bg-[color:var(--surface-2)]"
+                        : "border-[color:var(--border)] bg-[color:var(--surface)]",
+                    ].join(" ")}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold text-[color:var(--muted)]">{row.name}</div>
+                        <div className="mt-1 text-base font-extrabold tabular-nums text-[color:var(--foreground)]">
+                          {fmt(row.cap)} {row.unit}
                         </div>
                       </div>
-                    ))}
+                      <div className="text-right text-xs font-semibold text-[color:var(--muted)]">
+                        <div>Util.</div>
+                        <div className="tabular-nums text-[color:var(--foreground)]">{(row.ratio * 100).toFixed(1)}%</div>
+                      </div>
+                    </div>
+                    <div className="mt-2">
+                      <UtilizationBar ratio={row.ratio} />
+                    </div>
                   </div>
-                </CardBody>
-              </Card>
-
-              {shape ? (
-                <Card className="border-slate-200">
+                ))}
+                  </CardBody>
+                </Card>
+              ),
+            },
+            {
+              id: "section",
+              label: "Section",
+              panel: shape ? (
+                <Card id="tension-section-snapshot">
+                  <CardHeader title="Section snapshot" description="Key AISC properties for quick context." />
                   <CardBody>
-                    <p className="text-xs font-semibold uppercase text-slate-500">Section snapshot</p>
-                    <div className="mt-3 grid grid-cols-2 gap-2 text-sm text-slate-800">
+                    <div className="grid grid-cols-2 gap-2 text-sm text-[color:var(--foreground)]/90">
                       <Row label="Shape" value={shape.shape} />
                       <Row label="W" value={`${fmt(shape.W)} plf`} />
                       <Row label="d" value={`${fmt(shape.d)} in`} />
@@ -775,56 +763,17 @@ export default function TensionModulePage() {
                     </div>
                   </CardBody>
                 </Card>
-              ) : null}
-            </div>
-          </aside>
-        </CardBody>
-      </Card>
-      <div className="mt-8 md:mt-10">
-      <div id="actions">
-      <CalculatorActionRail
-        mobileOnly
-        subtitle="Tension actions"
-        savedKey={CLIENT_PERSISTENCE.savedAt("tension")}
-        saving={saving}
-        savedAt={savedAt}
-        compare={{
-          storageKey: CLIENT_PERSISTENCE.compareSnapshot("tension"),
-          getCurrent: () => ({
-            title: `Tension — ${shapeName}`,
-            lines: [
-              `Method: ${designMethod} · Material: ${selectedMaterial.key}`,
-              `Mode: ${mode}`,
-              `Pu = ${Pu} kips`,
-              `Governing: ${result.governingCase}`,
-              `Capacity: ${fmt(result.controllingStrength)} kips`,
-              `Demand: ${fmt(result.demand)} kips`,
-              `Utilization: ${
-                result.controllingStrength > 0 ? ((result.demand / result.controllingStrength) * 100).toFixed(1) : "-"
-              }%`,
-            ],
-          }),
-        }}
-        copyText={() =>
-          [
-            `Tension — ${shapeName}`,
-            `Method: ${designMethod} · Material: ${selectedMaterial.key}`,
-            `Mode: ${mode}`,
-            `Pu = ${Pu} kips`,
-            `Governing: ${result.governingCase}`,
-            `Capacity: ${fmt(result.controllingStrength)} kips`,
-            `Demand: ${fmt(result.demand)} kips`,
-          ].join("\n")
-        }
-        onGoResults={() => smoothScrollTo("results")}
-        onGoSteps={() => smoothScrollTo("tension-steps")}
-        csv={{ filename: "tension-export.csv", rows: csvRows }}
-        json={{ data: { result, inputs: { material, shapeName, designMethod, mode, Ag, An, U, Pu, Agv, Anv, Agt, Ant, ubs } } }}
-        onReset={resetInputs}
-      />
+              ) : (
+                <Card id="tension-section-snapshot">
+                  <CardHeader title="Section snapshot" description="Select an AISC shape to show section properties." />
+                  <CardBody className="text-sm text-[color:var(--muted)]">—</CardBody>
+                </Card>
+              ),
+            },
+          ]}
+          className="mt-8"
+        />
       </div>
-      </div>
-      <PageFooterNav currentHref="/tension" />
     </AppShell>
   );
 }

@@ -1,45 +1,25 @@
-# Structural Steel Calculators
+# SpanLedger Steel (PWA) — Structural Steel Calculators
 
-Structural Steel Calculators is a web-based engineering tool for civil engineering students. It runs AISC-style checks in the browser using **local TypeScript calculation modules** and provides a lightweight, mobile-friendly UI with offline support via a **Progressive Web App (PWA)**.
+SpanLedger Steel is a browser-first set of structural steel calculators designed for **learning and coursework workflows**. It runs AISC-360–style checks using **local TypeScript calculation modules** (no external calculation service), provides step-by-step breakdowns for review, and supports offline-friendly usage via a **Progressive Web App (PWA)**.
 
-Repository: `github.com/4-0-4Not-Found/Civil-E-Cal`
-
----
-
-## Description
-
-This project is designed to support coursework and self-study by:
-
-- Providing clear inputs, outputs, and step-by-step breakdowns where available
-- Saving work locally in the browser as you iterate
-- Generating a combined **Report** view suitable for printing or exporting as a PDF
-
-All engineering computations are performed locally (no external calculation service). The project is intended for **educational use**.
+> Educational tool only: verify real designs with applicable standards and qualified review.
 
 ---
 
 ## Features
 
-- **Multiple calculators (modules)**: Tension, Compression, Beam, and Connections
-- **Report**: Combined snapshot of saved module work from this browser
-- **Info**: Capabilities, units, limitations, and workflow tips
-- **Local persistence**: Inputs auto-save to `localStorage`
-- **Exports**: CSV/JSON where offered in-module
-- **Responsive + accessible UI**: Mobile-first layouts, keyboard-friendly controls
-- **PWA + offline support**: Works offline after an initial load (see details below)
-
----
-
-## Modules overview
-
-| Module | Route | Summary |
-|---|---|---|
-| **Tension** | `/tension` | Gross yielding, net-section fracture, block shear (with an optional stagger helper) |
-| **Compression** | `/compression` | Member compression/buckling-style checks with K and length inputs |
-| **Beam (Bending & Shear)** | `/bending-shear` | Flexure, shear, and deflection checks; includes a load-to-demand helper |
-| **Connections** | `/connections` | Bolt shear/bearing, slip-critical slip, bolt tension and interaction; fillet/groove weld checks and optional helpers |
-| **Report** | `/report` | Reads saved module state and renders a printable project summary |
-| **Info** | `/info` | What the tool covers, units/conventions, limitations, and tips |
+- **Four calculator modules**: Tension, Compression, Beam (Bending & Shear), Connections
+- **Report / print-to-PDF**: combined project snapshot computed from saved module inputs
+- **Autosave**: inputs persist to `localStorage` per module (device + browser scoped)
+- **Compare runs**: pin a baseline snapshot and compare current results (browser-local)
+- **Export & sharing**
+  - **Copy summary** (plain text)
+  - **Download CSV** (Excel-compatible) where provided
+  - **Copy JSON** snapshot (clipboard) where provided
+  - **Download XLSX** workbook where provided
+  - **Project backup/restore**: download one JSON file for all modules and restore it later
+- **PWA/offline support**: caches core app shell and provides `/offline` fallback
+- **Responsive UI**: mobile-first layout, keyboard-friendly controls
 
 ---
 
@@ -48,61 +28,152 @@ All engineering computations are performed locally (no external calculation serv
 - **Framework**: Next.js 16 (App Router)
 - **UI**: React 19 + TypeScript
 - **Styling**: Tailwind CSS v4
-- **PWA**: `next-pwa`
-- **Tests**: Vitest (calculation regression tests)
+- **PWA**: `next-pwa` (service worker emitted to `public/` during production build)
+- **Validation**: Zod schemas for persisted drafts (module-level)
+- **Testing**: Vitest (calculation regression tests)
 
 ---
 
-## Project structure
+## System architecture (high level)
 
-The project uses the **Next.js App Router**. These folders are the main entry points for both users and developers:
+### Request/compute model
 
-```text
-src/
-├── app/                      # App Router routes (pages) and route handlers (API)
-│   ├── page.tsx              # Home dashboard
-│   ├── tension/page.tsx      # Tension module page
-│   ├── compression/page.tsx  # Compression module page
-│   ├── bending-shear/page.tsx# Beam module page
-│   ├── connections/page.tsx  # Connections module page
-│   ├── report/page.tsx       # Report page (reads saved browser state)
-│   ├── info/page.tsx         # Help, units, limitations
-│   ├── offline/page.tsx      # Offline fallback page (PWA)
-│   └── api/                  # Route handlers used for logging/diagnostics (see below)
-│
-├── components/               # Reusable UI components (cards, fields, buttons, nav, tables, etc.)
-└── lib/                      # Calculation logic, domain data, formatting, and storage keys
+This system is intentionally “frontend-heavy”:
 
-public/                       # Static assets + generated service worker files (PWA)
-```
+- **Calculations run locally** by importing pure TypeScript functions from `src/lib/limit-state-engine/**`.
+- Each module page:
+  - manages form state in React,
+  - converts string inputs → numeric inputs,
+  - calls the calculation engine,
+  - renders results + a structured step list.
+- The **Report** page re-reads saved inputs and **recomputes** outputs using the same calculation engine (so module and report output remain consistent).
 
-### Notes for developers
+### Routes (App Router)
 
-- **Engineering logic** lives under `src/lib/` (pure TypeScript modules).
-- **UI components** should remain reusable and calculation-agnostic where possible.
-- **Routes/pages** under `src/app/` wire inputs to calculations and render results.
+User-facing routes:
+
+- `/` — Home dashboard
+- `/tension` — Tension module
+- `/compression` — Compression module
+- `/bending-shear` — Beam module (bending/shear/deflection)
+- `/connections` — Connections module (bolts + welds)
+- `/report` — Combined report snapshot (print/PDF friendly)
+- `/info` — In-app documentation: scope, units, limitations, tips
+- `/offline` — PWA offline fallback page
+
+Other routes:
+
+- `/scope` — redirect to `/info`
+- `/workspace` — legacy route; currently redirects to `/`
+
+### “Backend” and API routes
+
+There is **no application backend** for engineering computations (no database, no remote compute service). The repository includes a small set of API routes under `src/app/api/**` used for development diagnostics.
+
+Current API routes:
+
+- `GET /api/where` — dev-only environment info (**404 in production**)
+- `POST /api/debug-log` — dev diagnostic log (**no-op in production**)
+- `GET /api/agent-beacon` — dev diagnostic beacon (**no-op in production**)
+- `GET/POST /api/agent-log` — dev diagnostic log (**no-op in production**)
+- `POST /api/debug184fe2` — dev-only diagnostic file log (**hard no-op in production**; client calls are gated to dev)
 
 ---
 
-## Installation guide
+## Frontend structure and design system
 
-### Prerequisites
+The UI is organized into:
 
-- Node.js (LTS recommended)
-- npm
+- `src/app/**`: module pages and supporting routes (`layout.tsx`, module `page.tsx` files, API routes)
+- `src/components/**`: reusable components
+  - **Layout/navigation**: `AppShell`, `AppHeader`, `PageFooterNav`, section navigation
+  - **UI primitives**: `Card`, `Button`, `Field`, `InputGroup`, `Toast`, `ConfirmDialog`
+  - **Results**: `ResultHero`, `UtilizationBar`, `StepsTable`
+  - **Actions**: `CalculatorActionRail` (copy/export/compare/reset)
+  - **Compare**: `CompareDrawer` (pin vs current)
+- `src/features/**`: cross-page UX utilities and feature modules (e.g. autosave hook)
+- `src/lib/**`: calculation engine, domain data, formatting, storage keys, report summarizers
+- `src/data/**`: engineering data and verification documents
 
-### Install and run (development)
+Styling is Tailwind-first with small UI primitives used to keep module pages consistent.
+
+---
+
+## Module breakdown
+
+| Module | Route | What it does (summary) |
+|---|---|---|
+| **Tension** | `/tension` | Gross yielding, net-section rupture, block shear. Includes stagger helper. Supports LRFD/ASD and “check vs design” modes. |
+| **Compression** | `/compression` | Member compression capacity with KL/r sensitivity. Supports LRFD/ASD. |
+| **Beam** | `/bending-shear` | Flexure, shear, and deflection checks. Includes helper inputs to derive demands from loads/span. Supports “check vs design” modes. |
+| **Connections** | `/connections` | Bolt and weld checks (shear/bearing, slip-critical, tension, interaction, fillet weld; plus optional helpers). |
+| **Report** | `/report` | Reads saved module inputs from this browser and recomputes a combined snapshot for printing/PDF. |
+| **Info** | `/info` | Scope, units, limitations, and workflow tips. |
+
+### Calculation engine entry points (reference)
+
+The core calculations live in `src/lib/limit-state-engine/**`. Typical entry points:
+
+- `calculateTensionDesign(...)` (`src/lib/limit-state-engine/tension.ts`)
+- `calculateCompressionDesign(...)` (`src/lib/limit-state-engine/compression.ts`)
+- `calculateBendingShearDesign(...)` (`src/lib/limit-state-engine/bending.ts`)
+- Connections checks in `src/lib/limit-state-engine/connections.ts` and `connections-advanced.ts`
+
+Each returns a structured `CalculationOutput` (see `src/lib/types/calculation`) containing:
+
+- **results**: per-limit-state capacities
+- **governingCase** and **controllingStrength**
+- **demand** and **isSafe**
+- **steps**: a structured step-by-step list rendered by `StepsTable`
+
+---
+
+## Data flow: input → output (end-to-end)
+
+1. **User edits inputs** on a module page (`src/app/<module>/page.tsx`).
+2. Inputs remain as **strings** for form control, then are parsed into numbers for compute.
+3. The module calls its evaluator / calculation function and renders:
+   - overall status (safe/unsafe/invalid),
+   - governing case and capacities/demand,
+   - limit-state table(s) and step-by-step breakdown.
+4. In parallel, inputs are **autosaved** to `localStorage` using `useBrowserDraft(...)`.
+5. The **Report** page reads saved module JSON blobs and recomputes outputs to produce a print-ready snapshot.
+
+---
+
+## Storage, autosave, and privacy
+
+### What is stored
+
+Module inputs are persisted in `localStorage` under these keys (`src/lib/storage/keys.ts`):
+
+- `spanledger/v1/forms/tension`
+- `spanledger/v1/forms/compression`
+- `spanledger/v1/forms/beam-flexure`
+- `spanledger/v1/forms/connections`
+
+Additional UI-level keys (theme, compare snapshots, last route, etc.) are defined in `src/lib/client-persistence.ts`.
+
+### Scope and behavior
+
+- Storage is **device + browser** scoped.
+- Clearing site data clears saved inputs.
+- Report output depends on what is saved locally; it does not fetch server-side state.
+
+---
+
+## Usage guide
+
+### Run locally (development)
 
 ```bash
-git clone https://github.com/4-0-4Not-Found/Civil-E-Cal.git
-cd Civil-E-Cal
 npm install
 npm run dev
 ```
 
-Then open `http://localhost:3000`.
+Open `http://localhost:3000`.
 
-### Production build
+### Production build (local)
 
 ```bash
 npm run build
@@ -116,72 +187,89 @@ npm run lint
 npm test
 ```
 
----
+### Typical workflow
 
-## Usage guide
-
-### How students typically use the tool
-
-1. Start on **Home** (`/`) and open a module.
-2. Enter the required inputs (steel, section, demands, method, etc.).
-3. Review results and (when available) step-by-step calculation tables.
-4. Use the in-module actions to **copy**, **export**, and navigate to key sections (Results/Steps).
-5. Open **Report** (`/report`) to generate a combined summary from the values saved in this browser.
-
-### Report behavior (important)
-
-The Report page reads module state from **this device + this browser** via `localStorage`. If you switch browsers, clear site data, or use a different device, your saved module inputs will not be present unless you restore them using the app’s backup/restore flow (when used).
+1. Start at **Home** (`/`) and open a module.
+2. Enter material/shape/demand inputs.
+3. Use the action rail to:
+   - copy a summary,
+   - export CSV / JSON (and XLSX where offered),
+   - pin and compare runs,
+   - reset inputs stored in this browser.
+4. Open **Report** (`/report`) and **Print / Save PDF** for submission or review.
 
 ---
 
-## PWA and offline support
+## Key workflows (details)
 
-This project is configured as a **Progressive Web App** using `next-pwa`.
+### Compare runs (pin vs current)
 
-- After the app loads once, the service worker caches core assets.
-- If you later open the app with no network, the app may show the **Offline** page (`/offline`) depending on what is cached.
-- Installation is supported via the browser’s “Install” UX (where available).
+Each module can store a “pinned” snapshot in the browser and compare it to the current run:
 
----
+- Pin current run → saved in `localStorage` under `CLIENT_PERSISTENCE.compareSnapshot(<module>)`
+- Compare view parses common metrics (capacity/demand/utilization/governing) from the module’s summary lines
 
-## Design and UX principles
+### Project backup/restore
 
-- **Mobile-first** layouts with sensible spacing and tap targets
-- **Readable engineering output** (tabular numbers, clear labels, minimal visual noise)
-- **Keyboard navigation** and visible focus states
-- **Avoid horizontal scrolling** except where tables intentionally scroll
+The app can export a single JSON bundle containing all module inputs and later restore them:
 
----
+- **Backup**: generates a JSON file from the four module stores
+- **Restore**: writes restored objects back into module stores (browser-local)
 
-## API routes (logging & diagnostics)
-
-API routes live under `src/app/api/`.
-
-- These endpoints are intended for **development diagnostics**.
-- In production builds, diagnostic routes are designed to be **no-ops or unavailable** to keep deployments safe and lightweight.
+This is the recommended way to move work between browsers/devices.
 
 ---
 
-## Contribution guidelines
+## PWA / offline behavior
 
-- Keep changes **small and focused**.
-- Do not change correct engineering formulas or behavior without adding/adjusting tests under `src/lib/`.
-- Before opening a PR, run:
+PWA is configured in `next.config.ts` using `next-pwa`:
 
-```bash
-npm run lint
-npm test
-npm run build
-```
+- Service worker is emitted to `public/sw.js` during `npm run build`
+- PWA behavior is **disabled in development** and enabled in production builds
+- `/offline` is used as a document fallback when offline and content is unavailable
+
+Practical expectations:
+
+- After a successful online load, core assets can be cached.
+- Offline navigation depends on cache state; when a route cannot be served from cache, the app falls back to `/offline`.
+
+---
+
+## Deployment (Vercel)
+
+### Production readiness notes
+
+- The app builds cleanly with `next build` and runs with `next start`.
+- Calculations run client-side; there is no database or external compute dependency.
+- Diagnostic API routes are **dev-focused** and are gated/no-op in production to avoid serverless filesystem/logging issues.
+
+### Deploy steps
+
+1. Push the repository to GitHub.
+2. In Vercel:
+   - Framework preset: **Next.js**
+   - Build command: `npm run build`
+   - Output: default (Next.js)
+3. Deploy. No required environment variables are expected for baseline operation.
+
+If you change caching/PWA behavior, always validate on a Vercel preview deployment (service workers can make debugging confusing if older caches persist).
+
+---
+
+## Future improvements (optional)
+
+- Expand regression coverage for edge cases and boundary conditions (see `src/data/VERIFICATION_TESTS.md`).
+- Add stronger schema validation for backup/restore to provide clearer user feedback on invalid bundles.
+- Performance profiling: reduce unnecessary UI re-renders while keeping calculations deterministic and readable.
 
 ---
 
 ## License
 
-MIT License. (If your repository includes a `LICENSE` file, GitHub will display the license automatically.)
+MIT (see `LICENSE`).
 
 ---
 
 ## Disclaimer
 
-This tool is for **educational use**. It does not replace professional engineering judgment, peer review, or building code compliance. Verify critical designs with appropriate standards and qualified personnel.
+This tool is for **educational use** only. It does not replace professional engineering judgment, peer review, or code-compliant design checks. Always validate critical designs with appropriate standards and qualified personnel.

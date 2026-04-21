@@ -25,50 +25,64 @@ export function ResultHero(props: Props) {
         : { tone: "bad" as const, label: "NOT SAFE" };
 
   return (
-    <Card className="border-slate-200">
+    <Card className="border-[color:var(--accent-weak)] bg-[color:var(--mint)] shadow-[var(--shadow-sm)]">
       <CardBody>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[color:var(--muted)]">
               {props.title ?? "Status"}
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <Badge tone={badge.tone}>{badge.label}</Badge>
               {props.utilization != null ? (
-                <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold tabular-nums text-slate-800">
-                  Util. {(props.utilization * 100).toFixed(1)}%
+                <span className="inline-flex items-baseline gap-1 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-2.5 py-1 text-xs font-semibold tabular-nums text-[color:var(--foreground)]/80">
+                  <span className="text-[11px] font-semibold text-[color:var(--muted)]">Util.</span>
+                  <span className="text-sm font-extrabold text-[color:var(--foreground)]">{(props.utilization * 100).toFixed(1)}%</span>
                 </span>
               ) : null}
             </div>
             {props.governing ? (
-              <p className="mt-2 break-words text-xs font-semibold text-slate-700 sm:truncate">
-                Governing: <span className="text-slate-950">{props.governing}</span>
+              <p className="mt-2 break-words text-xs font-semibold text-[color:var(--muted)] sm:truncate">
+                Governing: <span className="text-[color:var(--foreground)]">{props.governing}</span>
               </p>
             ) : null}
           </div>
           {props.metaRight ? <div className="shrink-0">{props.metaRight}</div> : null}
         </div>
 
-        <details className="mt-4 rounded-xl border border-slate-200 bg-slate-50/40 open:bg-white">
-          <summary className="min-h-11 cursor-pointer list-none px-3 py-2.5 text-sm font-semibold text-slate-900 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10 [&::-webkit-details-marker]:hidden">
+        {/* Key outputs (always visible; reduces need to expand details). */}
+        <div className="mt-4 grid gap-2 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-3 text-sm shadow-sm">
+          <Row
+            label={props.capacityLabel}
+            value={<span className="font-semibold tabular-nums text-[color:var(--foreground)]">{props.capacity}</span>}
+          />
+          <Row
+            label={props.demandLabel}
+            value={<span className="font-semibold tabular-nums text-[color:var(--foreground)]">{props.demand}</span>}
+          />
+          {props.utilization != null ? (
+            <div className="mt-2">
+              <div className="mb-1 flex items-baseline justify-between gap-2 text-xs font-semibold text-[color:var(--muted)]">
+                <span>Utilization</span>
+                <span className="tabular-nums text-[color:var(--foreground)]/80">{(props.utilization * 100).toFixed(1)}%</span>
+              </div>
+              <UtilizationBar ratio={props.utilization} />
+            </div>
+          ) : null}
+        </div>
+
+        <details className="mt-4 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)]/65 open:bg-[color:var(--surface)]">
+          <summary className="min-h-11 cursor-pointer list-none px-4 py-3 text-sm font-semibold text-[color:var(--foreground)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10 [&::-webkit-details-marker]:hidden">
             Capacity & demand details
-            <span className="ml-2 text-xs font-medium text-slate-500">(toggle)</span>
+            <span className="ml-2 text-xs font-medium text-[color:var(--muted)]">(toggle)</span>
           </summary>
-          <div className="border-t border-slate-200 px-3 py-3">
+          <div className="border-t border-[color:var(--border)]/35 px-4 py-4">
             <div className="grid gap-2 text-sm">
-              <Row
-                label={props.capacityLabel}
-                value={<span className="font-semibold tabular-nums text-slate-950">{props.capacity}</span>}
-              />
-              <Row
-                label={props.demandLabel}
-                value={<span className="font-semibold tabular-nums text-slate-950">{props.demand}</span>}
-              />
               {props.utilization != null ? (
                 <div className="mt-2">
-                  <div className="mb-1 flex items-baseline justify-between gap-2 text-xs font-semibold text-slate-600">
+                  <div className="mb-1 flex items-baseline justify-between gap-2 text-xs font-semibold text-[color:var(--muted)]">
                     <span>Utilization</span>
-                    <span className="tabular-nums text-slate-800">
+                    <span className="tabular-nums text-[color:var(--foreground)]/80">
                       {(props.utilization * 100).toFixed(1)}%
                     </span>
                   </div>
@@ -88,7 +102,7 @@ export function ResultHero(props: Props) {
 function Row(props: { label: string; value: ReactNode }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
-      <span className="min-w-0 text-slate-600">{props.label}</span>
+      <span className="min-w-0 text-[color:var(--muted)]">{props.label}</span>
       <span className="min-w-0 text-right break-words">{props.value}</span>
     </div>
   );

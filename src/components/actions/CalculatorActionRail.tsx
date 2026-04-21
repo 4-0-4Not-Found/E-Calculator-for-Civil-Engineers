@@ -9,22 +9,11 @@ import { ExportJsonButton } from "@/components/ExportJsonButton";
 import { cn } from "@/lib/utils";
 import { CompareDrawer, type CompareSnapshot } from "@/components/compare/CompareDrawer";
 import { modalOverlayClass, modalPanelClass, useModalA11y } from "@/components/ui/modal";
+import { formatRelativeTime } from "@/lib/format/relativeTime";
 
 type CsvSpec = { filename: string; rows: string[][] };
 type JsonSpec = { data: unknown };
 type CompareSpec = { storageKey: string; getCurrent: () => Omit<CompareSnapshot, "ts"> };
-
-function formatRelative(ts: number) {
-  const diff = Date.now() - ts;
-  if (!Number.isFinite(diff)) return null;
-  if (diff < 15_000) return "just now";
-  const min = Math.floor(diff / 60_000);
-  if (min < 60) return `${min}m ago`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr}h ago`;
-  const day = Math.floor(hr / 24);
-  return `${day}d ago`;
-}
 
 export function CalculatorActionRail(props: {
   desktopClassName?: string;
@@ -32,6 +21,8 @@ export function CalculatorActionRail(props: {
   mobileOnly?: boolean;
   /** When true, do not render the fixed mobile bar (use on the in-page / sidebar rail so only one bottom bar exists). */
   hideMobileBar?: boolean;
+  /** Increment to programmatically open the mobile sheet. */
+  openSheetTick?: number;
   title?: string;
   subtitle?: string;
   /** LocalStorage key for last-saved timestamp (see `CLIENT_PERSISTENCE.savedAt`). */
@@ -73,13 +64,14 @@ export function CalculatorActionRail(props: {
     // So we render no saved label until after first client mount.
     if (!hydrated) return null;
     if (props.saving) return "Saving…";
-    if (props.savedAt && Number.isFinite(props.savedAt)) return `Saved ${formatRelative(props.savedAt) ?? "recently"}`;
+    if (props.savedAt && Number.isFinite(props.savedAt))
+      return `Saved ${formatRelativeTime(props.savedAt) ?? "recently"}`;
     if (!props.savedKey) return null;
     try {
       const raw = localStorage.getItem(props.savedKey);
       const ts = raw ? Number(raw) : NaN;
       if (!Number.isFinite(ts)) return null;
-      return `Saved ${formatRelative(ts) ?? "recently"}`;
+      return `Saved ${formatRelativeTime(ts) ?? "recently"}`;
     } catch {
       return null;
     }
@@ -95,6 +87,13 @@ export function CalculatorActionRail(props: {
     initialFocusRef: sheetCloseRef,
     containerRef: sheetPanelRef,
   });
+
+  useEffect(() => {
+    if (!hydrated) return;
+    if (!props.openSheetTick) return;
+    setSheetOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.openSheetTick, hydrated]);
 
   const header = useMemo(() => {
     if (!props.title && !props.subtitle) return null;

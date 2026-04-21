@@ -22,7 +22,7 @@ export function ThemeToggle() {
       onClick={cycle}
       title={label}
       aria-label={label}
-      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-base text-slate-800 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/15 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+      className="inline-flex min-h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#2d4a3e]/15 bg-[#f0f9f4] text-base text-[#2d4a3e] shadow-sm transition hover:bg-[#e7f4ee] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#2d4a3e]/10 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
     >
       <span aria-hidden="true">{glyph}</span>
     </button>

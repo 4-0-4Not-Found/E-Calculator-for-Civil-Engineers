@@ -18,14 +18,15 @@ import { CLIENT_PERSISTENCE } from "@/lib/client-persistence";
 import { STORAGE } from "@/lib/storage/keys";
 import { AppShell } from "@/components/layout/AppShell";
 import { ResultHero } from "@/components/results/ResultHero";
-import { PageFooterNav } from "@/components/navigation/PageFooterNav";
 import { UtilizationBar } from "@/components/ui/UtilizationBar";
 import { TextInputWithUnit } from "@/components/ui/InputGroup";
 import { CalculatorActionRail } from "@/components/actions/CalculatorActionRail";
-import { PageSectionNav } from "@/components/navigation/PageSectionNav";
 import { useBrowserDraft } from "@/features/module-runtime/useBrowserDraft";
 import { smoothScrollTo } from "@/features/module-runtime/scroll";
 import { bendingDefaults, bendingDraftSchema, evaluateBending } from "@/features/steel/bending/module-config";
+import { ModuleHero } from "@/components/layout/ModuleHero";
+import { ModuleDetailsTabs } from "@/components/layout/ModuleDetailsTabs";
+import { formatRelativeTime } from "@/lib/format/relativeTime";
 
 export default function BendingShearPage() {
   const [designMethod, setDesignMethod] = useState<"LRFD" | "ASD">(bendingDefaults.designMethod);
@@ -246,36 +247,34 @@ export default function BendingShearPage() {
     return !Number.isFinite(n) || n < min;
   };
 
+  const [detailsTab, setDetailsTab] = useState<"steps" | "strengths" | "states">("states");
+
   return (
     <AppShell>
-      <Card>
-        <CardHeader
-          title="Bending, Shear & Deflection"
-          description="Simply supported strong axis: rolled W-shapes (full F6/F2) or rectangular HSS (approximate F7/G-style limits in-engine). Design mode suggests lightest W only. Inputs save in this browser."
+      <div className="space-y-8 md:space-y-10">
+        <ModuleHero
+          eyebrow="steel module"
+          title={
+            <>
+              Bending{" "}
+              <span className="text-[color:var(--foreground)]">, Shear &amp; Deflection</span>
+            </>
+          }
+          description="Simply supported strong axis: rolled W-shapes (full F6/F2) or rectangular HSS (approximate limits in-engine). Design mode suggests lightest W only. Inputs save in this browser."
+          chips={[
+            { key: "saved", label: saving ? "Saving…" : savedAt ? `Saved ${formatRelativeTime(savedAt) ?? "recently"}` : "Not saved yet" },
+            { key: "mat", label: steelMaterialMap[material].key },
+            { key: "method", label: designMethod },
+            { key: "mode", label: mode === "design" ? "Design" : "Check" },
+          ]}
+          image={{ src: "/assets/bending.png" }}
         />
-        <CardBody className="grid gap-6 md:grid-cols-12 md:gap-8">
-          <div className="md:col-span-12 md:hidden">
-            <PageSectionNav
-              sections={[
-                { id: "beam-general", label: "General" },
-                { id: "beam-loads", label: "Loads" },
-                { id: "beam-check", label: "Checks" },
-                { id: "beam-steps", label: "Steps" },
-              ]}
-            />
-          </div>
-          <div className="md:col-span-8 grid gap-4">
-            <details open className="rounded-2xl border border-slate-200 bg-white" id="beam-general">
-              <summary className="min-h-11 cursor-pointer px-4 py-3.5 text-sm font-extrabold tracking-tight text-slate-950 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10 sm:px-5 sm:py-4">
-                1 · General
-                <span className="mt-1 block text-xs font-semibold text-slate-600">
-                  Steel, member selection, check/design mode, and method.
-                </span>
-                <span className="mt-2 inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
-                  Units: ksi
-                </span>
-              </summary>
-              <div className="border-t border-slate-200 p-5">
+
+        <div className="grid gap-6 lg:grid-cols-12 lg:items-start">
+          <div className="space-y-6 lg:col-span-7">
+            <Card id="beam-general">
+              <CardHeader title="General" description="Steel, member selection, check/design mode, and method." right={<Badge tone="info">Inputs</Badge>} />
+              <CardBody>
                 <div className="grid gap-4 md:grid-cols-2">
                   <Field label="Steel Type" hint="Fy and Fu (ksi) from the material table.">
                     <SelectInput value={material} onChange={(v) => setMaterial(v as SteelMaterialKey)}>
@@ -316,12 +315,12 @@ export default function BendingShearPage() {
                 </div>
 
                 {shape ? (
-                  <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-800">
+                  <div className="mt-4 rounded-2xl bg-[color:var(--surface-2)] px-4 py-3 ring-1 ring-inset ring-[color:var(--border)]/60">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="font-semibold text-slate-900">Section context</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-[color:var(--muted)]">Section context</p>
                       <Badge tone="info">{shape.shape}</Badge>
                     </div>
-                    <div className="mt-2 grid grid-cols-2 gap-2 text-xs font-semibold text-slate-700 sm:grid-cols-4">
+                    <div className="mt-2 grid grid-cols-2 gap-2 text-xs font-semibold text-[color:var(--muted)] sm:grid-cols-4">
                       <span className="tabular-nums">W: {shape.W.toFixed(1)} plf</span>
                       <span className="tabular-nums">Zx: {shape.Zx.toFixed(1)} in³</span>
                       <span className="tabular-nums">Ix: {shape.Ix.toFixed(1)} in⁴</span>
@@ -329,8 +328,8 @@ export default function BendingShearPage() {
                     </div>
                   </div>
                 ) : null}
-              </div>
-            </details>
+              </CardBody>
+            </Card>
 
             {slenderness ? (
               <Card className="shadow-none border border-slate-200 bg-white">
@@ -355,17 +354,9 @@ export default function BendingShearPage() {
               </Card>
             ) : null}
 
-            <details open className="rounded-2xl border border-slate-200 bg-white" id="beam-loads">
-              <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
-                2 · Loads
-                <span className="mt-1 block text-xs font-semibold text-slate-600">
-                  Option A: dead/live/span → auto-derive M, V, service w. Option B: enter M, V, w manually.
-                </span>
-                <span className="mt-2 inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
-                  Units: k/ft, ft
-                </span>
-              </summary>
-              <div className="border-t border-slate-200 p-5">
+            <Card id="beam-loads">
+              <CardHeader title="Loads" description="Option A: dead/live/span → auto-derive M, V, service w. Option B: enter M, V, w manually." />
+              <CardBody>
                 <div className="grid gap-4 md:grid-cols-2">
                   <Field label="Dead load w_D" hint="Uniform dead load (kips per ft).">
                     <TextInputWithUnit value={deadLoadKft} onChange={setDeadLoadKft} unit="k/ft" placeholder="e.g. 0.8" inputMode="decimal" />
@@ -402,20 +393,12 @@ export default function BendingShearPage() {
                     </CardBody>
                   </Card>
                 ) : null}
-              </div>
-            </details>
+              </CardBody>
+            </Card>
 
-            <details open className="rounded-2xl border border-slate-200 bg-white" id="beam-check">
-              <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
-                3 · Member checks (M, V, LTB, deflection)
-                <span className="mt-1 block text-xs font-semibold text-slate-600">
-                  Enter demands directly (or use Loads above). L is inches for analysis.
-                </span>
-                <span className="mt-2 inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
-                  Units: kip·ft, kips, in
-                </span>
-              </summary>
-              <div className="border-t border-slate-200 p-5">
+            <Card id="beam-check">
+              <CardHeader title="Member checks" description="Enter demands directly (or use Loads above). L is inches for analysis." />
+              <CardBody>
                 <div className="grid gap-4 md:grid-cols-2">
                 <Field label="M_u" hint="Required flexural strength (kip·ft). Filled automatically when dead/live/span are set.">
                   <TextInputWithUnit value={Mu} onChange={setMu} unit="kip·ft" inputMode="decimal" />
@@ -444,8 +427,8 @@ export default function BendingShearPage() {
                   <TextInputWithUnit value={wLive} onChange={setWLive} unit="kip/in" inputMode="decimal" />
                 </Field>
                 </div>
-              </div>
-            </details>
+              </CardBody>
+            </Card>
 
             {suggestion ? (
               <Card className="border-slate-300 bg-white">
@@ -459,102 +442,11 @@ export default function BendingShearPage() {
               </Card>
             ) : null}
 
-            {out ? (
-              <details className="rounded-2xl border border-slate-200 bg-white" id="beam-steps">
-                <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
-                  Steps (show math)
-                  <span className="mt-1 block text-xs font-semibold text-slate-600">
-                    Governing: <span className="text-slate-900">{out.beamLimitStates?.governing ?? out.governingCase}</span>
-                  </span>
-                </summary>
-                <div className="border-t border-slate-200 p-5">
-                  <StepsTable
-                    steps={out.steps}
-                    governingCase={String(out.beamLimitStates?.governing ?? out.governingCase)}
-                    tools
-                  />
-                </div>
-              </details>
-            ) : null}
           </div>
 
-          <aside className="md:col-span-4">
-            {out ? (
-              <div className="sticky top-6 md:top-[calc(var(--app-header-h,104px)+16px)] space-y-4">
-                <div className="hidden md:block">
-                  <PageSectionNav
-                    sections={[
-                      { id: "beam-general", label: "General" },
-                      { id: "beam-loads", label: "Loads" },
-                      { id: "beam-check", label: "Checks" },
-                      { id: "beam-steps", label: "Steps" },
-                    ]}
-                  />
-                </div>
-                <CalculatorActionRail
-                  hideMobileBar
-                  title="Actions"
-                  subtitle={`${shapeName} · ${designMethod} · ${mode === "design" ? "Design" : "Check"}`}
-                  savedKey={CLIENT_PERSISTENCE.savedAt("bending")}
-                  saving={saving}
-                  savedAt={savedAt}
-                  compare={{
-                    storageKey: CLIENT_PERSISTENCE.compareSnapshot("beam"),
-                    getCurrent: () => {
-                      const gov = out?.beamLimitStates?.governing ?? out?.governingCase ?? "—";
-                      const lines: string[] = [
-                        `Method: ${designMethod} · Material: ${mat.key} · Mode: ${mode}`,
-                        `Shape: ${shapeName}`,
-                        `Mu: ${Mu} kip-ft · Vu: ${Vu} kips · L: ${L} in`,
-                        `Governing: ${String(gov)}`,
-                      ];
-                      if (out?.beamLimitStates) {
-                        lines.push(
-                          `Bending ratio: ${(out.beamLimitStates.bending.ratio * 100).toFixed(1)}%`,
-                          `Shear ratio: ${(out.beamLimitStates.shear.ratio * 100).toFixed(1)}%`,
-                          `Deflection ratio: ${(out.beamLimitStates.deflection.ratio * 100).toFixed(1)}%`,
-                        );
-                      } else if (out) {
-                        lines.push(`Capacity: ${fmtKips(out.controllingStrength)} · Demand: ${fmtKips(out.demand)}`);
-                      }
-                      return { title: `Beam — ${shapeName}`, lines };
-                    },
-                  }}
-                  copyText={() => {
-                    if (!out) return "Beam — No results";
-                    const lines = [
-                      "Beam",
-                      `Method: ${designMethod}`,
-                      `Material: ${mat.key}`,
-                      `Shape: ${shapeName}`,
-                      `Governing: ${out.beamLimitStates?.governing ?? out.governingCase}`,
-                      `Demand: ${fmtKips(out.demand)}`,
-                    ];
-                    if (out.beamLimitStates) {
-                      lines.push(
-                        `Bending ratio: ${(out.beamLimitStates.bending.ratio * 100).toFixed(1)}%`,
-                        `Shear ratio: ${(out.beamLimitStates.shear.ratio * 100).toFixed(1)}%`,
-                        `Deflection ratio: ${(out.beamLimitStates.deflection.ratio * 100).toFixed(1)}%`,
-                      );
-                    } else {
-                      lines.push(`Capacity: ${fmtKips(out.controllingStrength)}`);
-                    }
-                    return lines.join("\n");
-                  }}
-                  onGoResults={() => smoothScrollTo("results")}
-                  onGoSteps={() => smoothScrollTo("beam-steps")}
-                  json={{ data: { result: out, inputs: { material, shapeName, Mu, Vu, L, wLive, designMethod, unbracedLbIn, cbFactor } } }}
-                  onReset={resetInputs}
-                />
-                {out.governingCase === "geometry_error" ? (
-                  <Card className="border-red-300 bg-red-50">
-                    <CardBody className="text-sm text-red-950">
-                      <p className="font-semibold">Cannot run analysis</p>
-                      <p className="mt-1">{String(out.steps[0]?.value ?? "")}</p>
-                    </CardBody>
-                  </Card>
-                ) : null}
-                <div id="results">
+          <div className="space-y-4 lg:col-span-5 lg:sticky lg:top-28">
+            <div id="results">
+              {out ? (
                 <ResultHero
                   status={out.governingCase === "geometry_error" ? "invalid" : out.isSafe ? "safe" : "unsafe"}
                   governing={out.beamLimitStates?.governing ?? out.governingCase}
@@ -583,15 +475,104 @@ export default function BendingShearPage() {
                         ? out.demand / out.controllingStrength
                         : undefined
                   }
+                  metaRight={<Badge tone="info">{mat.key}</Badge>}
                 />
-                </div>
+              ) : (
+                <ResultHero
+                  status="invalid"
+                  governing="Enter inputs to evaluate"
+                  capacityLabel="Capacity"
+                  capacity="—"
+                  demandLabel="Demand"
+                  demand="—"
+                  metaRight={<Badge tone="info">{mat.key}</Badge>}
+                />
+              )}
+            </div>
 
-                {out.beamLimitStates && out.governingCase !== "geometry_error" ? (
+            <CalculatorActionRail
+              title="Actions"
+              subtitle={`${shapeName} · ${designMethod} · ${mode === "design" ? "Design" : "Check"}`}
+              savedKey={CLIENT_PERSISTENCE.savedAt("bending")}
+              saving={saving}
+              savedAt={savedAt}
+              compare={{
+                storageKey: CLIENT_PERSISTENCE.compareSnapshot("beam"),
+                getCurrent: () => {
+                  const gov = out?.beamLimitStates?.governing ?? out?.governingCase ?? "—";
+                  const lines: string[] = [
+                    `Method: ${designMethod} · Material: ${mat.key} · Mode: ${mode}`,
+                    `Shape: ${shapeName}`,
+                    `Mu: ${Mu} kip-ft · Vu: ${Vu} kips · L: ${L} in`,
+                    `Governing: ${String(gov)}`,
+                  ];
+                  if (out?.beamLimitStates) {
+                    lines.push(
+                      `Bending ratio: ${(out.beamLimitStates.bending.ratio * 100).toFixed(1)}%`,
+                      `Shear ratio: ${(out.beamLimitStates.shear.ratio * 100).toFixed(1)}%`,
+                      `Deflection ratio: ${(out.beamLimitStates.deflection.ratio * 100).toFixed(1)}%`,
+                    );
+                  } else if (out) {
+                    lines.push(`Capacity: ${fmtKips(out.controllingStrength)} · Demand: ${fmtKips(out.demand)}`);
+                  }
+                  return { title: `Beam — ${shapeName}`, lines };
+                },
+              }}
+              copyText={() => {
+                if (!out) return "Beam — No results";
+                const lines = [
+                  "Beam",
+                  `Method: ${designMethod}`,
+                  `Material: ${mat.key}`,
+                  `Shape: ${shapeName}`,
+                  `Governing: ${out.beamLimitStates?.governing ?? out.governingCase}`,
+                  `Demand: ${fmtKips(out.demand)}`,
+                ];
+                if (out.beamLimitStates) {
+                  lines.push(
+                    `Bending ratio: ${(out.beamLimitStates.bending.ratio * 100).toFixed(1)}%`,
+                    `Shear ratio: ${(out.beamLimitStates.shear.ratio * 100).toFixed(1)}%`,
+                    `Deflection ratio: ${(out.beamLimitStates.deflection.ratio * 100).toFixed(1)}%`,
+                  );
+                } else {
+                  lines.push(`Capacity: ${fmtKips(out.controllingStrength)}`);
+                }
+                return lines.join("\n");
+              }}
+              onGoResults={() => smoothScrollTo("results")}
+              onGoSteps={() => {
+                setDetailsTab("steps");
+                smoothScrollTo("details");
+              }}
+              json={
+                out
+                  ? {
+                      data: {
+                        result: out,
+                        inputs: { material, shapeName, Mu, Vu, L, wLive, designMethod, unbracedLbIn, cbFactor },
+                      },
+                    }
+                  : undefined
+              }
+              onReset={resetInputs}
+            />
+          </div>
+        </div>
+
+        {out ? (
+          <ModuleDetailsTabs
+            title="Details"
+            description="Steps, limit states, and design strengths."
+            value={detailsTab}
+            onChange={setDetailsTab}
+            tabs={[
+              {
+                id: "states",
+                label: "Limit states",
+                panel: out.beamLimitStates ? (
                   <Card>
+                    <CardHeader title="Limit states (utilization)" description="Demand/capacity ratios by check." />
                     <CardBody className="space-y-3">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Limit states (utilization)
-                      </p>
                       <LimitRow
                         title="Bending"
                         demand={out.beamLimitStates.bending.demand}
@@ -619,99 +600,57 @@ export default function BendingShearPage() {
                       />
                     </CardBody>
                   </Card>
-                ) : null}
-
-                <Card>
-                  <CardBody>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Design strengths</p>
-                    <div className="mt-3 space-y-2">
-                      {Object.entries(out.results).map(([key, value]) => (
-                        <div key={key} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                          <div className="flex items-baseline justify-between gap-2">
-                            <span className="text-xs font-semibold text-slate-700">{value.name}</span>
-                            <span className="font-semibold tabular-nums text-slate-950">
-                              {value.unit === "kip-ft" ? fmtKipFt(value.phiPn) : fmtKips(value.phiPn)} {value.unit}
-                            </span>
+                ) : (
+                  <Card>
+                    <CardHeader title="Limit states" description="Not available for this configuration." />
+                    <CardBody className="text-sm text-[color:var(--muted)]">—</CardBody>
+                  </Card>
+                ),
+              },
+              {
+                id: "strengths",
+                label: "Strengths",
+                panel: (
+                  <Card>
+                    <CardHeader title="Design strengths" description="Capacities by limit state." />
+                    <CardBody>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {Object.entries(out.results).map(([key, value]) => (
+                          <div key={key} className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-2)] px-4 py-3 shadow-sm">
+                            <div className="flex items-baseline justify-between gap-2">
+                              <span className="text-xs font-semibold text-[color:var(--muted)]">{value.name}</span>
+                              <span className="font-semibold tabular-nums text-[color:var(--foreground)]">
+                                {value.unit === "kip-ft" ? fmtKipFt(value.phiPn) : fmtKips(value.phiPn)} {value.unit}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardBody>
-                </Card>
-              </div>
-            ) : null}
-          </aside>
-        </CardBody>
-      </Card>
-
-      <div className="mt-8 md:mt-10">
-      <div id="actions">
-      <CalculatorActionRail
-        mobileOnly
-        subtitle="Beam actions"
-        savedKey={CLIENT_PERSISTENCE.savedAt("bending")}
-        saving={saving}
-        savedAt={savedAt}
-        copyText={() => {
-          if (!out) return "Beam — No results";
-          const lines = [
-            "Beam",
-            `Method: ${designMethod}`,
-            `Material: ${mat.key}`,
-            `Shape: ${shapeName}`,
-            `Governing: ${out.beamLimitStates?.governing ?? out.governingCase}`,
-            `Demand: ${fmtKips(out.demand)}`,
-          ];
-          if (out.beamLimitStates) {
-            lines.push(
-              `Bending ratio: ${(out.beamLimitStates.bending.ratio * 100).toFixed(1)}%`,
-              `Shear ratio: ${(out.beamLimitStates.shear.ratio * 100).toFixed(1)}%`,
-              `Deflection ratio: ${(out.beamLimitStates.deflection.ratio * 100).toFixed(1)}%`,
-            );
-          } else {
-            lines.push(`Capacity: ${fmtKips(out.controllingStrength)}`);
-          }
-          return lines.join("\n");
-        }}
-        onGoResults={() => smoothScrollTo("results")}
-        onGoSteps={() => smoothScrollTo("beam-steps")}
-        json={
-          out
-            ? {
-                data: {
-                  result: out,
-                  inputs: { material, shapeName, Mu, Vu, L, wLive, designMethod, unbracedLbIn, cbFactor },
-                },
-              }
-            : undefined
-        }
-        compare={{
-          storageKey: CLIENT_PERSISTENCE.compareSnapshot("beam"),
-          getCurrent: () => {
-            const gov = out?.beamLimitStates?.governing ?? out?.governingCase ?? "—";
-            const lines: string[] = [
-              `Method: ${designMethod} · Material: ${mat.key} · Mode: ${mode}`,
-              `Shape: ${shapeName}`,
-              `Mu: ${Mu} kip-ft · Vu: ${Vu} kips · L: ${L} in`,
-              `Governing: ${String(gov)}`,
-            ];
-            if (out?.beamLimitStates) {
-              lines.push(
-                `Bending ratio: ${(out.beamLimitStates.bending.ratio * 100).toFixed(1)}%`,
-                `Shear ratio: ${(out.beamLimitStates.shear.ratio * 100).toFixed(1)}%`,
-                `Deflection ratio: ${(out.beamLimitStates.deflection.ratio * 100).toFixed(1)}%`,
-              );
-            } else if (out) {
-              lines.push(`Capacity: ${fmtKips(out.controllingStrength)} · Demand: ${fmtKips(out.demand)}`);
-            }
-            return { title: `Beam — ${shapeName}`, lines };
-          },
-        }}
-        onReset={resetInputs}
-      />
+                        ))}
+                      </div>
+                    </CardBody>
+                  </Card>
+                ),
+              },
+              {
+                id: "steps",
+                label: "Steps",
+                panel: (
+                  <Card id="beam-steps">
+                    <CardHeader title="Steps" description={`Governing: ${String(out.beamLimitStates?.governing ?? out.governingCase)}`} />
+                    <CardBody>
+                      <StepsTable
+                        steps={out.steps}
+                        governingCase={String(out.beamLimitStates?.governing ?? out.governingCase)}
+                        tools
+                      />
+                    </CardBody>
+                  </Card>
+                ),
+              },
+            ]}
+            className="mt-8"
+          />
+        ) : null}
       </div>
-      </div>
-      <PageFooterNav currentHref="/bending-shear" />
     </AppShell>
   );
 }

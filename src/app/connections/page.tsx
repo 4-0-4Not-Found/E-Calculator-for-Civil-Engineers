@@ -22,14 +22,15 @@ import { CLIENT_PERSISTENCE } from "@/lib/client-persistence";
 import { STORAGE } from "@/lib/storage/keys";
 import { AppShell } from "@/components/layout/AppShell";
 import { ResultHero } from "@/components/results/ResultHero";
-import { PageFooterNav } from "@/components/navigation/PageFooterNav";
 import { TextInputWithUnit } from "@/components/ui/InputGroup";
 import { Button } from "@/components/ui/Button";
 import { CalculatorActionRail } from "@/components/actions/CalculatorActionRail";
-import { PageSectionLayout } from "@/components/navigation/PageSectionLayout";
 import { useBrowserDraft } from "@/features/module-runtime/useBrowserDraft";
 import { smoothScrollTo } from "@/features/module-runtime/scroll";
 import { connectionsDefaults, connectionsDraftSchema } from "@/features/steel/connections/module-config";
+import { ModuleHero } from "@/components/layout/ModuleHero";
+import { ModuleDetailsTabs } from "@/components/layout/ModuleDetailsTabs";
+import { formatRelativeTime } from "@/lib/format/relativeTime";
 
 export default function ConnectionsPage() {
   const [designMethod, setDesignMethod] = useState<"LRFD" | "ASD">(connectionsDefaults.designMethod);
@@ -465,615 +466,501 @@ export default function ConnectionsPage() {
     pryingTPerBoltKips,
   ]);
 
+  const [detailsTab, setDetailsTab] = useState<"bolts" | "weld" | "optional">("bolts");
+
   return (
     <AppShell>
-      <Card>
-        <CardHeader
-          title="Bolted & welded connections"
+      <div className="space-y-8 md:space-y-10">
+        <ModuleHero
+          eyebrow="steel module"
+          title={
+            <>
+              Bolted{" "}
+              <span className="text-[color:var(--foreground)]">&amp; Welded Connections</span>
+            </>
+          }
           description="LRFD or ASD — bolts, welds, and optional groove/prying helpers. Inputs auto-save in this browser."
+          chips={[
+            { key: "saved", label: saving ? "Saving…" : savedAt ? `Saved ${formatRelativeTime(savedAt) ?? "recently"}` : "Not saved yet" },
+            { key: "method", label: designMethod },
+            { key: "mode", label: shearMode === "slip" ? "Slip-critical" : "Bearing-type" },
+            { key: "bolt", label: `${boltGroup} d=${dBolt} in` },
+          ]}
+          image={{ src: "/assets/connections.png" }}
         />
-        <CardBody className="flex flex-col gap-6">
-          <PageSectionLayout
-            sections={[
-              { id: "conn-inputs", label: "Inputs" },
-              { id: "conn-results", label: "Bolt results" },
-              { id: "conn-weld", label: "Fillet weld" },
-              { id: "conn-optional", label: "Optional" },
-            ]}
-          >
-            <div className="space-y-6">
-              <CalculatorActionRail
-                hideMobileBar
-                title="Actions"
-                subtitle={`${designMethod} · ${shearMode === "slip" ? "Slip-critical" : "Bearing"} · ${boltGroup} d=${dBolt} in`}
-                savedKey={CLIENT_PERSISTENCE.savedAt("connections")}
-                saving={saving}
-                savedAt={savedAt}
-                compare={{
-                  storageKey: CLIENT_PERSISTENCE.compareSnapshot("connections"),
-                  getCurrent: () => ({
-                    title: "Connections",
-                    lines: [
-                      `Method: ${designMethod} · Shear mode: ${shearMode}`,
-                      `Vu: ${vu} kips · Tu: ${tu} kips`,
-                      `Bolt: ${boltGroup} d=${dBolt} in n=${nBolts} planes=${shearPlanes} threads=${threadMode}`,
-                      interactionOut && Number(tu) > 0 ? `Interaction Σ: ${interactionOut.interactionSum.toFixed(6)}` : null,
-                      shearMode === "slip" && slipOut ? `Available slip: ${slipOut.availableSlip.toFixed(6)} kips` : null,
-                      boltOut ? `Governing shear/bearing: ${boltOut.phiRnTotalGoverning.toFixed(6)} kips` : null,
-                      tensionOut ? `Bolt tension φRn total: ${tensionOut.phiRnTotal.toFixed(6)} kips` : null,
-                      weldOut ? `Fillet weld φRn: ${weldOut.phiRn.toFixed(6)} kips` : null,
-                      grooveOut ? `Groove weld: ${grooveOut.phiRnOrAllowableKips.toFixed(6)} kips` : null,
-                    ].filter(Boolean) as string[],
-                  }),
-                }}
-                copyText={() =>
-                  [
-                    "Connections",
-                    `Method: ${designMethod}`,
-                    `Shear mode: ${shearMode}`,
-                    `Vu: ${vu} kips`,
-                    `Tu: ${tu} kips`,
-                    `Bolt: ${boltGroup} d=${dBolt} in n=${nBolts} planes=${shearPlanes} threads=${threadMode}`,
-                    interactionOut && Number(tu) > 0 ? `Interaction Σ: ${interactionOut.interactionSum.toFixed(6)}` : null,
-                    shearMode === "slip" && slipOut ? `Available slip: ${slipOut.availableSlip.toFixed(6)} kips` : null,
-                    boltOut ? `Governing shear/bearing: ${boltOut.phiRnTotalGoverning.toFixed(6)} kips` : null,
-                    tensionOut ? `Bolt tension φRn total: ${tensionOut.phiRnTotal.toFixed(6)} kips` : null,
-                    weldOut ? `Fillet weld φRn: ${weldOut.phiRn.toFixed(6)} kips` : null,
-                    grooveOut ? `Groove weld: ${grooveOut.phiRnOrAllowableKips.toFixed(6)} kips` : null,
-                  ]
-                    .filter(Boolean)
-                    .join("\n")
-                }
-                onGoResults={() => smoothScrollTo("results")}
-                onGoSteps={() => smoothScrollTo("conn-results")}
-                csv={{ filename: "connections-export.csv", rows: csvRows }}
-                json={{
-                  data: {
-                    bolt: boltOut,
-                    slip: slipOut,
-                    tension: tensionOut,
-                    interaction: interactionOut,
-                    weld: weldOut,
-                    grooveWeld: grooveOut,
-                    pryingPlate: pryingOut,
-                    inputs: {
-                      designMethod,
-                      shearMode,
-                      surfaceClass,
-                      slipHf,
-                      vu,
-                      tu,
-                      boltGroup,
-                      threadMode,
-                      dBolt,
-                      nBolts,
-                      shearPlanes,
-                      checkBearing,
-                      plateFu,
-                      plateT,
-                      lcMin,
-                      fexx,
-                      legIn,
-                      weldLen,
-                      weldDemand,
-                      grooveThroatIn,
-                      grooveLenIn,
-                      grooveDemand,
-                      pryingTPerBoltOverride,
-                      pryingBPrimeIn,
-                      pryingStripWidthIn,
-                      pryingFyKsi,
-                    },
-                  },
-                }}
-                onReset={resetInputs}
-              />
-              <div id="results">
-                <ResultHero
-                  status={overallStatus}
-                  title="Overall"
-                  governing={
-                    interactionOut && Number(tu) > 0
-                      ? `Interaction Σ = ${interactionOut.interactionSum.toFixed(4)}`
-                      : shearMode === "slip" && slipOut
-                        ? "Slip-critical (J3.8)"
-                        : boltOut
-                          ? `Bolt check (${boltOut.controlling})`
-                          : "Enter inputs to evaluate"
-                  }
-                  capacityLabel="Key capacity"
-                  capacity={
-                    shearMode === "slip" && slipOut
-                      ? `${slipOut.availableSlip.toFixed(3)} kips (available slip)`
-                      : boltOut
-                        ? `${(designMethod === "LRFD"
-                            ? boltOut.phiRnTotalGoverning
-                            : lrfdToAsdSamePhiOmega(boltOut.phiRnTotalGoverning)
-                          ).toFixed(3)} kips (governing shear/bearing)`
-                        : "—"
-                  }
-                  demandLabel="Demand"
-                  demand={`${Number(vu).toFixed(3)} kips shear${Number(tu) > 0 ? ` · ${Number(tu).toFixed(3)} kips tension` : ""}`}
-                  utilization={
-                    interactionOut && Number(tu) > 0
-                      ? interactionOut.interactionSum
-                      : shearMode === "slip" && slipOut
-                        ? Number(vu) / slipOut.availableSlip
-                        : boltOut
-                          ? Number(vu) /
-                            (designMethod === "LRFD"
-                              ? boltOut.phiRnTotalGoverning
-                              : lrfdToAsdSamePhiOmega(boltOut.phiRnTotalGoverning))
-                          : undefined
-                  }
-                />
-              </div>
-            </div>
-          </PageSectionLayout>
 
-          <details open className="rounded-2xl border border-slate-200 bg-white" id="conn-inputs">
-            <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
-              1 · Demands & bolt layout
-              <span className="mt-1 block text-xs font-semibold text-slate-600">
-                V<sub>u</sub>, T<sub>u</sub>, bolt group and slip/bearing choices.
-              </span>
-              <span className="mt-2 inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
-                Units: kips, in, ksi
-              </span>
-            </summary>
-            <div className="border-t border-slate-200 p-5">
-              <div className="mb-3 flex flex-wrap gap-2">
-                <Button variant="secondary" size="sm" type="button" onClick={() => setTu("0")}>
-                  Set Tu = 0 (shear-only)
-                </Button>
-                <Button variant="secondary" size="sm" type="button" onClick={() => setDesignMethod("LRFD")}>
-                  LRFD
-                </Button>
-                <Button variant="secondary" size="sm" type="button" onClick={() => setDesignMethod("ASD")}>
-                  ASD
-                </Button>
-              </div>
+        <div className="grid gap-6 lg:grid-cols-12 lg:items-start">
+          <div className="space-y-6 lg:col-span-7">
+            <Card id="conn-inputs">
+              <CardHeader title="Inputs" description="Demands, bolt group, slip/bearing, and optional plate parameters." right={<Badge tone="info">Inputs</Badge>} />
+              <CardBody className="space-y-6">
+                <div className="mb-1 flex flex-wrap gap-2">
+                  <Button variant="secondary" size="sm" type="button" onClick={() => setTu("0")}>
+                    Set Tu = 0 (shear-only)
+                  </Button>
+                  <Button variant="secondary" size="sm" type="button" onClick={() => setDesignMethod("LRFD")}>
+                    LRFD
+                  </Button>
+                  <Button variant="secondary" size="sm" type="button" onClick={() => setDesignMethod("ASD")}>
+                    ASD
+                  </Button>
+                </div>
 
-              <p className="mb-4 max-w-3xl text-sm leading-relaxed text-slate-700">
-                Choose <strong>bearing-type</strong> (shear in bolts/plate) or <strong>slip-critical</strong> (friction). Slip uses
-                J3.8; with <strong>T_u &gt; 0</strong> on slip-critical, check J3.9 reduction outside this tool.
-              </p>
-
-              <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="Shear transfer" hint="Slip-critical uses Table J3.1 T_b; use A325/A490.">
-                <SelectInput value={shearMode} onChange={(v) => setShearMode(v as "bearing" | "slip")}>
-                  <option value="bearing">Bearing-type (shear + optional bearing)</option>
-                  <option value="slip">Slip-critical (J3.8)</option>
-                </SelectInput>
-              </Field>
-              <Field label="Design method" hint="LRFD default; ASD uses R_n/Ω for checks.">
-                <SelectInput value={designMethod} onChange={(v) => setDesignMethod(v as "LRFD" | "ASD")}>
-                  <option value="LRFD">LRFD</option>
-                  <option value="ASD">ASD</option>
-                </SelectInput>
-              </Field>
-              <Field label="Required shear V_u" hint="kips — on bolt group" error={invalid(vu, 0) ? "Enter a number ≥ 0." : undefined}>
-                <TextInputWithUnit value={vu} onChange={setVu} unit="kips" placeholder="e.g. 120" inputMode="decimal" />
-              </Field>
-              <Field label="Required tension T_u" hint="kips — on bolt group (0 if shear-only)" error={invalid(tu, 0) ? "Enter a number ≥ 0." : undefined}>
-                <TextInputWithUnit value={tu} onChange={setTu} unit="kips" placeholder="0" inputMode="decimal" />
-              </Field>
-              <Field label="Bolt ASTM type" hint={shearMode === "slip" ? "Slip-critical: A325 or A490 (T_b from Table J3.1)." : "Table J3.2"}>
-                <SelectInput value={boltGroup} onChange={(v) => setBoltGroup(v as BoltGroup)}>
-                  <option value="A307">A307</option>
-                  <option value="A325">A325</option>
-                  <option value="A490">A490</option>
-                </SelectInput>
-              </Field>
-              {shearMode === "slip" ? (
-                <>
-                  <Field label="Surface class (μ)" hint="Class A = 0.30, Class B = 0.50 (clean mill scale / blasted).">
-                    <SelectInput value={surfaceClass} onChange={(v) => setSurfaceClass(v as "A" | "B")}>
-                      <option value="A">Class A (μ = 0.30)</option>
-                      <option value="B">Class B (μ = 0.50)</option>
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <Field label="Shear transfer" hint="Slip-critical uses Table J3.1 T_b; use A325/A490.">
+                    <SelectInput value={shearMode} onChange={(v) => setShearMode(v as "bearing" | "slip")}>
+                      <option value="bearing">Bearing-type (shear + optional bearing)</option>
+                      <option value="slip">Slip-critical (J3.8)</option>
                     </SelectInput>
                   </Field>
-                  <Field label="Filler factor h_f" hint="1.0 typical; 0.85 if two or more fillers (AISC).">
-                    <TextInput value={slipHf} onChange={setSlipHf} placeholder="1" />
+                  <Field label="Design method" hint="LRFD default; ASD uses R_n/Ω for checks.">
+                    <SelectInput value={designMethod} onChange={(v) => setDesignMethod(v as "LRFD" | "ASD")}>
+                      <option value="LRFD">LRFD</option>
+                      <option value="ASD">ASD</option>
+                    </SelectInput>
                   </Field>
-                </>
-              ) : null}
-              <Field label="Threads in shear plane" hint="N vs X — affects F_nv and F_nt">
-                <SelectInput value={threadMode} onChange={(v) => setThreadMode(v as BoltThreadMode)}>
-                  <option value="N">N — threads in shear plane</option>
-                  <option value="X">X — threads excluded from shear plane</option>
-                </SelectInput>
-              </Field>
-              <Field label="Bolt diameter" hint="inches (body)">
-                <SelectInput value={dBolt} onChange={setDBolt}>
-                  {boltDiametersIn.map((d) => (
-                    <option key={d} value={String(d)}>
-                      {d} in (A_b = {(Math.PI * d * d / 4).toFixed(3)} in²)
-                    </option>
-                  ))}
-                </SelectInput>
-              </Field>
-              <Field
-                label="Number of bolts n"
-                hint="Equal share"
-                error={(() => {
-                  const n = Number(nBolts);
-                  return !Number.isFinite(n) || n < 1 ? "Enter an integer ≥ 1." : undefined;
-                })()}
-              >
-                <TextInput value={nBolts} onChange={setNBolts} placeholder="e.g. 4" />
-              </Field>
-              <Field label="Shear planes per bolt" hint="Single = 1, double = 2">
-                <SelectInput value={shearPlanes} onChange={(v) => setShearPlanes(v as "1" | "2")}>
-                  <option value="1">1 (single shear)</option>
-                  <option value="2">2 (double shear)</option>
-                </SelectInput>
-              </Field>
-              {shearMode === "bearing" ? (
-                <Field label="Include bearing check" hint="Uncheck for shear-only">
-                  <SelectInput value={checkBearing ? "yes" : "no"} onChange={(v) => setCheckBearing(v === "yes")}>
-                    <option value="yes">Yes (govern with shear)</option>
-                    <option value="no">No (shear only)</option>
-                  </SelectInput>
-                </Field>
-              ) : null}
-              {shearMode === "bearing" ? (
-                <>
-                  <Field label="Plate F_u" hint="ksi" error={invalid(plateFu, 0) ? "Enter a number ≥ 0." : undefined}>
-                    <TextInputWithUnit value={plateFu} onChange={setPlateFu} unit="ksi" placeholder="65" inputMode="decimal" />
+                  <Field label="Required shear V_u" hint="kips — on bolt group" error={invalid(vu, 0) ? "Enter a number ≥ 0." : undefined}>
+                    <TextInputWithUnit value={vu} onChange={setVu} unit="kips" placeholder="e.g. 120" inputMode="decimal" />
                   </Field>
-                  <Field label="Plate thickness t" hint="in" error={invalid(plateT, 0) ? "Enter a number ≥ 0." : undefined}>
-                    <TextInputWithUnit value={plateT} onChange={setPlateT} unit="in" placeholder="0.5" inputMode="decimal" />
+                  <Field label="Required tension T_u" hint="kips — on bolt group (0 if shear-only)" error={invalid(tu, 0) ? "Enter a number ≥ 0." : undefined}>
+                    <TextInputWithUnit value={tu} onChange={setTu} unit="kips" placeholder="0" inputMode="decimal" />
+                  </Field>
+                  <Field label="Bolt ASTM type" hint={shearMode === "slip" ? "Slip-critical: A325 or A490 (T_b from Table J3.1)." : "Table J3.2"}>
+                    <SelectInput value={boltGroup} onChange={(v) => setBoltGroup(v as BoltGroup)}>
+                      <option value="A307">A307</option>
+                      <option value="A325">A325</option>
+                      <option value="A490">A490</option>
+                    </SelectInput>
+                  </Field>
+                  {shearMode === "slip" ? (
+                    <>
+                      <Field label="Surface class (μ)" hint="Class A = 0.30, Class B = 0.50 (clean mill scale / blasted).">
+                        <SelectInput value={surfaceClass} onChange={(v) => setSurfaceClass(v as "A" | "B")}>
+                          <option value="A">Class A (μ = 0.30)</option>
+                          <option value="B">Class B (μ = 0.50)</option>
+                        </SelectInput>
+                      </Field>
+                      <Field label="Filler factor h_f" hint="1.0 typical; 0.85 if two or more fillers (AISC).">
+                        <TextInput value={slipHf} onChange={setSlipHf} placeholder="1" />
+                      </Field>
+                    </>
+                  ) : null}
+                  <Field label="Threads in shear plane" hint="N vs X — affects F_nv and F_nt">
+                    <SelectInput value={threadMode} onChange={(v) => setThreadMode(v as BoltThreadMode)}>
+                      <option value="N">N — threads in shear plane</option>
+                      <option value="X">X — threads excluded from shear plane</option>
+                    </SelectInput>
+                  </Field>
+                  <Field label="Bolt diameter" hint="inches (body)">
+                    <SelectInput value={dBolt} onChange={setDBolt}>
+                      {boltDiametersIn.map((d) => (
+                        <option key={d} value={String(d)}>
+                          {d} in (A_b = {(Math.PI * d * d / 4).toFixed(3)} in²)
+                        </option>
+                      ))}
+                    </SelectInput>
                   </Field>
                   <Field
-                    label="Min clear L_c"
-                    hint="in — clear distance in load direction (J3.10(a)); governs bearing / hole tear-out vs 2.4 d t cap"
-                    error={invalid(lcMin, 0) ? "Enter a number ≥ 0." : undefined}
+                    label="Number of bolts n"
+                    hint="Equal share"
+                    error={(() => {
+                      const n = Number(nBolts);
+                      return !Number.isFinite(n) || n < 1 ? "Enter an integer ≥ 1." : undefined;
+                    })()}
                   >
-                    <TextInputWithUnit value={lcMin} onChange={setLcMin} unit="in" placeholder="1.25" inputMode="decimal" />
+                    <TextInput value={nBolts} onChange={setNBolts} placeholder="e.g. 4" />
                   </Field>
-                </>
-              ) : null}
-            </div>
-            {unifiedNBoltsSuggested != null || (weldOut && weldMinLegIn != null) ? (
-              <Card className="border-blue-200 bg-blue-50/90">
-                <CardBody className="space-y-2 text-sm text-blue-950">
-                  <p className="font-bold">Design — quick answers (same checks as below)</p>
-                  {unifiedNBoltsSuggested != null ? (
-                    <p>
-                      <span className="font-semibold">Bolts:</span> use at least{" "}
-                      <span className="font-mono tabular-nums">n ≥ {unifiedNBoltsSuggested}</span> for the current V_u / T_u and
-                      bolt layout (max of shear/slip, bearing, and tension-only estimates).
-                      {tensionNBoltsSuggested != null && tensionNBoltsSuggested > 1 ? (
-                        <span className="text-slate-700"> Tension alone would need n ≥ {tensionNBoltsSuggested}.</span>
-                      ) : null}
-                    </p>
-                  ) : null}
-                  {weldOut && weldMinLegIn != null && Number(weldDemand) > 0 ? (
-                    <p>
-                      <span className="font-semibold">Fillet weld:</span> min leg <span className="font-mono">a ≈ {weldMinLegIn.toFixed(4)} in</span> for
-                      the stated demand at length {Number(weldLen).toFixed(2)} in — or increase length (see weld card).
-                    </p>
-                  ) : null}
-                  <p className="text-xs text-blue-900/90">
-                    Refine with the detailed cards; combined shear–tension interaction may require more bolts than each line
-                    alone.
-                  </p>
-                </CardBody>
-              </Card>
-            ) : null}
-            {shearMode === "slip" && boltGroup === "A307" ? (
-              <p className="text-sm text-amber-800">
-                Slip-critical pretension T_b is not tabulated for A307 in this tool — select A325 or A490.
-              </p>
-            ) : null}
-            {shearMode === "slip" && Number(tu) > 0 ? (
-              <p className="text-sm text-amber-800">
-                Combined shear + tension on slip-critical: check J3.9 reduction on slip strength — interaction below uses
-                unreduced slip capacity.
-              </p>
-            ) : null}
-            </div>
-          </details>
-
-          <details open className="rounded-2xl border border-slate-200 bg-white" id="conn-results">
-            <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
-              2 · Bolt check results
-              <span className="mt-1 block text-xs font-semibold text-slate-600">
-                Capacities vs V<sub>u</sub> and T<sub>u</sub>; interaction applies when T<sub>u</sub> &gt; 0.
-              </span>
-              <span className="mt-2 inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
-                Output: capacity, demand, utilization
-              </span>
-            </summary>
-            <div className="border-t border-slate-200 p-5">
-              <div className="grid gap-4 lg:grid-cols-2">
-            {shearMode === "slip" && slipOut ? (
-              <Card className="border-slate-200 bg-slate-50/80">
-                <CardBody className="space-y-2 text-sm text-slate-800">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold">Slip-critical (J3.8)</span>
-                    {shearAdequate ? <Badge tone="good">ADEQUATE</Badge> : <Badge tone="bad">NOT ADEQUATE</Badge>}
-                  </div>
-                  <p>
-                    T_b = {slipOut.Tb.toFixed(0)} kips, μ = {slipOut.mu.toFixed(2)}, R_n per bolt = {slipOut.rnPerBolt.toFixed(3)}{" "}
-                    kips
-                  </p>
-                  <p className="font-semibold">
-                    Available slip ({designMethod === "LRFD" ? "φR_n" : "R_n/Ω"}) = {slipOut.availableSlip.toFixed(3)} kips
-                  </p>
-                  <p className="font-semibold">Suggested n ≥ {slipOut.nBoltsRequired}</p>
-                </CardBody>
-              </Card>
-            ) : null}
-            {boltOut ? (
-              <Card className="border-slate-200 bg-slate-50/80">
-                <CardBody className="space-y-2 text-sm text-slate-800">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold">Shear / bearing</span>
-                    {shearAdequate ? <Badge tone="good">ADEQUATE</Badge> : <Badge tone="bad">NOT ADEQUATE</Badge>}
-                  </div>
-                  <p>
-                    F_nv = {boltOut.shear.Fnv.toFixed(0)} ksi — φR_n (shear) = {boltOut.shear.phiRnTotal.toFixed(3)} kips
-                  </p>
-                  {boltOut.bearing ? (
-                    <p>
-                      φR_n (bearing) = {boltOut.bearing.phiRnTotal.toFixed(3)} kips ({boltOut.bearing.limit})
-                    </p>
-                  ) : (
-                    <p className="text-slate-600">Bearing off.</p>
-                  )}
-                  <p className="font-semibold">
-                    Governing {designMethod === "LRFD" ? "φR_n" : "R_a"} ={" "}
-                    {(designMethod === "LRFD"
-                      ? boltOut.phiRnTotalGoverning
-                      : lrfdToAsdSamePhiOmega(boltOut.phiRnTotalGoverning)
-                    ).toFixed(3)}{" "}
-                    kips ({boltOut.controlling})
-                  </p>
-                  <p className="font-semibold">Suggested n = {boltOut.nBoltsRequiredGoverning}</p>
-                </CardBody>
-              </Card>
-            ) : null}
-
-            {tensionOut ? (
-              <Card className="border-slate-200 bg-slate-50/80">
-                <CardBody className="space-y-2 text-sm text-slate-800">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold">Bolt tension (J3.6)</span>
-                    {tensionAdequate ? <Badge tone="good">ADEQUATE</Badge> : <Badge tone="bad">NOT ADEQUATE</Badge>}
-                  </div>
-                  <p>
-                    F_nt = {tensionOut.Fnt.toFixed(0)} ksi — {designMethod === "LRFD" ? "φR_n" : "R_a"} ={" "}
-                    {(designMethod === "LRFD"
-                      ? tensionOut.phiRnTotal
-                      : lrfdToAsdSamePhiOmega(tensionOut.phiRnTotal)
-                    ).toFixed(3)}{" "}
-                    kips
-                  </p>
-                </CardBody>
-              </Card>
-            ) : null}
-
-            {interactionOut && Number(tu) > 0 ? (
-              <div className="lg:col-span-2">
-                <Card className="border-slate-200 bg-slate-50/80">
-                  <CardBody className="space-y-2 text-sm text-slate-800">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold">Shear + tension interaction</span>
-                      {interactionOut.isSafe ? <Badge tone="good">OK</Badge> : <Badge tone="bad">EXCEEDED</Badge>}
-                    </div>
-                    <p>
-                      Interaction sum = {interactionOut.interactionSum.toFixed(4)} (limit 1.0) — uses governing shear/bearing
-                      and tension {designMethod === "LRFD" ? "φR" : "R_a"} capacities.
-                    </p>
-                    <p className="text-slate-600">
-                      Cap_v ={" "}
-                      {(shearMode === "slip" && slipOut
-                        ? slipOut.availableSlip
-                        : designMethod === "LRFD"
-                          ? boltOut?.phiRnTotalGoverning
-                          : boltOut && lrfdToAsdSamePhiOmega(boltOut.phiRnTotalGoverning)
-                      )?.toFixed(3)}{" "}
-                      kips; Cap_t ={" "}
-                      {(designMethod === "LRFD"
-                        ? tensionOut?.phiRnTotal
-                        : tensionOut && lrfdToAsdSamePhiOmega(tensionOut.phiRnTotal)
-                      )?.toFixed(3)}{" "}
-                      kips
-                    </p>
-                  </CardBody>
-                </Card>
-              </div>
-            ) : null}
-            </div>
-            </div>
-          </details>
-
-          <details className="rounded-2xl border border-slate-200 bg-white" id="conn-weld">
-            <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
-              3 · Fillet weld
-              <span className="mt-1 block text-xs font-semibold text-slate-600">
-                R<sub>n</sub> = 0.6 F<sub>EXX</sub> (0.707a) L; φ = 0.75. Electrode also used for groove checks below.
-              </span>
-            </summary>
-            <div className="border-t border-slate-200 p-5">
-              <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="F_EXX (electrode)" hint="ksi">
-                <SelectInput value={fexx} onChange={setFexx}>
-                  <option value="70">70 (E70XX)</option>
-                  <option value="80">80 (E80XX)</option>
-                </SelectInput>
-              </Field>
-              <Field label="Leg size a" hint="inches">
-                <TextInputWithUnit value={legIn} onChange={setLegIn} unit="in" placeholder="0.25" inputMode="decimal" />
-              </Field>
-              <Field label="Weld length L" hint="inches">
-                <TextInputWithUnit value={weldLen} onChange={setWeldLen} unit="in" placeholder="4" inputMode="decimal" />
-              </Field>
-              <Field label="Demand on weld" hint="kips">
-                <TextInputWithUnit value={weldDemand} onChange={setWeldDemand} unit="kips" placeholder="50" inputMode="decimal" />
-              </Field>
-            </div>
-            {weldOut ? (
-              <Card className="mt-6 border-slate-200 bg-white shadow-sm">
-                <CardBody className="space-y-2 text-sm text-slate-800">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold">Fillet weld status</span>
-                    {weldDemandOk ? <Badge tone="good">ADEQUATE</Badge> : <Badge tone="bad">NOT ADEQUATE</Badge>}
-                  </div>
-                  <p>
-                    Throat = {weldOut.throat.toFixed(4)} in — {designMethod === "LRFD" ? "φR_n" : "R_a"} ={" "}
-                    {(designMethod === "LRFD" ? weldOut.phiRn : lrfdToAsdSamePhiOmega(weldOut.phiRn, 0.75, 2)).toFixed(3)}{" "}
-                    kips
-                  </p>
-                  <p className="font-semibold">Min length at this leg ≈ {weldOut.lengthRequiredIn.toFixed(3)} in</p>
-                  {weldMinLegIn != null && Number(weldLen) > 0 ? (
-                    <p className="text-slate-700">
-                      Min leg a at this length for the demand ≈ {weldMinLegIn.toFixed(4)} in (LRFD φ = 0.75)
-                    </p>
-                  ) : null}
-                </CardBody>
-              </Card>
-            ) : null}
-              </div>
-          </details>
-
-          <details id="conn-optional" className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/40 open:border-slate-400 open:bg-white">
-            <summary className="cursor-pointer list-none px-5 py-4 text-base font-bold text-slate-900 [&::-webkit-details-marker]:hidden">
-              Optional — groove weld &amp; plate prying
-              <span className="mt-1 block text-sm font-normal text-slate-600">
-                CJP / groove metal in shear on an effective throat; simplified prying plate thickness (not full DG4).
-              </span>
-            </summary>
-            <div className="space-y-8 border-t border-slate-200 px-5 pb-6 pt-4">
-              <div>
-                <h3 className="text-sm font-bold uppercase tracking-wide text-slate-500">Groove weld (shear on throat)</h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                  R_n = 0.6 F_EXX A_w; uses the same electrode F_EXX as the fillet section ({fexx} ksi). Tension or compression
-                  normal to the weld may govern separately.
-                </p>
-                <div className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                  <Field label="Effective throat" hint="in — from detail">
-                    <TextInputWithUnit value={grooveThroatIn} onChange={setGrooveThroatIn} unit="in" placeholder="0.25" inputMode="decimal" />
+                  <Field label="Shear planes per bolt" hint="Single = 1, double = 2">
+                    <SelectInput value={shearPlanes} onChange={(v) => setShearPlanes(v as "1" | "2")}>
+                      <option value="1">1 (single shear)</option>
+                      <option value="2">2 (double shear)</option>
+                    </SelectInput>
                   </Field>
-                  <Field label="Length L" hint="in — total effective length in shear">
-                    <TextInputWithUnit value={grooveLenIn} onChange={setGrooveLenIn} unit="in" placeholder="4" inputMode="decimal" />
+                  {shearMode === "bearing" ? (
+                    <Field label="Include bearing check" hint="Uncheck for shear-only">
+                      <SelectInput value={checkBearing ? "yes" : "no"} onChange={(v) => setCheckBearing(v === "yes")}>
+                        <option value="yes">Yes (govern with shear)</option>
+                        <option value="no">No (shear only)</option>
+                      </SelectInput>
+                    </Field>
+                  ) : null}
+                  {shearMode === "bearing" ? (
+                    <>
+                      <Field label="Plate F_u" hint="ksi" error={invalid(plateFu, 0) ? "Enter a number ≥ 0." : undefined}>
+                        <TextInputWithUnit value={plateFu} onChange={setPlateFu} unit="ksi" placeholder="65" inputMode="decimal" />
+                      </Field>
+                      <Field label="Plate thickness t" hint="in" error={invalid(plateT, 0) ? "Enter a number ≥ 0." : undefined}>
+                        <TextInputWithUnit value={plateT} onChange={setPlateT} unit="in" placeholder="0.5" inputMode="decimal" />
+                      </Field>
+                      <Field
+                        label="Min clear L_c"
+                        hint="in — clear distance in load direction (J3.10(a))"
+                        error={invalid(lcMin, 0) ? "Enter a number ≥ 0." : undefined}
+                      >
+                        <TextInputWithUnit value={lcMin} onChange={setLcMin} unit="in" placeholder="1.25" inputMode="decimal" />
+                      </Field>
+                    </>
+                  ) : null}
+                </div>
+              </CardBody>
+            </Card>
+
+            <Card id="conn-weld">
+              <CardHeader title="Fillet weld" description="R_n = 0.6FEXX(0.707a)L; φ = 0.75. Electrode also used for groove checks." />
+              <CardBody>
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <Field label="F_EXX (electrode)" hint="ksi">
+                    <SelectInput value={fexx} onChange={setFexx}>
+                      <option value="70">70 (E70XX)</option>
+                      <option value="80">80 (E80XX)</option>
+                    </SelectInput>
                   </Field>
-                  <Field label="Shear demand" hint="kips on weld group">
-                    <TextInputWithUnit value={grooveDemand} onChange={setGrooveDemand} unit="kips" placeholder="50" inputMode="decimal" />
+                  <Field label="Leg size a" hint="inches">
+                    <TextInputWithUnit value={legIn} onChange={setLegIn} unit="in" placeholder="0.25" inputMode="decimal" />
+                  </Field>
+                  <Field label="Weld length L" hint="inches">
+                    <TextInputWithUnit value={weldLen} onChange={setWeldLen} unit="in" placeholder="4" inputMode="decimal" />
+                  </Field>
+                  <Field label="Demand on weld" hint="kips">
+                    <TextInputWithUnit value={weldDemand} onChange={setWeldDemand} unit="kips" placeholder="50" inputMode="decimal" />
                   </Field>
                 </div>
-                {grooveOut ? (
-                  <Card className="mt-4 border-slate-200 bg-white shadow-sm">
-                    <CardBody className="space-y-2 text-sm text-slate-800">
+                {weldOut ? (
+                  <Card className="mt-6 border-[color:var(--border)] bg-[color:var(--surface)] shadow-sm">
+                    <CardBody className="space-y-2 text-sm text-[color:var(--foreground)]">
                       <div className="flex items-center justify-between">
-                        <span className="font-semibold">Groove weld metal (shear)</span>
-                        {grooveOut.isSafe ? <Badge tone="good">ADEQUATE</Badge> : <Badge tone="bad">NOT ADEQUATE</Badge>}
+                        <span className="font-semibold">Fillet weld status</span>
+                        {weldDemandOk ? <Badge tone="good">ADEQUATE</Badge> : <Badge tone="bad">NOT ADEQUATE</Badge>}
                       </div>
-                      <p>
-                        A_w = {grooveOut.AwIn2.toFixed(4)} in² — R_n = {grooveOut.RnKips.toFixed(3)} kips —{" "}
-                        {designMethod === "LRFD" ? "φR_n" : "R_a"} = {grooveOut.phiRnOrAllowableKips.toFixed(3)} kips
+                      <p className="text-[color:var(--muted)]">
+                        Throat = {weldOut.throat.toFixed(4)} in — {designMethod === "LRFD" ? "φR_n" : "R_a"} ={" "}
+                        {(designMethod === "LRFD" ? weldOut.phiRn : lrfdToAsdSamePhiOmega(weldOut.phiRn, 0.75, 2)).toFixed(3)} kips
                       </p>
-                      <p className="text-xs text-slate-600">{grooveOut.note}</p>
+                      <p className="font-semibold">Min length at this leg ≈ {weldOut.lengthRequiredIn.toFixed(3)} in</p>
                     </CardBody>
                   </Card>
                 ) : null}
-              </div>
+              </CardBody>
+            </Card>
+          </div>
 
-              <div>
-                <h3 className="text-sm font-bold uppercase tracking-wide text-slate-500">Prying — approximate plate thickness</h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                  Plastic-hinge strip model (φ = 0.9 for plate yielding). Leave T/bolt blank to use T_u ÷ n when T_u &gt; 0.
-                </p>
-                <div className="mt-4 grid gap-5 sm:grid-cols-2">
-                  <Field label="T per bolt (optional)" hint="kips — blank uses T_u / n">
-                    <TextInputWithUnit value={pryingTPerBoltOverride} onChange={setPryingTPerBoltOverride} unit="kips" placeholder="" inputMode="decimal" />
-                  </Field>
-                  <Field label="b′ (lever arm)" hint="in — bolt line to hinge">
-                    <TextInputWithUnit value={pryingBPrimeIn} onChange={setPryingBPrimeIn} unit="in" placeholder="1.5" inputMode="decimal" />
-                  </Field>
-                  <Field label="Strip width w" hint="in — gage or tributary width">
-                    <TextInputWithUnit value={pryingStripWidthIn} onChange={setPryingStripWidthIn} unit="in" placeholder="4" inputMode="decimal" />
-                  </Field>
-                  <Field label="Plate F_y" hint="ksi">
-                    <TextInputWithUnit value={pryingFyKsi} onChange={setPryingFyKsi} unit="ksi" placeholder="50" inputMode="decimal" />
-                  </Field>
-                </div>
-                {pryingOut && pryingTPerBoltKips != null ? (
-                  <Card className="mt-4 border-slate-200 bg-white shadow-sm">
-                    <CardBody className="space-y-2 text-sm text-slate-800">
-                      <p>
-                        <span className="font-semibold">T per bolt =</span> {pryingTPerBoltKips.toFixed(4)} kips —{" "}
-                        <span className="font-semibold">t_min ≈</span> {pryingOut.tMinApproxIn.toFixed(4)} in
-                      </p>
-                      <p className="text-xs text-slate-600">{pryingOut.note}</p>
+          <div className="space-y-4 lg:col-span-5 lg:sticky lg:top-28" id="results">
+            <ResultHero
+              status={overallStatus}
+              title="Overall"
+              governing={
+                interactionOut && Number(tu) > 0
+                  ? `Interaction Σ = ${interactionOut.interactionSum.toFixed(4)}`
+                  : shearMode === "slip" && slipOut
+                    ? "Slip-critical (J3.8)"
+                    : boltOut
+                      ? `Bolt check (${boltOut.controlling})`
+                      : "Enter inputs to evaluate"
+              }
+              capacityLabel="Key capacity"
+              capacity={
+                shearMode === "slip" && slipOut
+                  ? `${slipOut.availableSlip.toFixed(3)} kips (available slip)`
+                  : boltOut
+                    ? `${(
+                        designMethod === "LRFD"
+                          ? boltOut.phiRnTotalGoverning
+                          : lrfdToAsdSamePhiOmega(boltOut.phiRnTotalGoverning)
+                      ).toFixed(3)} kips (governing shear/bearing)`
+                    : "—"
+              }
+              demandLabel="Demand"
+              demand={`${Number(vu).toFixed(3)} kips shear${Number(tu) > 0 ? ` · ${Number(tu).toFixed(3)} kips tension` : ""}`}
+              utilization={
+                interactionOut && Number(tu) > 0
+                  ? interactionOut.interactionSum
+                  : shearMode === "slip" && slipOut
+                    ? Number(vu) / slipOut.availableSlip
+                    : boltOut
+                      ? Number(vu) /
+                        (designMethod === "LRFD"
+                          ? boltOut.phiRnTotalGoverning
+                          : lrfdToAsdSamePhiOmega(boltOut.phiRnTotalGoverning))
+                      : undefined
+              }
+            />
+
+            <CalculatorActionRail
+              title="Actions"
+              subtitle={`${designMethod} · ${shearMode === "slip" ? "Slip-critical" : "Bearing"} · ${boltGroup} d=${dBolt} in`}
+              savedKey={CLIENT_PERSISTENCE.savedAt("connections")}
+              saving={saving}
+              savedAt={savedAt}
+              compare={{
+                storageKey: CLIENT_PERSISTENCE.compareSnapshot("connections"),
+                getCurrent: () => ({
+                  title: "Connections",
+                  lines: [
+                    `Method: ${designMethod} · Shear mode: ${shearMode}`,
+                    `Vu: ${vu} kips · Tu: ${tu} kips`,
+                    `Bolt: ${boltGroup} d=${dBolt} in n=${nBolts} planes=${shearPlanes} threads=${threadMode}`,
+                  ],
+                }),
+              }}
+              copyText={() =>
+                [
+                  "Connections",
+                  `Method: ${designMethod}`,
+                  `Shear mode: ${shearMode}`,
+                  `Vu: ${vu} kips`,
+                  `Tu: ${tu} kips`,
+                ].join("\n")
+              }
+              onGoResults={() => smoothScrollTo("results")}
+              onGoSteps={() => {
+                setDetailsTab("bolts");
+                smoothScrollTo("details");
+              }}
+              csv={{ filename: "connections-export.csv", rows: csvRows }}
+              json={{
+                data: {
+                  bolt: boltOut,
+                  slip: slipOut,
+                  tension: tensionOut,
+                  interaction: interactionOut,
+                  weld: weldOut,
+                  grooveWeld: grooveOut,
+                  pryingPlate: pryingOut,
+                  inputs: {
+                    designMethod,
+                    shearMode,
+                    surfaceClass,
+                    slipHf,
+                    vu,
+                    tu,
+                    boltGroup,
+                    threadMode,
+                    dBolt,
+                    nBolts,
+                    shearPlanes,
+                    checkBearing,
+                    plateFu,
+                    plateT,
+                    lcMin,
+                    fexx,
+                    legIn,
+                    weldLen,
+                    weldDemand,
+                    grooveThroatIn,
+                    grooveLenIn,
+                    grooveDemand,
+                    pryingTPerBoltOverride,
+                    pryingBPrimeIn,
+                    pryingStripWidthIn,
+                    pryingFyKsi,
+                  },
+                },
+              }}
+              onReset={resetInputs}
+            />
+          </div>
+        </div>
+
+        <ModuleDetailsTabs
+          title="Details"
+          description="Bolt results, fillet weld, and optional helpers."
+          value={detailsTab}
+          onChange={setDetailsTab}
+          tabs={[
+            {
+              id: "bolts",
+              label: "Bolt results",
+              panel: (
+                <Card id="conn-results">
+                  <CardHeader title="Bolt check results" description="Capacities vs Vu and Tu; interaction applies when Tu > 0." />
+                  <CardBody>
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      {shearMode === "slip" && slipOut ? (
+                        <Card className="border-[color:var(--border)] bg-[color:var(--surface-2)] shadow-sm">
+                          <CardBody className="space-y-2 text-sm text-[color:var(--foreground)]">
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold">Slip-critical (J3.8)</span>
+                              {shearAdequate ? <Badge tone="good">ADEQUATE</Badge> : <Badge tone="bad">NOT ADEQUATE</Badge>}
+                            </div>
+                            <p className="text-[color:var(--muted)]">
+                              T_b = {slipOut.Tb.toFixed(0)} kips, μ = {slipOut.mu.toFixed(2)}, R_n/bolt = {slipOut.rnPerBolt.toFixed(3)} kips
+                            </p>
+                            <p className="font-semibold">
+                              Available slip ({designMethod === "LRFD" ? "φR_n" : "R_n/Ω"}) = {slipOut.availableSlip.toFixed(3)} kips
+                            </p>
+                          </CardBody>
+                        </Card>
+                      ) : null}
+                      {boltOut ? (
+                        <Card className="border-[color:var(--border)] bg-[color:var(--surface-2)] shadow-sm">
+                          <CardBody className="space-y-2 text-sm text-[color:var(--foreground)]">
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold">Shear / bearing</span>
+                              {shearAdequate ? <Badge tone="good">ADEQUATE</Badge> : <Badge tone="bad">NOT ADEQUATE</Badge>}
+                            </div>
+                            <p className="text-[color:var(--muted)]">
+                              F_nv = {boltOut.shear.Fnv.toFixed(0)} ksi — φR_n (shear) = {boltOut.shear.phiRnTotal.toFixed(3)} kips
+                            </p>
+                            {boltOut.bearing ? (
+                              <p className="text-[color:var(--muted)]">
+                                φR_n (bearing) = {boltOut.bearing.phiRnTotal.toFixed(3)} kips ({boltOut.bearing.limit})
+                              </p>
+                            ) : (
+                              <p className="text-[color:var(--muted)]">Bearing off.</p>
+                            )}
+                            <p className="font-semibold">
+                              Governing {designMethod === "LRFD" ? "φR_n" : "R_a"} ={" "}
+                              {(designMethod === "LRFD"
+                                ? boltOut.phiRnTotalGoverning
+                                : lrfdToAsdSamePhiOmega(boltOut.phiRnTotalGoverning)
+                              ).toFixed(3)}{" "}
+                              kips ({boltOut.controlling})
+                            </p>
+                          </CardBody>
+                        </Card>
+                      ) : null}
+                      {interactionOut && Number(tu) > 0 ? (
+                        <div className="lg:col-span-2">
+                          <Card className="border-[color:var(--border)] bg-[color:var(--surface-2)] shadow-sm">
+                            <CardBody className="space-y-2 text-sm text-[color:var(--foreground)]">
+                              <div className="flex items-center justify-between">
+                                <span className="font-semibold">Shear + tension interaction</span>
+                                {interactionOut.isSafe ? <Badge tone="good">OK</Badge> : <Badge tone="bad">EXCEEDED</Badge>}
+                              </div>
+                              <p className="text-[color:var(--muted)]">
+                                Interaction sum = {interactionOut.interactionSum.toFixed(4)} (limit 1.0)
+                              </p>
+                            </CardBody>
+                          </Card>
+                        </div>
+                      ) : null}
+                    </div>
+                  </CardBody>
+                </Card>
+              ),
+            },
+            {
+              id: "weld",
+              label: "Weld",
+              panel: (
+                <Card id="conn-weld-details">
+                  <CardHeader title="Fillet weld" description="R_n = 0.6FEXX(0.707a)L; φ = 0.75." />
+                  <CardBody className="space-y-6">
+                    <div className="grid gap-5 sm:grid-cols-2">
+                      <Field label="F_EXX (electrode)" hint="ksi">
+                        <SelectInput value={fexx} onChange={setFexx}>
+                          <option value="70">70 (E70XX)</option>
+                          <option value="80">80 (E80XX)</option>
+                        </SelectInput>
+                      </Field>
+                      <Field label="Leg size a" hint="inches">
+                        <TextInputWithUnit value={legIn} onChange={setLegIn} unit="in" placeholder="0.25" inputMode="decimal" />
+                      </Field>
+                      <Field label="Weld length L" hint="inches">
+                        <TextInputWithUnit value={weldLen} onChange={setWeldLen} unit="in" placeholder="4" inputMode="decimal" />
+                      </Field>
+                      <Field label="Demand on weld" hint="kips">
+                        <TextInputWithUnit value={weldDemand} onChange={setWeldDemand} unit="kips" placeholder="50" inputMode="decimal" />
+                      </Field>
+                    </div>
+
+                    {weldOut ? (
+                      <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-2)] p-4 shadow-sm">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-sm font-semibold text-[color:var(--foreground)]">Status</p>
+                          {weldDemandOk ? <Badge tone="good">ADEQUATE</Badge> : <Badge tone="bad">NOT ADEQUATE</Badge>}
+                        </div>
+                        <p className="mt-2 text-sm text-[color:var(--muted)]">
+                          Throat = {weldOut.throat.toFixed(4)} in — {designMethod === "LRFD" ? "φR_n" : "R_a"} ={" "}
+                          {(designMethod === "LRFD" ? weldOut.phiRn : lrfdToAsdSamePhiOmega(weldOut.phiRn, 0.75, 2)).toFixed(3)} kips
+                        </p>
+                        <p className="mt-1 text-sm font-semibold text-[color:var(--foreground)]">
+                          Min length at this leg ≈ {weldOut.lengthRequiredIn.toFixed(3)} in
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-[color:var(--muted)]">Enter weld inputs to compute capacity.</p>
+                    )}
+                  </CardBody>
+                </Card>
+              ),
+            },
+            {
+              id: "optional",
+              label: "Optional",
+              panel: (
+                <div className="grid gap-6">
+                  <Card>
+                    <CardHeader title="Groove weld (shear on throat)" description="R_n = 0.6FEXX A_w; uses the same electrode as fillet weld." />
+                    <CardBody className="space-y-4">
+                      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                        <Field label="Effective throat" hint="in — from detail">
+                          <TextInputWithUnit value={grooveThroatIn} onChange={setGrooveThroatIn} unit="in" placeholder="0.25" inputMode="decimal" />
+                        </Field>
+                        <Field label="Length L" hint="in — total effective length in shear">
+                          <TextInputWithUnit value={grooveLenIn} onChange={setGrooveLenIn} unit="in" placeholder="4" inputMode="decimal" />
+                        </Field>
+                        <Field label="Shear demand" hint="kips on weld group">
+                          <TextInputWithUnit value={grooveDemand} onChange={setGrooveDemand} unit="kips" placeholder="50" inputMode="decimal" />
+                        </Field>
+                      </div>
+                      {grooveOut ? (
+                        <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-2)] p-4 shadow-sm">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-sm font-semibold text-[color:var(--foreground)]">Groove weld metal (shear)</p>
+                            {grooveOut.isSafe ? <Badge tone="good">ADEQUATE</Badge> : <Badge tone="bad">NOT ADEQUATE</Badge>}
+                          </div>
+                          <p className="mt-2 text-sm text-[color:var(--muted)]">
+                            A_w = {grooveOut.AwIn2.toFixed(4)} in² — R_n = {grooveOut.RnKips.toFixed(3)} kips —{" "}
+                            {designMethod === "LRFD" ? "φR_n" : "R_a"} = {grooveOut.phiRnOrAllowableKips.toFixed(3)} kips
+                          </p>
+                          <p className="mt-2 text-xs font-semibold text-[color:var(--muted)]">{grooveOut.note}</p>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-[color:var(--muted)]">Enter throat/length/demand to compute.</p>
+                      )}
                     </CardBody>
                   </Card>
-                ) : (
-                  <p className="mt-3 text-sm text-slate-500">Enter T/bolt or set T_u and n so T/bolt can be inferred.</p>
-                )}
-              </div>
-            </div>
-          </details>
-        </CardBody>
-      </Card>
-      <div className="mt-8 md:mt-10">
-      <div id="actions">
-      <CalculatorActionRail
-        mobileOnly
-        subtitle="Connections actions"
-        savedKey={CLIENT_PERSISTENCE.savedAt("connections")}
-        saving={saving}
-        savedAt={savedAt}
-        compare={{
-          storageKey: CLIENT_PERSISTENCE.compareSnapshot("connections"),
-          getCurrent: () => ({
-            title: "Connections",
-            lines: [
-              `Method: ${designMethod} · Shear mode: ${shearMode}`,
-              `Vu: ${vu} kips · Tu: ${tu} kips`,
-              `Bolt: ${boltGroup} d=${dBolt} in n=${nBolts} planes=${shearPlanes} threads=${threadMode}`,
-              interactionOut && Number(tu) > 0 ? `Interaction Σ: ${interactionOut.interactionSum.toFixed(6)}` : null,
-              shearMode === "slip" && slipOut ? `Available slip: ${slipOut.availableSlip.toFixed(6)} kips` : null,
-              boltOut ? `Governing shear/bearing: ${boltOut.phiRnTotalGoverning.toFixed(6)} kips` : null,
-              tensionOut ? `Bolt tension φRn total: ${tensionOut.phiRnTotal.toFixed(6)} kips` : null,
-              weldOut ? `Fillet weld φRn: ${weldOut.phiRn.toFixed(6)} kips` : null,
-              grooveOut ? `Groove weld: ${grooveOut.phiRnOrAllowableKips.toFixed(6)} kips` : null,
-            ].filter(Boolean) as string[],
-          }),
-        }}
-        copyText={() =>
-          [
-            "Connections",
-            `Method: ${designMethod}`,
-            `Shear mode: ${shearMode}`,
-            `Vu: ${vu} kips`,
-            `Tu: ${tu} kips`,
-            interactionOut && Number(tu) > 0 ? `Interaction Σ: ${interactionOut.interactionSum.toFixed(6)}` : null,
-          ]
-            .filter(Boolean)
-            .join("\n")
-        }
-        onGoResults={() => smoothScrollTo("results")}
-        onGoSteps={() => smoothScrollTo("conn-results")}
-        csv={{ filename: "connections-export.csv", rows: csvRows }}
-        json={{
-          data: {
-            bolt: boltOut,
-            slip: slipOut,
-            tension: tensionOut,
-            interaction: interactionOut,
-            weld: weldOut,
-            grooveWeld: grooveOut,
-            pryingPlate: pryingOut,
-          },
-        }}
-        onReset={resetInputs}
-      />
+
+                  <Card>
+                    <CardHeader title="Prying — approximate plate thickness" description="Plastic-hinge strip model (approx.). Leave T/bolt blank to use Tu/n when Tu > 0." />
+                    <CardBody className="space-y-4">
+                      <div className="grid gap-5 sm:grid-cols-2">
+                        <Field label="T per bolt (optional)" hint="kips — blank uses Tu / n">
+                          <TextInputWithUnit value={pryingTPerBoltOverride} onChange={setPryingTPerBoltOverride} unit="kips" placeholder="" inputMode="decimal" />
+                        </Field>
+                        <Field label="b′ (lever arm)" hint="in — bolt line to hinge">
+                          <TextInputWithUnit value={pryingBPrimeIn} onChange={setPryingBPrimeIn} unit="in" placeholder="1.5" inputMode="decimal" />
+                        </Field>
+                        <Field label="Strip width w" hint="in — gage or tributary width">
+                          <TextInputWithUnit value={pryingStripWidthIn} onChange={setPryingStripWidthIn} unit="in" placeholder="4" inputMode="decimal" />
+                        </Field>
+                        <Field label="Plate F_y" hint="ksi">
+                          <TextInputWithUnit value={pryingFyKsi} onChange={setPryingFyKsi} unit="ksi" placeholder="50" inputMode="decimal" />
+                        </Field>
+                      </div>
+                      {pryingOut && pryingTPerBoltKips != null ? (
+                        <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-2)] p-4 shadow-sm">
+                          <p className="text-sm text-[color:var(--muted)]">
+                            T/bolt = <span className="font-semibold tabular-nums text-[color:var(--foreground)]">{pryingTPerBoltKips.toFixed(4)}</span> kips
+                          </p>
+                          <p className="mt-1 text-sm text-[color:var(--muted)]">
+                            t_min ≈ <span className="font-semibold tabular-nums text-[color:var(--foreground)]">{pryingOut.tMinApproxIn.toFixed(4)}</span> in
+                          </p>
+                          <p className="mt-2 text-xs font-semibold text-[color:var(--muted)]">{pryingOut.note}</p>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-[color:var(--muted)]">Enter inputs to compute prying thickness.</p>
+                      )}
+                    </CardBody>
+                  </Card>
+                </div>
+              ),
+            },
+          ]}
+          className="mt-8"
+        />
       </div>
-      </div>
-      <PageFooterNav currentHref="/connections" />
     </AppShell>
   );
 }

@@ -1,27 +1,27 @@
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { AppShell } from "@/components/layout/AppShell";
-import { PageFooterNav } from "@/components/navigation/PageFooterNav";
-import { PageSectionLayout } from "@/components/navigation/PageSectionLayout";
 import { BrandLink } from "@/components/ui/BrandLink";
+import { ModuleHero } from "@/components/layout/ModuleHero";
 
 /** Help: capabilities, limits, units, and tips for students. */
 export default function InfoPage() {
   return (
     <AppShell>
-      <Card>
-        <CardHeader
-          title="About this app"
+      <div className="space-y-8 md:space-y-10">
+        <ModuleHero
+          eyebrow="spanledger"
+          title={
+            <>
+              About{" "}
+              <span className="text-[color:var(--foreground)]">This App</span>
+            </>
+          }
           description="AISC 360–based steel checks using the v16 shape database. Works offline after the first load (PWA). Use Summary to print or review inputs and key results together."
+          image={{ src: "/publicbrandowl-logo.png" }}
         />
-        <CardBody className="max-w-none space-y-4 text-slate-800">
-          <PageSectionLayout
-            sections={[
-              { id: "info-capabilities", label: "Capabilities" },
-              { id: "info-limits", label: "Limitations" },
-              { id: "info-units", label: "Units" },
-              { id: "info-tips", label: "Tips" },
-            ]}
-          >
+
+        <Card>
+          <CardBody className="max-w-none space-y-4 text-slate-800">
           <details id="info-capabilities" open className="rounded-2xl border border-slate-200 bg-white">
             <summary className="min-h-11 cursor-pointer px-4 py-3.5 text-sm font-extrabold tracking-tight text-slate-950 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10 sm:px-5 sm:py-4">
               What you can do
@@ -130,10 +130,9 @@ export default function InfoPage() {
               </ul>
             </div>
           </details>
-          </PageSectionLayout>
-        </CardBody>
-      </Card>
-      <PageFooterNav currentHref="/info" />
+          </CardBody>
+        </Card>
+      </div>
     </AppShell>
   );
 }

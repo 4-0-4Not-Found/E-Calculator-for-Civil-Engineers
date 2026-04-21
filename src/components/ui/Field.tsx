@@ -13,18 +13,31 @@ export function Field(props: {
   const errorId = `${id}-error`;
   return (
     <label className={cn("flex flex-col gap-1.5", props.className)}>
-      <span className="text-sm font-semibold text-slate-900">{props.label}</span>
+      <span className="text-sm font-semibold text-[color:var(--foreground)]">{props.label}</span>
       {props.hint ? (
-        <span id={hintId} className="text-xs leading-relaxed text-slate-600">
+        <span id={hintId} className="text-xs leading-relaxed text-[color:var(--muted)]">
           {props.hint}
         </span>
       ) : null}
       {props.children}
-      {props.error ? (
-        <span id={errorId} className="text-xs font-semibold text-[color:var(--action)]">
-          {props.error}
-        </span>
-      ) : null}
+      {/* Reserve space so errors don't cause layout jump. */}
+      <span
+        id={errorId}
+        className={cn(
+          "min-h-4 text-xs font-semibold leading-4",
+          props.error ? "text-rose-700" : "text-transparent",
+        )}
+        aria-live="polite"
+      >
+        {props.error ? (
+          <span className="inline-flex items-center gap-1">
+            <span aria-hidden="true">!</span>
+            <span>{props.error}</span>
+          </span>
+        ) : (
+          "—"
+        )}
+      </span>
     </label>
   );
 }
@@ -40,7 +53,7 @@ export function TextInput(props: {
     <div className="relative">
       <input
         className={cn(
-          "w-full min-h-11 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-950 shadow-sm outline-none ring-0 placeholder:text-slate-400 focus:border-[color:var(--brand)]/40 focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10",
+          "w-full min-h-11 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] px-3 py-2.5 text-sm text-[color:var(--foreground)] shadow-sm outline-none ring-0 placeholder:text-[color:var(--muted)] focus:border-[color:var(--brand)]/35 focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10",
           canClear ? "pr-10" : null,
         )}
         value={props.value}
@@ -51,7 +64,7 @@ export function TextInput(props: {
         <button
           type="button"
           aria-label="Clear field"
-          className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-sm font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10"
+          className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-xl px-2 py-1 text-sm font-semibold text-[color:var(--muted)] hover:bg-[color:var(--surface-2)] hover:text-[color:var(--foreground)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10"
           onClick={() => props.onChange("")}
         >
           ×
@@ -68,7 +81,7 @@ export function SelectInput(props: {
 }) {
   return (
     <select
-      className="w-full min-h-11 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-black shadow-sm outline-none focus:border-[color:var(--brand)]/40 focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10"
+      className="w-full min-h-11 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] px-3 py-2.5 text-sm font-semibold text-[color:var(--foreground)] shadow-sm outline-none focus:border-[color:var(--brand)]/35 focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10"
       value={props.value}
       onChange={(e) => props.onChange(e.target.value)}
     >

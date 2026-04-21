@@ -16,19 +16,51 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   const size = props.size ?? "md";
 
   const base =
-    "inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-xl font-semibold shadow-sm transition focus:outline-none focus-visible:ring-4 disabled:cursor-not-allowed disabled:opacity-60";
+    [
+      "inline-flex items-center justify-center gap-2 whitespace-nowrap",
+      "rounded-full font-semibold",
+      "transition will-change-transform",
+      "focus:outline-none focus-visible:ring-4 disabled:cursor-not-allowed disabled:opacity-60",
+      "active:translate-y-0",
+    ].join(" ");
 
   const sizes =
-    size === "sm" ? "min-h-10 px-3 py-2 text-sm" : "px-4 py-2.5 text-sm md:text-[15px]";
+    size === "sm"
+      ? "min-h-10 px-3.5 py-2 text-sm"
+      : "min-h-11 px-5 py-2.5 text-sm md:text-[15px]";
 
   const variants =
     variant === "primary"
-      ? "bg-[color:var(--action)] text-white hover:bg-[#e24f16] focus-visible:ring-[color:var(--action)]/20"
+      ? [
+          "bg-[color:var(--brand)] text-white",
+          "shadow-sm",
+          "hover:bg-[color:var(--brand-2)] hover:shadow-[var(--shadow-sm)] hover:-translate-y-0.5",
+          "active:translate-y-0 active:shadow-sm",
+          "focus-visible:ring-[color:var(--brand)]/20",
+        ].join(" ")
       : variant === "danger"
-        ? "border border-red-200 bg-white text-red-800 hover:bg-red-50 focus:ring-red-500/15"
+        ? [
+            "border border-red-200 bg-[color:var(--surface)] text-red-800",
+            "shadow-sm",
+            "hover:bg-red-50 hover:-translate-y-0.5",
+            "active:translate-y-0",
+            "focus-visible:ring-red-500/15",
+          ].join(" ")
         : variant === "ghost"
-          ? "bg-transparent text-slate-800 hover:bg-slate-100 focus:ring-slate-500/15"
-          : "border border-slate-200 bg-white text-slate-800 hover:border-slate-300 hover:bg-slate-50 focus-visible:ring-[color:var(--brand)]/10";
+          ? [
+              "bg-transparent text-[color:var(--foreground)]",
+              "shadow-none",
+              "hover:bg-[color:var(--surface-2)] hover:-translate-y-0.5",
+              "active:translate-y-0",
+              "focus-visible:ring-[color:var(--brand)]/12",
+            ].join(" ")
+          : [
+              "border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--foreground)]",
+              "shadow-sm ring-1 ring-transparent",
+              "hover:bg-[color:var(--surface-3)] hover:border-[color:var(--accent-weak)] hover:ring-[color:var(--accent-weak)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-sm)]",
+              "active:translate-y-0 active:shadow-sm",
+              "focus-visible:ring-[color:var(--brand)]/10",
+            ].join(" ");
 
   const { className, leftIcon, rightIcon, children, ...rest } = props;
   return (

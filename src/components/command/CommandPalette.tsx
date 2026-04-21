@@ -293,11 +293,11 @@ export function CommandPaletteButton() {
         // Dispatch a custom event so the single palette instance can open.
         window.dispatchEvent(new Event(CLIENT_PERSISTENCE.commandPaletteOpen));
       }}
-      className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 shadow-sm hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10"
+      className="inline-flex min-w-[220px] items-center justify-between gap-3 rounded-full border border-[color:var(--accent-weak)] bg-[color:var(--mint)] px-4 py-2 text-sm font-semibold text-[color:var(--accent)] shadow-sm hover:bg-[color:var(--mint-2)] focus:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--accent)]/10"
       aria-label="Open command palette"
     >
-      Search
-      <span className="hidden rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600 md:inline">
+      <span className="text-[color:var(--accent)]/70">Search</span>
+      <span className="hidden rounded-full border border-[color:var(--accent-weak)] bg-white/70 px-2 py-0.5 text-xs font-semibold text-[color:var(--accent)] md:inline">
         Ctrl/⌘ K
       </span>
     </button>

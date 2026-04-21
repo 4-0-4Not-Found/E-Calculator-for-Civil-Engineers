@@ -17,6 +17,20 @@ const modules: Array<{ key: ModuleKey; label: string; href: string }> = [
   { key: "connections", label: "Connections", href: "/connections" },
 ];
 
+function TinyStatus(props: { tone: "empty" | "complete"; label: string }) {
+  const dot = props.tone === "complete" ? "bg-emerald-500" : "bg-slate-400";
+  const cls =
+    props.tone === "complete"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+      : "border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--muted)]";
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] font-semibold ${cls}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${dot}`} aria-hidden="true" />
+      {props.label}
+    </span>
+  );
+}
+
 export function ModuleProgressPanel() {
   const [tick, setTick] = useState(0);
   useEffect(() => {
@@ -45,6 +59,25 @@ export function ModuleProgressPanel() {
   }, [tick]);
 
   useEffect(() => {
+    if (!resumeHref) return;
+    function isTypingTarget(t: EventTarget | null) {
+      if (!(t instanceof HTMLElement)) return false;
+      const tag = t.tagName.toLowerCase();
+      return tag === "input" || tag === "textarea" || tag === "select" || t.isContentEditable;
+    }
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
+      if (isTypingTarget(e.target)) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key.toLowerCase() !== "r") return;
+      e.preventDefault();
+      window.location.assign(resumeHref);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [resumeHref]);
+
+  useEffect(() => {
     const onVis = () => {
       // refresh localStorage-derived UI
       setTick((v) => v + 1);
@@ -63,8 +96,11 @@ export function ModuleProgressPanel() {
           </div>
           {resumeHref ? (
             <Link href={resumeHref}>
-              <Button variant="primary" size="sm">
+              <Button variant="primary" size="sm" className="gap-2">
                 Continue
+                <span className="inline-flex items-center gap-1 rounded-full border border-white/30 bg-white/10 px-2 py-1 text-[11px] font-semibold text-white/90">
+                  <span className="font-mono">R</span>
+                </span>
               </Button>
             </Link>
           ) : null}
@@ -82,7 +118,9 @@ export function ModuleProgressPanel() {
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate text-base font-bold text-slate-950">{m.label}</p>
-                    <p className="text-sm text-slate-700">{hasData ? "Saved inputs found" : "No saved inputs yet"}</p>
+                    <div className="mt-1">
+                      {hasData ? <TinyStatus tone="complete" label="Complete" /> : <TinyStatus tone="empty" label="Empty" />}
+                    </div>
                   </div>
                   {hasData ? <Badge tone="good">READY</Badge> : <Badge tone="neutral">NEW</Badge>}
                 </div>

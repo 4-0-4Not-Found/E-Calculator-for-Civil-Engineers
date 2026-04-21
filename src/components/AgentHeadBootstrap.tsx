@@ -12,22 +12,6 @@ export function AgentHeadBootstrap() {
     const isDev = process.env.NODE_ENV === "development";
     if (!isDev) return;
 
-    // #region agent log
-    fetch("http://127.0.0.1:7428/ingest/ca13048c-9d98-4bcc-a485-2fd46d0652e4", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "a0af80" },
-      body: JSON.stringify({
-        sessionId: "a0af80",
-        runId: "post-fix-verify",
-        hypothesisId: "VERIFY",
-        location: "src/components/AgentHeadBootstrap.tsx:mount",
-        message: "AgentHeadBootstrap mounted (head scripts removed from layout)",
-        data: {},
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion agent log
-
     const send = (payload: Record<string, unknown>) => {
       try {
         void fetch("/api/agent-log", {

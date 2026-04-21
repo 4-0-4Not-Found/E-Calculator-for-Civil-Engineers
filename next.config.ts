@@ -137,6 +137,9 @@ const pwaPlugin = withPWAInit({
  */
 function injectPwaRegisterForAppRouter(config: { entry?: unknown }, options: { isServer?: boolean }) {
   if (options.isServer) return;
+  // next-pwa intentionally disabled in development; do not inject register.js
+  // or it will execute without injected __PWA_* globals.
+  if (process.env.NODE_ENV === "development") return;
 
   const registerJs = path.join(path.dirname(require.resolve("next-pwa/package.json")), "register.js");
   const prevEntry = config.entry;

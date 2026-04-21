@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { aiscShapes } from "@/lib/aisc/data";
 import {
   filterShapesByFamily,
@@ -8,37 +9,52 @@ import {
   type ShapeFamilyKey,
 } from "@/lib/aisc/shape-filters";
 import { steelMaterialMap, steelMaterials, type SteelMaterialKey } from "@/lib/data/materials";
-import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { Field, SelectInput, TextInput } from "@/components/ui/Field";
-import { StepsTable } from "@/components/StepsTable";
+import { Button } from "@/components/ui/Button";
+import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { CLIENT_PERSISTENCE } from "@/lib/client-persistence";
 import { STORAGE } from "@/lib/storage/keys";
 import { AppShell } from "@/components/layout/AppShell";
 import { ResultHero } from "@/components/results/ResultHero";
 import { PageFooterNav } from "@/components/navigation/PageFooterNav";
-import { TextInputWithUnit } from "@/components/ui/InputGroup";
-import { Button } from "@/components/ui/Button";
 import { CalculatorActionRail } from "@/components/actions/CalculatorActionRail";
-import { PageSectionNav } from "@/components/navigation/PageSectionNav";
 import { useBrowserDraft } from "@/features/module-runtime/useBrowserDraft";
 import { smoothScrollTo } from "@/features/module-runtime/scroll";
+import { formatRelativeTime } from "@/lib/format/relativeTime";
+import { modalOverlayClass, modalPanelClass, modalSubtitleClass, modalTitleClass, useModalA11y } from "@/components/ui/modal";
+import { useToast } from "@/components/ui/Toast";
 import {
   compressionDefaults,
   compressionDraftSchema,
   evaluateCompression,
 } from "@/features/steel/compression/module-config";
+import {
+  CompressionInputsGeneral,
+  CompressionInputsMember,
+  CompressionSectionPlaceholder,
+  CompressionSectionPropertiesPanel,
+  CompressionStepsPanel,
+} from "@/features/steel/compression/components";
+
+const META_CHIP =
+  "inline-flex h-8 items-center rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-2)] px-2.5 text-[11px] font-semibold text-[color:var(--foreground)]/80 shadow-sm";
 
 export default function CompressionPage() {
   const [material, setMaterial] = useState<SteelMaterialKey>(compressionDefaults.material as SteelMaterialKey);
   const [shapeFamily, setShapeFamily] = useState<ShapeFamilyKey>(compressionDefaults.shapeFamily as ShapeFamilyKey);
   const [shapeName, setShapeName] = useState(compressionDefaults.shapeName);
   const [k, setK] = useState(compressionDefaults.k);
-  /** Multiplier on K for lacing / built-up notes (1.0 = as entered). */
   const [builtUpFactor, setBuiltUpFactor] = useState(compressionDefaults.builtUpFactor);
   const [L, setL] = useState(compressionDefaults.L);
   const [Pu, setPu] = useState(compressionDefaults.Pu);
   const [designMethod, setDesignMethod] = useState<"LRFD" | "ASD">(compressionDefaults.designMethod);
+  const [detailsTab, setDetailsTab] = useState<"steps" | "section">("steps");
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [resultFlash, setResultFlash] = useState(false);
+  const { push } = useToast();
+  const resultsHeadingRef = useRef<HTMLDivElement | null>(null);
+  const flashTimerRef = useRef<number | null>(null);
+
   const { saving, savedAt, clearDraft } = useBrowserDraft({
     storageKey: STORAGE.compression,
     savedAtKey: CLIENT_PERSISTENCE.savedAt("compression"),
@@ -107,7 +123,7 @@ export default function CompressionPage() {
     ];
   }, [material, shapeFamily, shapeName, Pu, designMethod, out.controllingStrength]);
 
-  const resetInputs = () => {
+  const resetInputs = useCallback(() => {
     clearDraft();
     setMaterial(compressionDefaults.material as SteelMaterialKey);
     setShapeFamily(compressionDefaults.shapeFamily as ShapeFamilyKey);
@@ -117,305 +133,467 @@ export default function CompressionPage() {
     setL(compressionDefaults.L);
     setPu(compressionDefaults.Pu);
     setDesignMethod(compressionDefaults.designMethod);
-  };
+  }, [clearDraft]);
 
   const invalid = (v: string, min = 0) => {
     const n = Number(v);
     return !Number.isFinite(n) || n < min;
   };
 
-  return (
-    <AppShell>
-      <Card>
-        <CardHeader
-          title="Compression Analysis & Design"
-          description="Column buckling (E3), LRFD or ASD. Slender-element limits are approximate when shape data is available. Inputs save in this browser."
-        />
-        <CardBody className="grid gap-6 md:grid-cols-12 md:gap-8">
-          <div className="md:col-span-12 md:hidden">
-            <PageSectionNav
-              sections={[
-                { id: "compression-general", label: "General" },
-                { id: "compression-member", label: "Member" },
-                { id: "compression-steps", label: "Steps" },
-              ]}
-            />
-          </div>
-          <div className="md:col-span-8 grid gap-4">
-            {missingSlenderness ? (
-              <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
-                <p className="font-semibold">Slenderness not in database row</p>
-                <p className="mt-1">
-                  Capacity uses <strong>member flexural buckling (E3)</strong> only. For HSS, verify wall slenderness and any
-                  applicable AISC limits outside this tool.
-                </p>
-              </div>
-            ) : null}
+  const invalidPu = invalid(Pu, 0);
+  const invalidL = invalid(L, 0);
+  const inputsInvalid = invalidPu || invalidL;
 
-            <details open className="rounded-2xl border border-slate-200 bg-white" id="compression-general">
-              <summary className="min-h-11 cursor-pointer px-4 py-3.5 text-sm font-extrabold tracking-tight text-slate-950 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10 sm:px-5 sm:py-4">
-                1 · General
-                <span className="mt-1 block text-xs font-semibold text-slate-600">Steel + section selection.</span>
-                <span className="mt-2 inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
-                  Units: ksi, in
-                </span>
-              </summary>
-              <div className="border-t border-slate-200 p-5">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Field label="Steel Type" hint="Fy (ksi) comes from selection.">
-                    <SelectInput value={material} onChange={(v) => setMaterial(v as SteelMaterialKey)}>
-                      {steelMaterials.map((m) => (
-                        <option key={m.key} value={m.key}>
-                          {m.label}
-                        </option>
-                      ))}
-                    </SelectInput>
-                  </Field>
-                  <Field label="Shape family" hint="Requires A_g, r_x, r_y > 0 in database.">
-                    <SelectInput value={shapeFamily} onChange={(v) => handleShapeFamilyChange(v as ShapeFamilyKey)}>
-                      {shapeFamilyOptions.map((o) => (
-                        <option key={o.key} value={o.key}>
-                          {o.label}
-                        </option>
-                      ))}
-                    </SelectInput>
-                  </Field>
-                  <Field label="AISC Shape" hint="Filtered v16 shapes.">
-                    <SelectInput value={shapeName} onChange={setShapeName}>
-                      {shapeChoices.map((s) => (
-                        <option key={s.shape} value={s.shape}>
-                          {s.shape}
-                        </option>
-                      ))}
-                    </SelectInput>
-                  </Field>
-                </div>
+  const resultHeroStatus = inputsInvalid ? "invalid" : out.isSafe ? "safe" : "unsafe";
 
-                {shape ? (
-                  <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-800">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="font-semibold text-slate-900">Section context</p>
-                      <Badge tone="info">{shape.shape}</Badge>
-                    </div>
-                    <div className="mt-2 grid grid-cols-2 gap-2 text-xs font-semibold text-slate-700 sm:grid-cols-4">
-                      <span className="tabular-nums">W: {shape.W.toFixed(1)} plf</span>
-                      <span className="tabular-nums">Ag: {shape.A.toFixed(2)} in²</span>
-                      <span className="tabular-nums">rx: {shape.rx.toFixed(2)} in</span>
-                      <span className="tabular-nums">ry: {shape.ry.toFixed(2)} in</span>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            </details>
+  useEffect(() => {
+    // UI-only: subtle "changed" highlight to help scanning while iterating inputs.
+    if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
+    setResultFlash(true);
+    flashTimerRef.current = window.setTimeout(() => setResultFlash(false), 450);
+    return () => {
+      if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
+      flashTimerRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [out.controllingStrength, out.demand, out.governingCase, inputsInvalid, designMethod, mat.key, shapeName]);
 
-            <details open className="rounded-2xl border border-slate-200 bg-white" id="compression-member">
-              <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
-                2 · Member (KL/r)
-                <span className="mt-1 block text-xs font-semibold text-slate-600">Method, demand, length, and K.</span>
-                <span className="mt-2 inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
-                  Units: kips, in
-                </span>
-              </summary>
-              <div className="border-t border-slate-200 p-5">
-                <div className="mb-3 flex flex-wrap gap-2">
-                  <Button variant="secondary" size="sm" type="button" onClick={() => setK("1.0")}>
-                    K = 1.0
-                  </Button>
-                  <Button variant="secondary" size="sm" type="button" onClick={() => setBuiltUpFactor("1.0")}>
-                    Built-up factor = 1.0
-                  </Button>
-                </div>
+  const focusResults = useCallback(() => {
+    try {
+      resultsHeadingRef.current?.focus?.();
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Field label="Design method" hint="LRFD default; ASD uses P_n/1.67 for member buckling.">
-                    <SelectInput value={designMethod} onChange={(v) => setDesignMethod(v as "LRFD" | "ASD")}>
-                      <option value="LRFD">LRFD</option>
-                      <option value="ASD">ASD</option>
-                    </SelectInput>
-                  </Field>
-                  <Field
-                    label="Demand Pu / Pa"
-                    hint="Required compressive strength (kips)."
-                    error={invalid(Pu, 0) ? "Enter a number ≥ 0." : undefined}
-                  >
-                    <TextInputWithUnit value={Pu} onChange={setPu} unit="kips" inputMode="decimal" />
-                  </Field>
-                  <Field label="Length L" hint="in" error={invalid(L, 0) ? "Enter a number ≥ 0." : undefined}>
-                    <TextInputWithUnit value={L} onChange={setL} unit="in" inputMode="decimal" />
-                  </Field>
-                  <Field label="K-factor" hint="End condition factor from alignment chart.">
-                    <SelectInput value={k} onChange={setK}>
-                      {["0.5", "0.65", "0.8", "1.0", "2.0"].map((v) => (
-                        <option key={v} value={v}>
-                          {v}
-                        </option>
-                      ))}
-                    </SelectInput>
-                  </Field>
-                  <Field
-                    label="Factor on K (built-up / notes)"
-                    hint="Multiply K when your course or lacing notes require it (1.0 = unchanged)."
-                    className="md:col-span-2"
-                  >
-                    <TextInput value={builtUpFactor} onChange={setBuiltUpFactor} placeholder="1.0" />
-                  </Field>
-                  <p className="md:col-span-2 text-xs font-semibold text-slate-600">
-                    Effective K = {k} × {builtUpFactor} = <span className="tabular-nums text-slate-900">{kEffective.toFixed(4)}</span>
-                  </p>
-                </div>
-              </div>
-            </details>
+  const jumpToInputs = useCallback(() => {
+    smoothScrollTo("compression-general");
+  }, []);
 
-            <details id="compression-steps" className="rounded-2xl border border-slate-200 bg-white">
-              <summary className="cursor-pointer px-5 py-4 text-sm font-extrabold tracking-tight text-slate-950">
-                Steps (show math)
-                <span className="mt-1 block text-xs font-semibold text-slate-600">
-                  Governing: <span className="text-slate-900">{out.governingCase}</span> · Capacity{" "}
-                  <span className="tabular-nums text-slate-900">{out.controllingStrength.toFixed(3)} kips</span>
-                </span>
-              </summary>
-              <div className="border-t border-slate-200 p-5">
-                <StepsTable steps={out.steps} governingCase={String(out.governingCase)} tools />
-              </div>
-            </details>
-          </div>
+  const jumpToResults = useCallback(() => {
+    smoothScrollTo("compression-results");
+    window.setTimeout(() => focusResults(), 250);
+  }, [focusResults]);
 
-          <aside className="md:col-span-4">
-            <div className="sticky top-6 md:top-[calc(var(--app-header-h,104px)+16px)] space-y-4">
-              <div className="hidden md:block">
-                <PageSectionNav
-                  sections={[
-                    { id: "compression-general", label: "General" },
-                    { id: "compression-member", label: "Member" },
-                    { id: "compression-steps", label: "Steps" },
-                  ]}
-                />
-              </div>
-              <CalculatorActionRail
-                hideMobileBar
-                title="Actions"
-                subtitle={`${shapeName} · ${designMethod}`}
-                savedKey={CLIENT_PERSISTENCE.savedAt("compression")}
-                saving={saving}
-                savedAt={savedAt}
-                compare={{
-                  storageKey: CLIENT_PERSISTENCE.compareSnapshot("compression"),
-                  getCurrent: () => ({
-                    title: `Compression — ${shapeName}`,
-                    lines: [
-                      `Method: ${designMethod} · Material: ${mat.key}`,
-                      `Pu/Pa = ${Pu} kips · L = ${L} in · K = ${k} · built-up = ${builtUpFactor}`,
-                      `Governing: ${out.governingCase}`,
-                      `Capacity: ${out.controllingStrength.toFixed(3)} kips`,
-                      `Demand: ${out.demand.toFixed(3)} kips`,
-                      `Utilization: ${out.controllingStrength > 0 ? ((out.demand / out.controllingStrength) * 100).toFixed(1) : "-"}%`,
-                    ],
-                  }),
-                }}
-                copyText={() =>
-                  [
-                    "Compression",
-                    `Method: ${designMethod}`,
-                    `Material: ${mat.key}`,
-                    `Shape: ${shapeName}`,
-                    `Governing: ${out.governingCase}`,
-                    `Capacity: ${out.controllingStrength.toFixed(3)} kips`,
-                    `Demand: ${out.demand.toFixed(3)} kips`,
-                  ].join("\n")
-                }
-                onGoResults={() => smoothScrollTo("results")}
-                onGoSteps={() => smoothScrollTo("compression-steps")}
-                csv={{ filename: "compression-export.csv", rows: csvRows }}
-                json={{ data: { result: out, inputs: { material, shapeName, designMethod, k, L, Pu } } }}
-                onReset={resetInputs}
-              />
-              <div id="results">
-              <ResultHero
-                status={out.isSafe ? "safe" : "unsafe"}
-                governing={out.governingCase}
-                capacityLabel={designMethod === "LRFD" ? "Design strength (φPn)" : "Allowable (Pn/Ω)"}
-                capacity={`${out.controllingStrength.toFixed(3)} kips`}
-                demandLabel={designMethod === "LRFD" ? "Demand Pu" : "Demand Pa"}
-                demand={`${out.demand.toFixed(3)} kips`}
-                utilization={out.controllingStrength > 0 ? out.demand / out.controllingStrength : undefined}
-                metaRight={<Badge tone="info">{mat.key}</Badge>}
-              />
-              </div>
+  const jumpToSteps = useCallback(() => {
+    setDetailsTab("steps");
+    smoothScrollTo("details");
+  }, []);
 
-              {shape ? (
-                <Card>
-                  <CardBody>
-                    <p className="text-xs font-semibold uppercase text-slate-500">Section snapshot</p>
-                    <div className="mt-3 grid grid-cols-2 gap-2 text-sm text-slate-800">
-                      <Row label="Shape" value={shape.shape} />
-                      <Row label="W" value={`${shape.W.toFixed(1)} plf`} />
-                      <Row label="A_g" value={`${shape.A.toFixed(2)} in²`} />
-                      <Row
-                        label="b_f / 2t_f"
-                        value={shape.bf_2tf > 0 ? shape.bf_2tf.toFixed(2) : "—"}
-                      />
-                      <Row label="h / t_w" value={shape.h_tw > 0 ? shape.h_tw.toFixed(2) : "—"} />
-                      <Row label="rx" value={`${shape.rx.toFixed(2)} in`} />
-                      <Row label="ry" value={`${shape.ry.toFixed(2)} in`} />
-                    </div>
-                  </CardBody>
-                </Card>
-              ) : null}
-            </div>
-          </aside>
-        </CardBody>
-      </Card>
-      <div className="mt-8 md:mt-10">
-      <div id="actions">
-      <CalculatorActionRail
-        mobileOnly
-        subtitle="Compression actions"
-        savedKey={CLIENT_PERSISTENCE.savedAt("compression")}
-        saving={saving}
-        savedAt={savedAt}
-        compare={{
-          storageKey: CLIENT_PERSISTENCE.compareSnapshot("compression"),
-          getCurrent: () => ({
-            title: `Compression — ${shapeName}`,
-            lines: [
-              `Method: ${designMethod} · Material: ${mat.key}`,
-              `Pu/Pa = ${Pu} kips · L = ${L} in · K = ${k} · built-up = ${builtUpFactor}`,
-              `Governing: ${out.governingCase}`,
-              `Capacity: ${out.controllingStrength.toFixed(3)} kips`,
-              `Demand: ${out.demand.toFixed(3)} kips`,
-              `Utilization: ${out.controllingStrength > 0 ? ((out.demand / out.controllingStrength) * 100).toFixed(1) : "-"}%`,
-            ],
-          }),
-        }}
-        copyText={() =>
-          [
-            "Compression",
-            `Method: ${designMethod}`,
-            `Material: ${mat.key}`,
-            `Shape: ${shapeName}`,
+  const jumpToSection = useCallback(() => {
+    setDetailsTab("section");
+    smoothScrollTo("details");
+  }, []);
+
+  useEffect(() => {
+    function isTypingTarget(t: EventTarget | null) {
+      if (!(t instanceof HTMLElement)) return false;
+      const tag = t.tagName.toLowerCase();
+      return tag === "input" || tag === "textarea" || tag === "select" || t.isContentEditable;
+    }
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
+      if (isTypingTarget(e.target)) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const k = e.key.toLowerCase();
+      if (k === "?") {
+        e.preventDefault();
+        setHelpOpen(true);
+      }
+      if (k === "i") {
+        e.preventDefault();
+        jumpToInputs();
+      }
+      if (k === "r") {
+        e.preventDefault();
+        jumpToResults();
+      }
+      if (k === "s") {
+        e.preventDefault();
+        jumpToSteps();
+      }
+      if (k === "x") {
+        e.preventDefault();
+        jumpToSection();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [jumpToInputs, jumpToResults, jumpToSection, jumpToSteps]);
+
+  const actionRailProps = useMemo(
+    () => ({
+      savedKey: CLIENT_PERSISTENCE.savedAt("compression"),
+      saving,
+      savedAt,
+      compare: {
+        storageKey: CLIENT_PERSISTENCE.compareSnapshot("compression"),
+        getCurrent: () => ({
+          title: `Compression — ${shapeName}`,
+          lines: [
+            `Method: ${designMethod} · Material: ${mat.key}`,
+            `Pu/Pa = ${Pu} kips · L = ${L} in · K = ${k} · built-up = ${builtUpFactor}`,
             `Governing: ${out.governingCase}`,
             `Capacity: ${out.controllingStrength.toFixed(3)} kips`,
             `Demand: ${out.demand.toFixed(3)} kips`,
-          ].join("\n")
-        }
-        onGoResults={() => smoothScrollTo("results")}
-        onGoSteps={() => smoothScrollTo("compression-steps")}
-        csv={{ filename: "compression-export.csv", rows: csvRows }}
-        json={{ data: { result: out, inputs: { material, shapeName, designMethod, k, L, Pu } } }}
-        onReset={resetInputs}
-      />
+            `Utilization: ${out.controllingStrength > 0 ? ((out.demand / out.controllingStrength) * 100).toFixed(1) : "-"}%`,
+          ],
+        }),
+      },
+      copyText: () =>
+        [
+          "Compression",
+          `Method: ${designMethod}`,
+          `Material: ${mat.key}`,
+          `Shape: ${shapeName}`,
+          `Governing: ${out.governingCase}`,
+          `Capacity: ${out.controllingStrength.toFixed(3)} kips`,
+          `Demand: ${out.demand.toFixed(3)} kips`,
+        ].join("\n"),
+      onGoResults: () => smoothScrollTo("compression-results"),
+      onGoSteps: () => smoothScrollTo("compression-steps"),
+      csv: { filename: "compression-export.csv", rows: csvRows },
+      json: { data: { result: out, inputs: { material, shapeName, designMethod, k, L, Pu } } },
+      onReset: resetInputs,
+    }),
+    [
+      saving,
+      savedAt,
+      shapeName,
+      designMethod,
+      mat.key,
+      Pu,
+      L,
+      k,
+      builtUpFactor,
+      out,
+      csvRows,
+      material,
+      resetInputs,
+    ],
+  );
+
+  const copyReportSnippet = useCallback(async () => {
+    const text = [
+      `Compression — ${shapeName}`,
+      `Method: ${designMethod}`,
+      `Material: ${mat.key}`,
+      `Pu/Pa: ${Pu} kips`,
+      `L: ${L} in`,
+      `K: ${k} (built-up ${builtUpFactor})`,
+      `Governing: ${String(out.governingCase)}`,
+      `Capacity: ${out.controllingStrength.toFixed(3)} kips`,
+      `Demand: ${out.demand.toFixed(3)} kips`,
+      inputsInvalid || out.controllingStrength <= 0
+        ? "Utilization: —"
+        : `Utilization: ${((out.demand / out.controllingStrength) * 100).toFixed(1)}%`,
+    ].join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      push({ title: "Copied", message: "Report snippet copied to clipboard.", tone: "good" });
+    } catch {
+      push({ title: "Could not copy", message: "Your browser blocked clipboard access.", tone: "bad" });
+    }
+  }, [Pu, L, builtUpFactor, designMethod, inputsInvalid, k, mat.key, out, push, shapeName]);
+
+  return (
+    <AppShell>
+      <div className="space-y-10 md:space-y-12">
+        {/* Hero */}
+        <section className="rounded-3xl border border-[color:var(--border)] bg-[color:var(--zone-hero)] px-6 py-8 shadow-[var(--shadow-sm)] sm:px-10 sm:py-10">
+          <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+            <div className="min-w-0">
+              <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[color:var(--muted)]">
+                steel module
+              </p>
+              <h1 className="mt-3 text-[34px] font-extrabold leading-[0.98] tracking-tight text-[color:var(--foreground)] sm:text-[44px]">
+                <span className="bg-gradient-to-r from-[color:var(--heading-grad-from)] to-[color:var(--heading-grad-to)] bg-clip-text text-transparent">
+                  Compression
+                </span>{" "}
+                Analysis &amp; Design
+              </h1>
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[color:var(--muted)]">
+                Column buckling (E3), LRFD or ASD. Inputs save in this browser.
+              </p>
+
+              <div className="mt-5 flex flex-wrap items-center gap-2">
+                <span className={META_CHIP}>
+                  {saving
+                    ? "Saving…"
+                    : savedAt != null
+                      ? `Saved ${formatRelativeTime(savedAt) ?? "recently"}`
+                      : "Not saved yet"}
+                </span>
+                <span className={META_CHIP}>{mat.key}</span>
+                <span className={META_CHIP}>{designMethod}</span>
+                <span className={META_CHIP}>{shapeName}</span>
+              </div>
+            </div>
+
+            <div className="w-full md:w-auto md:max-w-[360px]">
+              <div
+                className="relative overflow-hidden rounded-2xl border border-white/80 bg-white p-4 shadow-sm"
+                aria-hidden="true"
+              >
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent to-[color:var(--mint)]/55" />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/assets/compression.png"
+                  alt=""
+                  className="relative z-[1] mx-auto h-36 w-auto max-w-full object-contain sm:h-40 md:h-44"
+                  draggable={false}
+                  decoding="async"
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Main workspace */}
+        <div className="grid gap-6 lg:grid-cols-12 lg:items-start">
+          {/* Inputs */}
+          <div className="space-y-6 lg:col-span-7">
+            <CompressionInputsGeneral
+              material={material}
+              onMaterialChange={setMaterial}
+              steelMaterials={steelMaterials}
+              shapeFamily={shapeFamily}
+              onShapeFamilyChange={handleShapeFamilyChange}
+              shapeFamilyOptions={shapeFamilyOptions}
+              shapeName={shapeName}
+              onShapeNameChange={setShapeName}
+              shapeChoices={shapeChoices}
+            />
+            <CompressionInputsMember
+              designMethod={designMethod}
+              onDesignMethodChange={setDesignMethod}
+              Pu={Pu}
+              onPuChange={setPu}
+              L={L}
+              onLChange={setL}
+              k={k}
+              onKChange={setK}
+              builtUpFactor={builtUpFactor}
+              onBuiltUpFactorChange={setBuiltUpFactor}
+              kEffective={kEffective}
+              invalidPu={invalidPu}
+              invalidL={invalidL}
+              onPresetK={() => setK("1.0")}
+              onPresetBuiltUp={() => setBuiltUpFactor("1.0")}
+            />
+          </div>
+
+          {/* Results + actions */}
+          <div className="space-y-4 lg:col-span-5 lg:sticky lg:top-28" id="results">
+            <div
+              ref={resultsHeadingRef}
+              tabIndex={-1}
+              className="sr-only"
+              aria-label="Results region"
+            />
+            <div id="compression-results">
+              <div
+                className={[
+                  "transition",
+                  resultFlash ? "ring-4 ring-[color:var(--brand)]/10 rounded-[20px]" : "",
+                ].join(" ")}
+              >
+                <ResultHero
+                  status={resultHeroStatus}
+                  governing={out.governingCase}
+                  capacityLabel={designMethod === "LRFD" ? "Design strength (φPn)" : "Allowable (Pn/Ω)"}
+                  capacity={`${out.controllingStrength.toFixed(3)} kips`}
+                  demandLabel={designMethod === "LRFD" ? "Demand Pu" : "Demand Pa"}
+                  demand={`${out.demand.toFixed(3)} kips`}
+                  utilization={inputsInvalid ? undefined : out.controllingStrength > 0 ? out.demand / out.controllingStrength : undefined}
+                  metaRight={<Badge tone="info">{mat.key}</Badge>}
+                  actions={
+                    <>
+                      <Button variant="secondary" size="sm" type="button" onClick={copyReportSnippet}>
+                        Copy snippet
+                      </Button>
+                    </>
+                  }
+                />
+              </div>
+            </div>
+
+            {inputsInvalid ? (
+              <Card className="bg-[color:var(--surface)]">
+                <CardHeader
+                  title="Fix inputs to compute results"
+                  description="Some required fields are invalid. Jump to the field and correct it."
+                  right={<Badge tone="bad">Needs attention</Badge>}
+                />
+                <CardBody className="flex flex-wrap gap-2">
+                  {invalidPu ? (
+                    <Button variant="secondary" size="sm" type="button" onClick={() => smoothScrollTo("field-pu")}>
+                      Pu / Pa
+                    </Button>
+                  ) : null}
+                  {invalidL ? (
+                    <Button variant="secondary" size="sm" type="button" onClick={() => smoothScrollTo("field-l")}>
+                      L
+                    </Button>
+                  ) : null}
+                  <span className="self-center text-xs font-semibold text-[color:var(--muted)]">
+                    Tip: press <span className="font-mono">I</span> to return to inputs.
+                  </span>
+                </CardBody>
+              </Card>
+            ) : null}
+
+            {missingSlenderness ? (
+              <Card className="bg-[color:var(--surface-2)]">
+                <CardHeader
+                  title="Assumptions"
+                  description="Local slender-element checks are excluded when shape slenderness data is unavailable."
+                  right={<Badge tone="info">E3</Badge>}
+                />
+                <CardBody className="text-sm text-[color:var(--muted)]">
+                  For HSS, verify wall slenderness and any applicable AISC limits outside this tool.
+                </CardBody>
+              </Card>
+            ) : null}
+
+            <div id="actions">
+              <CalculatorActionRail {...actionRailProps} title="Actions" subtitle={`${shapeName} · ${designMethod}`} />
+            </div>
+          </div>
+        </div>
+
+        {/* Details */}
+        <section id="details" className="space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-2xl font-extrabold tracking-tight text-[color:var(--accent)]">Details</p>
+              <p className="mt-1 text-sm text-[color:var(--muted)]">Review calculation steps or verify the AISC section snapshot.</p>
+            </div>
+            <div
+              role="tablist"
+              aria-label="Details view"
+              className="inline-flex w-full rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)]/75 p-1 shadow-sm backdrop-blur sm:w-auto"
+              onKeyDown={(e) => {
+                if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+                e.preventDefault();
+                setDetailsTab((cur) => {
+                  if (cur === "steps") return "section";
+                  return "steps";
+                });
+              }}
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={detailsTab === "steps"}
+                aria-controls="details-panel"
+                onClick={() => setDetailsTab("steps")}
+                className={[
+                  "min-h-10 flex-1 rounded-2xl px-4 text-sm font-semibold transition sm:flex-none focus-visible:outline-none",
+                  detailsTab === "steps"
+                    ? "bg-[color:var(--mint)] text-[color:var(--accent)] shadow-sm"
+                    : "text-[color:var(--muted)] hover:bg-[color:var(--surface-2)]",
+                ].join(" ")}
+              >
+                Steps
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={detailsTab === "section"}
+                aria-controls="details-panel"
+                onClick={() => setDetailsTab("section")}
+                className={[
+                  "min-h-10 flex-1 rounded-2xl px-4 text-sm font-semibold transition sm:flex-none focus-visible:outline-none",
+                  detailsTab === "section"
+                    ? "bg-[color:var(--mint)] text-[color:var(--accent)] shadow-sm"
+                    : "text-[color:var(--muted)] hover:bg-[color:var(--surface-2)]",
+                ].join(" ")}
+              >
+                Section
+              </button>
+            </div>
+          </div>
+
+          <div id="details-panel" role="tabpanel" aria-label={detailsTab === "steps" ? "Steps" : "Section"} className="space-y-6">
+            {detailsTab === "steps" ? (
+              <CompressionStepsPanel
+                steps={out.steps}
+                governingCase={String(out.governingCase)}
+                controllingStrength={out.controllingStrength}
+              />
+            ) : shape ? (
+              <CompressionSectionPropertiesPanel shape={shape} />
+            ) : (
+              <CompressionSectionPlaceholder />
+            )}
+          </div>
+        </section>
+
       </div>
-      </div>
-      <PageFooterNav currentHref="/compression" />
+
+      <HelpOverlay open={helpOpen} onClose={() => setHelpOpen(false)} />
     </AppShell>
   );
 }
 
-function Row(props: { label: string; value: string }) {
-  return (
-    <div className="flex items-baseline justify-between gap-3">
-      <span className="text-slate-600">{props.label}</span>
-      <span className="font-semibold text-slate-900">{props.value}</span>
-    </div>
+function HelpOverlay(props: { open: boolean; onClose: () => void }) {
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const closeRef = useRef<HTMLButtonElement | null>(null);
+  useModalA11y({ open: props.open, onClose: props.onClose, containerRef: panelRef, initialFocusRef: closeRef });
+
+  if (!props.open) return null;
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
+    <div className="not-print fixed inset-0 z-[90] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Help">
+      <button type="button" className={modalOverlayClass} onClick={props.onClose} aria-label="Close help" />
+      <div ref={panelRef} className={`${modalPanelClass} max-w-lg p-6`}>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className={modalTitleClass}>Compression — quick help</h2>
+            <p className={modalSubtitleClass}>
+              Keyboard shortcuts and workflow tips. (Press <span className="font-mono">Esc</span> to close.)
+            </p>
+          </div>
+          <Button ref={closeRef} variant="ghost" size="sm" type="button" onClick={props.onClose}>
+            Close
+          </Button>
+        </div>
+
+        <div className="mt-5 space-y-4 text-sm">
+          <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-3)]/55 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[color:var(--muted)]">Shortcuts</p>
+            <ul className="mt-2 space-y-1 text-[color:var(--foreground)]">
+              <li>
+                <span className="font-mono font-semibold">I</span> — Inputs
+              </li>
+              <li>
+                <span className="font-mono font-semibold">R</span> — Results
+              </li>
+              <li>
+                <span className="font-mono font-semibold">S</span> — Steps (opens Details)
+              </li>
+              <li>
+                <span className="font-mono font-semibold">X</span> — Section (opens Details)
+              </li>
+              <li>
+                <span className="font-mono font-semibold">?</span> — Help
+              </li>
+            </ul>
+          </div>
+
+          <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[color:var(--muted)]">Tips</p>
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-[color:var(--foreground)]/90">
+              <li>Use “Find shape” to filter large AISC lists quickly.</li>
+              <li>Use “Advanced” in Member if you need built-up K adjustments.</li>
+              <li>In Steps, use search + “Key steps only” to reduce noise.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }

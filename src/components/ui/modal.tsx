@@ -89,17 +89,17 @@ export function useModalA11y(opts: {
 }
 
 export const modalOverlayClass =
-  "absolute inset-0 bg-slate-950/50 backdrop-blur-[2px]";
+  "absolute inset-0 bg-slate-950/40 backdrop-blur-[3px]";
 
 export const modalPanelClass =
-  "relative w-full rounded-2xl border border-slate-200 bg-white shadow-2xl ring-1 ring-slate-950/5";
+  "relative w-full rounded-3xl border border-[color:var(--border)] bg-[color:var(--surface)] shadow-[var(--shadow)] ring-1 ring-slate-950/5";
 
 export const modalHeaderClass =
-  "flex items-start justify-between gap-3 border-b border-slate-100 bg-white/80 p-4 backdrop-blur";
+  "flex items-start justify-between gap-3 border-b border-[color:var(--border)]/35 bg-[color:var(--surface)]/75 p-4 backdrop-blur";
 
 export const modalTitleClass =
   "text-base font-extrabold tracking-tight text-slate-950";
 
 export const modalSubtitleClass =
-  "mt-1 text-xs font-medium leading-relaxed text-slate-600";
+  "mt-1 text-xs font-medium leading-relaxed text-[color:var(--muted)]";
 

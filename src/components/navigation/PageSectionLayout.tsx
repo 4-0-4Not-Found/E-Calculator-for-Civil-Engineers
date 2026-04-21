@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils";
 export function PageSectionLayout(props: {
   sections: { id: string; label: string }[];
   children: ReactNode;
+  /** Optional extra sidebar content (desktop only). */
+  sidebar?: ReactNode;
   /** Optional extra classes for the outer wrapper. */
   className?: string;
   /** Optional extra classes for the desktop sidebar wrapper. */
@@ -27,7 +29,10 @@ export function PageSectionLayout(props: {
       <div className="md:grid md:grid-cols-[minmax(0,1fr)_18rem] md:items-start md:gap-6">
         <div className="min-w-0">{props.children}</div>
         <aside className={cn("hidden md:block", props.sidebarClassName)}>
-          <PageSectionNav sections={props.sections} className={props.navClassName} />
+          <div className="space-y-4">
+            <PageSectionNav sections={props.sections} className={props.navClassName} />
+            {props.sidebar}
+          </div>
         </aside>
       </div>
     </div>

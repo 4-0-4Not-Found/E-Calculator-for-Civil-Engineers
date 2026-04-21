@@ -60,25 +60,25 @@ function ToastViewport(props: { items: ToastItem[]; onDismiss: (id: string) => v
             key={t.id}
             role="status"
             className={cn(
-              "rounded-2xl border bg-white/95 p-3 shadow-xl ring-1 ring-slate-950/5 backdrop-blur",
+              "rounded-3xl border bg-[color:var(--surface)]/90 p-3 shadow-[var(--shadow)] ring-1 ring-slate-950/5 backdrop-blur",
               t.tone === "good"
                 ? "border-emerald-200"
                 : t.tone === "bad"
                   ? "border-rose-200"
                   : t.tone === "info"
-                    ? "border-slate-200"
-                    : "border-slate-200",
+                    ? "border-[color:var(--border)]"
+                    : "border-[color:var(--border)]",
             )}
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-slate-950">{t.title}</p>
-                {t.message ? <p className="mt-0.5 text-xs font-medium text-slate-600">{t.message}</p> : null}
+                {t.message ? <p className="mt-0.5 text-xs font-medium text-[color:var(--muted)]">{t.message}</p> : null}
               </div>
               <button
                 type="button"
                 onClick={() => props.onDismiss(t.id)}
-                className="rounded-lg px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10"
+                className="rounded-xl px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-[color:var(--surface-3)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10"
                 aria-label="Dismiss notification"
               >
                 ✕

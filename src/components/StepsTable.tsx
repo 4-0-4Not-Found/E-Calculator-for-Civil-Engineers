@@ -117,19 +117,46 @@ export function StepsTable(props: Props) {
 
 function Table(props: { steps: CalculationStep[] }) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-slate-200">
+    <div className="overflow-x-auto rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] shadow-sm">
       <table className="min-w-full text-left text-sm">
-        <thead className="bg-slate-50 text-slate-700">
+        <thead className="bg-[color:var(--surface-3)] text-slate-700">
           <tr>
-            <th scope="col" className="sticky top-0 bg-slate-50 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide">Step</th>
-            <th scope="col" className="sticky top-0 bg-slate-50 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide">Formula</th>
-            <th scope="col" className="sticky top-0 bg-slate-50 px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide">Value</th>
-            <th scope="col" className="sticky top-0 bg-slate-50 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide">Note</th>
+            <th
+              scope="col"
+              className="sticky top-0 bg-[color:var(--surface-3)] px-4 py-2.5 text-xs font-semibold uppercase tracking-wide"
+            >
+              Step
+            </th>
+            <th
+              scope="col"
+              className="sticky top-0 bg-[color:var(--surface-3)] px-4 py-2.5 text-xs font-semibold uppercase tracking-wide"
+            >
+              Formula
+            </th>
+            <th
+              scope="col"
+              className="sticky top-0 bg-[color:var(--surface-3)] px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide"
+            >
+              Value
+            </th>
+            <th
+              scope="col"
+              className="sticky top-0 bg-[color:var(--surface-3)] px-4 py-2.5 text-xs font-semibold uppercase tracking-wide"
+            >
+              Note
+            </th>
           </tr>
         </thead>
-        <tbody className="bg-white">
+        <tbody className="bg-[color:var(--surface)]">
           {props.steps.map((s, idx) => (
-            <tr key={s.id} className={idx % 2 === 1 ? "border-t border-slate-100 bg-slate-50/40" : "border-t border-slate-100"}>
+            <tr
+              key={s.id}
+              className={
+                idx % 2 === 1
+                  ? "border-t border-[color:var(--border)]/25 bg-[color:var(--surface-3)]/55"
+                  : "border-t border-[color:var(--border)]/25"
+              }
+            >
               <td className="px-4 py-2.5 text-sm font-medium text-slate-950">{s.label}</td>
               <td className="px-4 py-3 font-mono text-xs text-slate-700">{s.formula ?? "-"}</td>
               <td className="px-4 py-2.5 text-right text-sm font-semibold tabular-nums text-slate-950">
