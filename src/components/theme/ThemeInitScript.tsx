@@ -4,14 +4,9 @@ import { CLIENT_PERSISTENCE } from "@/lib/client-persistence";
 export const THEME_BOOT_JS = `
 (function(){
   try {
-    var k="${CLIENT_PERSISTENCE.theme}";
-    var v=localStorage.getItem(k);
-    var dark=false;
-    if(v==="dark") dark=true;
-    else if(v==="light") dark=false;
-    else dark=window.matchMedia("(prefers-color-scheme: dark)").matches;
     var r=document.documentElement;
-    if(dark) r.classList.add("dark"); else r.classList.remove("dark");
+    r.classList.remove("dark");
+    localStorage.setItem("${CLIENT_PERSISTENCE.theme}","light");
   } catch(e) {}
 })();
 `;

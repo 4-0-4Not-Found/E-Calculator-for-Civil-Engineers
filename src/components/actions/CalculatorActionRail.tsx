@@ -4,16 +4,19 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardBody } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { CopySummaryButton } from "@/components/actions/CopySummaryButton";
-import { ExportCsvButton } from "@/components/ExportCsvButton";
-import { ExportJsonButton } from "@/components/ExportJsonButton";
 import { cn } from "@/lib/utils";
 import { CompareDrawer, type CompareSnapshot } from "@/components/compare/CompareDrawer";
 import { modalOverlayClass, modalPanelClass, useModalA11y } from "@/components/ui/modal";
 import { formatRelativeTime } from "@/lib/format/relativeTime";
 
-type CsvSpec = { filename: string; rows: string[][] };
-type JsonSpec = { data: unknown };
 type CompareSpec = { storageKey: string; getCurrent: () => Omit<CompareSnapshot, "ts"> };
+type SaveSlot = { id: string; name: string; ts: number; payload: Record<string, unknown> };
+type SaveSlotsSpec = {
+  moduleKey: string;
+  draftStorageKey: string;
+  getCurrent: () => Record<string, unknown>;
+  maxSlots?: number;
+};
 
 export function CalculatorActionRail(props: {
   desktopClassName?: string;
@@ -32,18 +35,21 @@ export function CalculatorActionRail(props: {
   savedAt?: number | null;
   onGoResults?: () => void;
   copyText: () => string;
-  csv?: CsvSpec;
-  json?: JsonSpec;
   compare?: CompareSpec;
+  saveSlots?: SaveSlotsSpec;
   onReset?: () => void;
   onGoSteps?: () => void;
 }) {
   const [resetArmed, setResetArmed] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const hasExport = Boolean(props.csv || props.json);
+  const [slotsOpen, setSlotsOpen] = useState(false);
+  const [slots, setSlots] = useState<SaveSlot[]>([]);
+  const [slotName, setSlotName] = useState("");
+  const maxSlots = props.saveSlots?.maxSlots ?? 20;
   const [savedTick, setSavedTick] = useState(0);
   const [hydrated, setHydrated] = useState(false);
+  const slotsStorageKey = props.saveSlots ? `spanledger/v1/saves/${props.saveSlots.moduleKey}` : null;
 
   // (dev-only debug logging removed for production safety)
 
@@ -56,6 +62,35 @@ export function CalculatorActionRail(props: {
     const t = window.setInterval(() => setSavedTick((v) => v + 1), 10_000);
     return () => window.clearInterval(t);
   }, [props.savedKey]);
+
+  useEffect(() => {
+    if (!slotsStorageKey) return;
+    try {
+      const raw = localStorage.getItem(slotsStorageKey);
+      const parsed = raw ? (JSON.parse(raw) as unknown) : [];
+      const next = Array.isArray(parsed)
+        ? parsed
+            .filter((x) => typeof x === "object" && x !== null)
+            .map((x) => x as SaveSlot)
+            .filter((s) => typeof s.id === "string" && typeof s.name === "string" && typeof s.ts === "number")
+            .slice(0, maxSlots)
+        : [];
+      setSlots(next);
+    } catch {
+      setSlots([]);
+    }
+  }, [slotsStorageKey, maxSlots, savedTick]);
+
+  const persistSlots = (next: SaveSlot[]) => {
+    if (!slotsStorageKey) return;
+    const trimmed = next.slice(0, maxSlots);
+    setSlots(trimmed);
+    try {
+      localStorage.setItem(slotsStorageKey, JSON.stringify(trimmed));
+    } catch {
+      /* ignore */
+    }
+  };
 
   const savedLabel = useMemo(() => {
     // savedTick intentionally triggers refresh for relative timestamps
@@ -106,6 +141,45 @@ export function CalculatorActionRail(props: {
     );
   }, [props.title, props.subtitle, savedLabel]);
 
+  const saveCurrentToSlot = () => {
+    if (!props.saveSlots) return;
+    const payload = props.saveSlots.getCurrent();
+    const name = slotName.trim() || `Save ${slots.length + 1}`;
+    const ts = Date.now();
+    const slot: SaveSlot = {
+      id: `${ts}-${Math.random().toString(36).slice(2, 8)}`,
+      name,
+      ts,
+      payload,
+    };
+    if (slots.length >= maxSlots) return;
+    persistSlots([slot, ...slots].sort((a, b) => b.ts - a.ts));
+    setSlotName("");
+  };
+
+  const loadSlot = (slot: SaveSlot) => {
+    if (!props.saveSlots) return;
+    try {
+      localStorage.setItem(props.saveSlots.draftStorageKey, JSON.stringify(slot.payload));
+      if (props.savedKey) localStorage.setItem(props.savedKey, String(Date.now()));
+      window.location.reload();
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const renameSlot = (slot: SaveSlot) => {
+    const next = window.prompt("Rename save slot", slot.name);
+    if (!next) return;
+    const name = next.trim();
+    if (!name) return;
+    persistSlots(slots.map((s) => (s.id === slot.id ? { ...s, name } : s)));
+  };
+
+  const deleteSlot = (slot: SaveSlot) => {
+    persistSlots(slots.filter((s) => s.id !== slot.id));
+  };
+
   return (
     <>
       {/* Desktop rail */}
@@ -116,6 +190,11 @@ export function CalculatorActionRail(props: {
             {header}
             <div className="flex flex-wrap gap-2">
               <CopySummaryButton getText={props.copyText} label="Copy summary" />
+              {props.saveSlots ? (
+                <Button variant="secondary" size="sm" type="button" onClick={() => setSlotsOpen(true)}>
+                  Saves ({slots.length}/{maxSlots})
+                </Button>
+              ) : null}
               {props.onGoSteps ? (
                 <Button variant="secondary" size="sm" onClick={props.onGoSteps}>
                   Steps
@@ -127,16 +206,6 @@ export function CalculatorActionRail(props: {
                 </Button>
               ) : null}
             </div>
-
-            {hasExport ? (
-              <div className="space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Export</p>
-                <div className="flex flex-wrap gap-2">
-                  {props.csv ? <ExportCsvButton filename={props.csv.filename} rows={props.csv.rows} /> : null}
-                  {props.json ? <ExportJsonButton data={props.json.data} /> : null}
-                </div>
-              </div>
-            ) : null}
 
             {props.onReset ? (
               <div className="space-y-2">
@@ -173,7 +242,7 @@ export function CalculatorActionRail(props: {
           <div className="min-w-0">
             {props.subtitle ? <p className="truncate text-xs font-semibold text-slate-800">{props.subtitle}</p> : null}
             <p className="hidden text-[11px] font-medium text-slate-600 sm:block">
-              {savedLabel ? `${savedLabel} · ` : ""}Copy, jump to steps, export, or reset.
+              {savedLabel ? `${savedLabel} · ` : ""}Copy, manage saves, jump to steps, or reset.
             </p>
           </div>
           <div className="flex w-full flex-wrap items-center justify-end gap-2">
@@ -196,8 +265,15 @@ export function CalculatorActionRail(props: {
                 </Button>
               </div>
             ) : null}
+            {props.saveSlots ? (
+              <div className="hidden sm:block">
+                <Button variant="secondary" size="sm" type="button" onClick={() => setSlotsOpen(true)}>
+                  Saves
+                </Button>
+              </div>
+            ) : null}
             <CopySummaryButton getText={props.copyText} label="Copy" />
-            {hasExport || props.onReset ? (
+            {props.onReset ? (
               <Button variant="secondary" size="sm" type="button" onClick={() => setSheetOpen(true)}>
                 More
               </Button>
@@ -234,6 +310,11 @@ export function CalculatorActionRail(props: {
 
                 <div className="flex flex-wrap gap-2">
                   <CopySummaryButton getText={props.copyText} label="Copy summary" />
+                  {props.saveSlots ? (
+                    <Button variant="secondary" size="sm" type="button" onClick={() => { setSheetOpen(false); setSlotsOpen(true); }}>
+                      Saves ({slots.length}/{maxSlots})
+                    </Button>
+                  ) : null}
                   {props.onGoSteps ? (
                     <Button variant="secondary" size="sm" onClick={() => { setSheetOpen(false); props.onGoSteps?.(); }}>
                       Steps
@@ -245,16 +326,6 @@ export function CalculatorActionRail(props: {
                     </Button>
                   ) : null}
                 </div>
-
-                {hasExport ? (
-                  <div className="space-y-2">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Export</p>
-                    <div className="flex flex-wrap gap-2">
-                      {props.csv ? <ExportCsvButton filename={props.csv.filename} rows={props.csv.rows} /> : null}
-                      {props.json ? <ExportJsonButton data={props.json.data} /> : null}
-                    </div>
-                  </div>
-                ) : null}
 
                 {props.onReset ? (
                   <div className="space-y-2">
@@ -293,6 +364,70 @@ export function CalculatorActionRail(props: {
           storageKey={props.compare.storageKey}
           getCurrent={props.compare.getCurrent}
         />
+      ) : null}
+
+      {slotsOpen && props.saveSlots ? (
+        <div className="fixed inset-0 z-[95]" role="dialog" aria-modal="true" aria-label="Save slots">
+          <button type="button" className={modalOverlayClass} aria-label="Close save slots" onClick={() => setSlotsOpen(false)} />
+          <div className="fixed inset-0 z-[96] flex items-center justify-center p-4">
+            <div className={cn(modalPanelClass, "w-full max-w-2xl")}>
+              <CardBody className="space-y-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Save slots</p>
+                    <p className="text-sm font-semibold text-slate-950">Save / Load / Rename / Delete ({slots.length}/{maxSlots})</p>
+                  </div>
+                  <Button variant="ghost" size="sm" type="button" onClick={() => setSlotsOpen(false)}>
+                    Close
+                  </Button>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    value={slotName}
+                    onChange={(e) => setSlotName(e.target.value)}
+                    placeholder="Name this save (optional)"
+                    className="min-h-11 w-full flex-1 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] px-3 py-2 text-sm text-[color:var(--foreground)] sm:min-w-[240px]"
+                  />
+                  <Button variant="primary" size="sm" type="button" disabled={slots.length >= maxSlots} onClick={saveCurrentToSlot}>
+                    Save current
+                  </Button>
+                </div>
+                <div className="max-h-[45vh] space-y-2 overflow-auto pr-1">
+                  {slots.length === 0 ? (
+                    <p className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-2)] p-3 text-sm text-[color:var(--muted)]">
+                      No saved calculations yet.
+                    </p>
+                  ) : (
+                    slots
+                      .sort((a, b) => b.ts - a.ts)
+                      .map((slot) => (
+                        <div
+                          key={slot.id}
+                          className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-2)] p-3"
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-[color:var(--foreground)]">{slot.name}</p>
+                            <p className="text-xs font-medium text-[color:var(--muted)]">{formatRelativeTime(slot.ts) ?? "just now"}</p>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Button variant="secondary" size="sm" type="button" onClick={() => loadSlot(slot)}>
+                              Load
+                            </Button>
+                            <Button variant="ghost" size="sm" type="button" onClick={() => renameSlot(slot)}>
+                              Rename
+                            </Button>
+                            <Button variant="danger" size="sm" type="button" onClick={() => deleteSlot(slot)}>
+                              Delete
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                  )}
+                </div>
+              </CardBody>
+            </div>
+          </div>
+        </div>
       ) : null}
     </>
   );

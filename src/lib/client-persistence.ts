@@ -15,5 +15,5 @@ export const CLIENT_PERSISTENCE = {
   commandPaletteOpen: "spanledger:v1:command-palette:open",
 } as const;
 
-export const AUTOSAVE_MODULE_KEYS = ["tension", "compression", "bending", "connections"] as const;
+export const AUTOSAVE_MODULE_KEYS = ["tension", "compression", "bending", "shear", "combined", "connections"] as const;
 export type AutosaveModuleKey = (typeof AUTOSAVE_MODULE_KEYS)[number];

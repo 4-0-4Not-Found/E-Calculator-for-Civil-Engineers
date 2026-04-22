@@ -16,31 +16,22 @@ type Ctx = {
 const ThemeContext = createContext<Ctx | null>(null);
 
 function readStored(): ThemeMode {
-  if (typeof window === "undefined") return "system";
-  try {
-    const v = localStorage.getItem(STORAGE_KEY);
-    if (v === "light" || v === "dark" || v === "system") return v;
-  } catch {
-    /* ignore */
-  }
-  return "system";
+  return "light";
 }
 
 function resolve(mode: ThemeMode): "light" | "dark" {
-  if (mode === "light") return "light";
-  if (mode === "dark") return "dark";
-  if (typeof window === "undefined") return "light";
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  void mode;
+  return "light";
 }
 
 function applyDom(mode: ThemeMode): "light" | "dark" {
-  const r = resolve(mode);
-  document.documentElement.classList.toggle("dark", r === "dark");
-  return r;
+  void mode;
+  document.documentElement.classList.remove("dark");
+  return "light";
 }
 
 export function ThemeProvider(props: { children: ReactNode }) {
-  const [mode, setModeState] = useState<ThemeMode>("system");
+  const [mode, setModeState] = useState<ThemeMode>("light");
   const [resolved, setResolved] = useState<"light" | "dark">("light");
 
   useEffect(() => {
@@ -59,22 +50,10 @@ export function ThemeProvider(props: { children: ReactNode }) {
     });
   }, [mode]);
 
-  /** When following system, react to OS light/dark changes and keep `html.dark` in sync. */
-  useEffect(() => {
-    if (mode !== "system") return;
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const onChange = () => {
-      queueMicrotask(() => {
-        const r = applyDom("system");
-        setResolved(r);
-      });
-    };
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, [mode]);
-
   const setMode = useCallback((m: ThemeMode) => {
-    setModeState(m);
+    // Theme is intentionally fixed to match product design.
+    void m;
+    setModeState("light");
   }, []);
 
   const value = useMemo(() => ({ mode, setMode, resolved }), [mode, setMode, resolved]);
@@ -97,7 +76,7 @@ export function useTheme() {
 function ThemeColorMetaBridge() {
   const { resolved } = useContext(ThemeContext)!;
   useEffect(() => {
-    const content = resolved === "dark" ? "#0f172a" : "#ffffff";
+    const content = resolved === "dark" ? "#f4f7fb" : "#f4f7fb";
     let meta = document.querySelector('meta[name="theme-color"]');
     if (!meta) {
       meta = document.createElement("meta");

@@ -5,7 +5,6 @@ import { Card, CardBody } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { InstallAppButton } from "@/components/InstallAppButton";
-import { ProjectBackupPanel } from "@/components/ProjectBackupPanel";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { BrandLink } from "@/components/ui/BrandLink";
 import { PRODUCT_BRAND } from "@/lib/brand";
@@ -41,6 +40,20 @@ const modules: Array<{
     href: "/bending-shear",
     summary: "Flexure, shear, deflection; W + HSS check modes.",
     bullets: ["Load-to-M/V helper", "Utilization by limit state"],
+  },
+  {
+    key: "shear",
+    label: "Shear",
+    href: "/shear",
+    summary: "Web shear capacity from PROGRAM-2 Shear (ANALYSIS).",
+    bullets: ["Cv case detection", "Method-aware capacity"],
+  },
+  {
+    key: "combined",
+    label: "Combined",
+    href: "/combined",
+    summary: "Integrated bending + shear + deflection design workflow.",
+    bullets: ["Workbook load combos", "Lightest SAFE shape hint"],
   },
   {
     key: "connections",
@@ -127,6 +140,8 @@ function emptyModuleState(): Record<ModuleKey, { hasData: boolean; savedTs: numb
     tension: { hasData: false, savedTs: null },
     compression: { hasData: false, savedTs: null },
     bending: { hasData: false, savedTs: null },
+    shear: { hasData: false, savedTs: null },
+    combined: { hasData: false, savedTs: null },
     connections: { hasData: false, savedTs: null },
   };
 }
@@ -159,6 +174,18 @@ function previewLineFor(key: ModuleKey): string | null {
       const n = typeof p.nBolts === "string" ? p.nBolts : null;
       const d = typeof p.dBolt === "string" ? p.dBolt : null;
       return vu && n && d ? `Vu ${vu} · Tu ${tu ?? "0"} · n=${n} d=${d} in` : vu ? `Vu ${vu}` : null;
+    }
+    if (key === "shear") {
+      const shape = typeof p.shapeName === "string" ? p.shapeName : null;
+      const vu = typeof p.demandV === "string" ? p.demandV : null;
+      return shape && vu ? `${shape} · Vu ${vu} kips` : shape ? shape : null;
+    }
+    if (key === "combined") {
+      const shape = typeof p.shapeName === "string" ? p.shapeName : null;
+      const span = typeof p.spanFt === "string" ? p.spanFt : null;
+      const dl = typeof p.deadLoadKft === "string" ? p.deadLoadKft : null;
+      const ll = typeof p.liveLoadKft === "string" ? p.liveLoadKft : null;
+      return shape && span ? `${shape} · L ${span} ft · D/L ${dl ?? "0"}/${ll ?? "0"}` : shape ? shape : null;
     }
     return null;
   } catch {
@@ -464,7 +491,7 @@ export function HomeDashboard() {
         </section>
       ) : null}
 
-      {/* Hero (split layout: text left, owl mark right) */}
+      {/* Hero (split layout: text left, in-app owl mark right — install icon is separate in manifest) */}
       <section className="rounded-3xl border border-[color:var(--border)] bg-[color:var(--zone-hero)] px-6 py-10 shadow-[var(--shadow-sm)] sm:px-10 sm:py-14 md:px-16 md:py-16">
         <div className="flex flex-col items-start justify-between gap-10 md:flex-row md:items-center">
           <div className="max-w-xl">
@@ -487,7 +514,7 @@ export function HomeDashboard() {
               Engineer the Future.
             </h1>
 
-            <div className="mt-6">
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-start">
               <a href="#modules">
                 <Button
                   variant="primary"
@@ -497,14 +524,16 @@ export function HomeDashboard() {
                   START CALCULATING
                 </Button>
               </a>
+              <InstallAppButton />
             </div>
           </div>
 
           <div className="w-full md:w-auto">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/publicbrandowl-logo.png"
               alt=""
-              className="mx-auto h-52 w-52 object-contain sm:h-60 sm:w-60 md:h-64 md:w-64"
+              className="mx-auto h-52 w-52 rounded-sm bg-[#2f4f46] p-3 object-contain sm:h-60 sm:w-60 md:h-64 md:w-64"
               draggable={false}
             />
           </div>
@@ -577,8 +606,8 @@ export function HomeDashboard() {
               { label: "Tension", href: "/tension" },
               { label: "Compression", href: "/compression" },
               { label: "Bending", href: "/bending-shear" },
-              { label: "Shear", href: "#" },
-              { label: "Combined", href: "#" },
+              { label: "Shear", href: "/shear" },
+              { label: "Combined", href: "/combined" },
               { label: "Connections", href: "/connections" },
             ] as const;
             const q = moduleQuery.trim().toLowerCase();
@@ -590,37 +619,18 @@ export function HomeDashboard() {
                 </div>
               );
             }
-            return list.map((m) => {
-            const isPlaceholder = m.href === "#";
+            return list.map((m, idx) => {
             const diagramSrc = moduleDiagramSrc[m.label] ?? null;
-            const shortcut =
-              m.label === "Tension"
-                ? "1"
-                : m.label === "Compression"
-                  ? "2"
-                  : m.label === "Bending"
-                    ? "3"
-                    : m.label === "Connections"
-                      ? "4"
-                      : null;
+            const shortcut = String(idx + 1);
             return (
               <a
                 key={m.label}
                 href={m.href}
-                aria-disabled={isPlaceholder ? "true" : undefined}
-                onClick={
-                  isPlaceholder
-                    ? (e) => {
-                        e.preventDefault();
-                      }
-                    : undefined
-                }
                 className={[
                   "group relative flex min-h-[320px] flex-col justify-between rounded-2xl bg-[color:var(--mint)] p-8 no-underline shadow-[var(--shadow-sm)] transition",
                   "hover:bg-[color:var(--mint-2)] hover:shadow-[var(--shadow)] hover:-translate-y-0.5 hover:ring-1 hover:ring-[color:var(--accent-weak)]",
                   "active:translate-y-0 active:shadow-[var(--shadow-sm)]",
                   "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--accent)]/10",
-                  isPlaceholder ? "opacity-80" : "",
                 ].join(" ")}
               >
                 <div className="space-y-8">
@@ -630,11 +640,7 @@ export function HomeDashboard() {
 
                   <div className="flex items-start justify-between gap-3">
                     <p className="text-2xl font-semibold text-[color:var(--accent)]">{m.label}</p>
-                    {isPlaceholder ? (
-                      <span className="rounded-full border border-[color:var(--accent-weak)] bg-white/70 px-3 py-1 text-[11px] font-semibold text-[color:var(--accent)] shadow-sm">
-                        In progress
-                      </span>
-                    ) : shortcut ? (
+                    {shortcut ? (
                       <span className="rounded-full border border-[color:var(--accent-weak)] bg-white/70 px-2 py-0.5 font-mono text-xs font-semibold text-[color:var(--accent)]">
                         {shortcut}
                       </span>
@@ -653,8 +659,6 @@ export function HomeDashboard() {
           })()}
         </div>
       </section>
-
-      <ProjectBackupPanel />
     </div>
   );
 }

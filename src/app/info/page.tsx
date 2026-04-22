@@ -17,7 +17,7 @@ export default function InfoPage() {
             </>
           }
           description="AISC 360–based steel checks using the v16 shape database. Works offline after the first load (PWA). Use Summary to print or review inputs and key results together."
-          image={{ src: "/publicbrandowl-logo.png" }}
+          image={{ src: "/publicbrandowl-logo.png", alt: "" }}
         />
 
         <Card>
@@ -118,11 +118,11 @@ export default function InfoPage() {
                 <BrandLink href="/report">Report</BrandLink> for a combined view of saved inputs.
               </li>
               <li>
-                Export <strong>CSV</strong> or <strong>JSON</strong> on each module to archive work or open CSV in Excel.
+                Each calculator now has in-app <strong>Save Slots</strong> (up to 20). You can save, rename, load, and delete
+                calculations directly in the module.
               </li>
               <li>
-                On Home, use <strong>Save / load project</strong> to keep inputs in this browser or download a single JSON
-                backup file.
+                Inputs are stored locally on this device/browser. Use module save slots for organized variants and revisions.
               </li>
               <li>
                 Use <BrandLink href="/report">Report</BrandLink> (also linked on Home) for a printable overview when you have saved inputs.

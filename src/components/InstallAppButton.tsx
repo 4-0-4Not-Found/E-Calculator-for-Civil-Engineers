@@ -43,7 +43,7 @@ export function InstallAppButton() {
     };
   }, [toast]);
 
-  if (isStandalone) return <p className="text-xs text-slate-500">Installed app mode is active.</p>;
+  if (isStandalone) return <p className="text-xs text-[color:var(--muted)]">Installed app mode is active.</p>;
 
   const onInstall = async () => {
     if (!deferredPrompt) {
@@ -68,10 +68,15 @@ export function InstallAppButton() {
 
   return (
     <div className="w-full space-y-1 sm:w-auto">
-      <Button variant="primary" type="button" onClick={onInstall} className="w-full sm:w-auto">
+      <Button
+        variant="secondary"
+        type="button"
+        onClick={onInstall}
+        className="w-full sm:w-auto border-[color:var(--brand)]/35 bg-[color:var(--surface)] text-[color:var(--brand)] hover:bg-[color:var(--mint)]"
+      >
         Install app
       </Button>
-      {msg ? <p className="text-xs text-slate-600">{msg}</p> : null}
+      {msg ? <p className="text-xs text-[color:var(--muted)]">{msg}</p> : null}
     </div>
   );
 }

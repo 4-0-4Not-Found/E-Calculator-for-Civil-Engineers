@@ -544,16 +544,25 @@ export default function BendingShearPage() {
                 setDetailsTab("steps");
                 smoothScrollTo("details");
               }}
-              json={
-                out
-                  ? {
-                      data: {
-                        result: out,
-                        inputs: { material, shapeName, Mu, Vu, L, wLive, designMethod, unbracedLbIn, cbFactor },
-                      },
-                    }
-                  : undefined
-              }
+              saveSlots={{
+                moduleKey: "bending",
+                draftStorageKey: STORAGE.bending,
+                getCurrent: () => ({
+                  designMethod,
+                  material,
+                  shapeName,
+                  Mu,
+                  Vu,
+                  L,
+                  wLive,
+                  deadLoadKft,
+                  liveLoadKft,
+                  spanFt,
+                  unbracedLbIn,
+                  cbFactor,
+                  mode,
+                }),
+              }}
               onReset={resetInputs}
             />
           </div>

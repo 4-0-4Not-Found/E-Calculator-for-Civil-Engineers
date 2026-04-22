@@ -111,18 +111,6 @@ export default function CompressionPage() {
 
   const missingSlenderness = shape ? shape.bf_2tf <= 0 && shape.h_tw <= 0 : false;
 
-  const csvRows = useMemo(() => {
-    return [
-      ["Field", "Value"],
-      ["Steel", material],
-      ["Shape family", shapeFamily],
-      ["Shape", shapeName],
-      ["Design method", designMethod],
-      ["Pu / Pa (kips)", Pu],
-      ["Strength (kips)", out.controllingStrength.toFixed(3)],
-    ];
-  }, [material, shapeFamily, shapeName, Pu, designMethod, out.controllingStrength]);
-
   const resetInputs = useCallback(() => {
     clearDraft();
     setMaterial(compressionDefaults.material as SteelMaterialKey);
@@ -252,8 +240,11 @@ export default function CompressionPage() {
         ].join("\n"),
       onGoResults: () => smoothScrollTo("compression-results"),
       onGoSteps: () => smoothScrollTo("compression-steps"),
-      csv: { filename: "compression-export.csv", rows: csvRows },
-      json: { data: { result: out, inputs: { material, shapeName, designMethod, k, L, Pu } } },
+      saveSlots: {
+        moduleKey: "compression",
+        draftStorageKey: STORAGE.compression,
+        getCurrent: () => ({ material, shapeFamily, shapeName, k, builtUpFactor, L, Pu, designMethod }),
+      },
       onReset: resetInputs,
     }),
     [
@@ -266,8 +257,8 @@ export default function CompressionPage() {
       L,
       k,
       builtUpFactor,
+      shapeFamily,
       out,
-      csvRows,
       material,
       resetInputs,
     ],

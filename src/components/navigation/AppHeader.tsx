@@ -15,6 +15,8 @@ const modules: NavItem[] = [
   { href: "/tension", label: "Tension" },
   { href: "/compression", label: "Compression" },
   { href: "/bending-shear", label: "Beam", short: "Beam" },
+  { href: "/shear", label: "Shear", short: "Shear" },
+  { href: "/combined", label: "Combined", short: "Comb." },
   { href: "/connections", label: "Connections", short: "Conn." },
 ];
 
@@ -36,6 +38,8 @@ function readLastSaved(): LastSaved {
       { key: "tension", label: "Tension" },
       { key: "compression", label: "Compression" },
       { key: "bending", label: "Beam" },
+      { key: "shear", label: "Shear" },
+      { key: "combined", label: "Combined" },
       { key: "connections", label: "Connections" },
     ];
     let best: LastSaved = null;
@@ -130,12 +134,14 @@ export function AppHeader() {
   const projectStatus = useMemo(() => {
     void tick;
     void pathname;
-    if (!mounted) return { items: [], completed: 0, total: 4 };
+    if (!mounted) return { items: [], completed: 0, total: 6 };
     try {
       const keys: Array<{ k: AutosaveModuleKey; label: string; href: string }> = [
         { k: "tension", label: "Tension", href: "/tension" },
         { k: "compression", label: "Compression", href: "/compression" },
         { k: "bending", label: "Beam", href: "/bending-shear" },
+        { k: "shear", label: "Shear", href: "/shear" },
+        { k: "combined", label: "Combined", href: "/combined" },
         { k: "connections", label: "Connections", href: "/connections" },
       ];
       const items = keys.map((x) => {
@@ -146,7 +152,7 @@ export function AppHeader() {
       const completed = items.filter((i) => i.ts != null).length;
       return { items, completed, total: items.length };
     } catch {
-      return { items: [], completed: 0, total: 4 };
+      return { items: [], completed: 0, total: 6 };
     }
   }, [tick, pathname, mounted]);
 

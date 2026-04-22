@@ -397,74 +397,7 @@ export default function ConnectionsPage() {
     return !Number.isFinite(n) || n < min;
   };
 
-  const csvRows = useMemo(() => {
-    const rows: string[][] = [
-      ["Category", "Item", "Value"],
-      ["General", "Design method", designMethod],
-      ["General", "Shear mode", shearMode],
-      ["Shear", "V_u (kips)", vu],
-      ["Tension", "T_u (kips)", tu],
-      ["Bolt", "Group", boltGroup],
-      ["Bolt", "Thread N/X", threadMode],
-      ["Bolt", "d (in)", dBolt],
-      ["Bolt", "n", nBolts],
-      ["Bolt", "Shear planes", shearPlanes],
-      ["Plate", "F_u (ksi)", plateFu],
-      ["Plate", "t (in)", plateT],
-      ["Plate", "L_c min (in)", lcMin],
-    ];
-    if (shearMode === "slip" && slipOut) {
-      rows.push(["Slip", "Available slip (kips)", String(slipOut.availableSlip.toFixed(3))]);
-      rows.push(["Slip", "T_b (kips)", String(slipOut.Tb.toFixed(0))]);
-    }
-    if (boltOut) {
-      rows.push(["Result", "phi R_n governing (kips)", String(boltOut.phiRnTotalGoverning.toFixed(3))]);
-      rows.push(["Result", "Controlling", boltOut.controlling]);
-    }
-    if (tensionOut) {
-      rows.push(["Result", "F_nt (ksi)", String(tensionOut.Fnt.toFixed(0))]);
-      rows.push(["Result", "phi R_n tension total (kips)", String(tensionOut.phiRnTotal.toFixed(3))]);
-    }
-    if (interactionOut) {
-      rows.push(["Interaction", "(Vu/phiVn)^2+(Tu/phiTn)^2", String(interactionOut.interactionSum.toFixed(4))]);
-      rows.push(["Interaction", "OK", interactionOut.isSafe ? "yes" : "no"]);
-    }
-    if (weldOut) {
-      rows.push(["Weld", "phi R_n (kips)", String(weldOut.phiRn.toFixed(3))]);
-    }
-    if (grooveOut) {
-      rows.push(["Groove weld", "A_w (in²)", String(grooveOut.AwIn2.toFixed(4))]);
-      rows.push(["Groove weld", "R_n (kips)", String(grooveOut.RnKips.toFixed(3))]);
-      rows.push(["Groove weld", designMethod === "LRFD" ? "φR_n or R_a (kips)" : "R_a (kips)", String(grooveOut.phiRnOrAllowableKips.toFixed(3))]);
-      rows.push(["Groove weld", "OK", grooveOut.isSafe ? "yes" : "no"]);
-    }
-    if (pryingOut && pryingTPerBoltKips != null) {
-      rows.push(["Prying (approx)", "T/bolt used (kips)", String(pryingTPerBoltKips.toFixed(4))]);
-      rows.push(["Prying (approx)", "t_min (in)", String(pryingOut.tMinApproxIn.toFixed(4))]);
-    }
-    return rows;
-  }, [
-    vu,
-    tu,
-    boltGroup,
-    threadMode,
-    dBolt,
-    nBolts,
-    shearPlanes,
-    plateFu,
-    plateT,
-    lcMin,
-    shearMode,
-    slipOut,
-    boltOut,
-    tensionOut,
-    interactionOut,
-    weldOut,
-    designMethod,
-    grooveOut,
-    pryingOut,
-    pryingTPerBoltKips,
-  ]);
+  
 
   const [detailsTab, setDetailsTab] = useState<"bolts" | "weld" | "optional">("bolts");
 
@@ -716,45 +649,37 @@ export default function ConnectionsPage() {
                 setDetailsTab("bolts");
                 smoothScrollTo("details");
               }}
-              csv={{ filename: "connections-export.csv", rows: csvRows }}
-              json={{
-                data: {
-                  bolt: boltOut,
-                  slip: slipOut,
-                  tension: tensionOut,
-                  interaction: interactionOut,
-                  weld: weldOut,
-                  grooveWeld: grooveOut,
-                  pryingPlate: pryingOut,
-                  inputs: {
-                    designMethod,
-                    shearMode,
-                    surfaceClass,
-                    slipHf,
-                    vu,
-                    tu,
-                    boltGroup,
-                    threadMode,
-                    dBolt,
-                    nBolts,
-                    shearPlanes,
-                    checkBearing,
-                    plateFu,
-                    plateT,
-                    lcMin,
-                    fexx,
-                    legIn,
-                    weldLen,
-                    weldDemand,
-                    grooveThroatIn,
-                    grooveLenIn,
-                    grooveDemand,
-                    pryingTPerBoltOverride,
-                    pryingBPrimeIn,
-                    pryingStripWidthIn,
-                    pryingFyKsi,
-                  },
-                },
+              saveSlots={{
+                moduleKey: "connections",
+                draftStorageKey: STORAGE.connections,
+                getCurrent: () => ({
+                  designMethod,
+                  shearMode,
+                  surfaceClass,
+                  slipHf,
+                  vu,
+                  tu,
+                  boltGroup,
+                  threadMode,
+                  dBolt,
+                  nBolts,
+                  shearPlanes,
+                  checkBearing,
+                  plateFu,
+                  plateT,
+                  lcMin,
+                  fexx,
+                  legIn,
+                  weldLen,
+                  weldDemand,
+                  grooveThroatIn,
+                  grooveLenIn,
+                  grooveDemand,
+                  pryingTPerBoltOverride,
+                  pryingBPrimeIn,
+                  pryingStripWidthIn,
+                  pryingFyKsi,
+                }),
               }}
               onReset={resetInputs}
             />

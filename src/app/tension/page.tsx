@@ -231,21 +231,6 @@ export default function TensionModulePage() {
       });
   }, [mode, shapeChoices, Pu, selectedMaterial, designMethod, Agv, Anv, Agt, Ant, ubs]);
 
-  const csvRows = useMemo(() => {
-    const rows: string[][] = [
-      ["Field", "Value"],
-      ["Steel", material],
-      ["Shape family", shapeFamily],
-      ["Shape", shapeName],
-      ["Pu (kips)", Pu],
-      ["Design method", designMethod],
-      ["Mode", mode],
-      [`${designMethod === "LRFD" ? "φPn / Pa" : "Pa"} governing (kips)`, fmt(result.controllingStrength)],
-      ["Governing case", result.governingCase],
-    ];
-    return rows;
-  }, [material, shapeFamily, shapeName, Pu, result, designMethod, mode]);
-
   const staggerHelp = useMemo(() => {
     const W = toNumber(stagW);
     const dh = toNumber(stagDh);
@@ -672,8 +657,32 @@ export default function TensionModulePage() {
                 setDetailsTab("steps");
                 smoothScrollTo("details");
               }}
-              csv={{ filename: "tension-export.csv", rows: csvRows }}
-              json={{ data: { result, inputs: { material, shapeName, designMethod, mode, Ag, An, U, Pu, Agv, Anv, Agt, Ant, ubs } } }}
+              saveSlots={{
+                moduleKey: "tension",
+                draftStorageKey: STORAGE.tension,
+                getCurrent: () => ({
+                  material,
+                  shapeName,
+                  Ag,
+                  An,
+                  U,
+                  Pu,
+                  Agv,
+                  Anv,
+                  Agt,
+                  Ant,
+                  ubs,
+                  stagW,
+                  stagDh,
+                  stagN,
+                  stagS,
+                  stagG,
+                  stagT,
+                  shapeFamily,
+                  designMethod,
+                  mode,
+                }),
+              }}
               onReset={resetInputs}
             />
           </div>

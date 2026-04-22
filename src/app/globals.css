@@ -1,61 +1,61 @@
 @import "tailwindcss";
 
 :root {
-  /* Reference UI (image #3): soft sage surfaces + deep green brand */
-  --background: #f6f8f7; /* page background */
-  --foreground: #0b1220; /* primary text */
-  --muted: #5b6876; /* secondary text */
-  --surface: #ffffff; /* cards/panels */
-  --surface-2: #eef6f1; /* hero + subtle callouts */
-  --surface-3: #f4faf7; /* lightly tinted */
+  /* Fixed palette (no light/dark switching): matches the provided light screenshot. */
+  --background: #f7fafc;
+  --foreground: #0f1e28;
+  --muted: #52636d;
+  --surface: #ffffff;
+  --surface-2: #f2f7f7;
+  --surface-3: #eef4f4;
   --zone-hero: #ffffff;
-  --zone-modules: #f8fafc;
-  --glass-bg: rgba(255, 255, 255, 0.72);
-  --glass-border: rgba(255, 255, 255, 0.42);
-  --border: color-mix(in oklab, #0b1220 12%, transparent);
-  --brand: #2f4f46; /* deep green */
-  --brand-2: #3f6b5d; /* hover */
+  --zone-modules: #f6fafb;
+  --glass-bg: rgba(255, 255, 255, 0.88);
+  --glass-border: rgba(15, 30, 40, 0.09);
+  --border: color-mix(in oklab, #0f1e28 10%, transparent);
+  --brand: #2f4f46;
+  --brand-2: #40675c;
   --brand-soft: color-mix(in oklab, var(--brand) 10%, var(--surface));
-  --brand-ring: color-mix(in oklab, var(--brand) 18%, transparent);
-  --shadow: 0 10px 28px rgba(11, 18, 32, 0.06);
+  --brand-ring: color-mix(in oklab, var(--brand) 20%, transparent);
+  --shadow: 0 10px 28px rgba(11, 18, 32, 0.08);
   --shadow-sm: 0 4px 14px rgba(11, 18, 32, 0.06);
-  --shadow-lg: 0 18px 45px rgba(11, 18, 32, 0.12);
-  --heading-grad-from: #1f3b33;
-  --heading-grad-to: #3f6b5d;
-  --accent: #2d4a3e; /* forest */
-  --accent-weak: color-mix(in oklab, var(--accent) 12%, transparent);
-  --mint: #f0f9f4;
-  --mint-2: #e7f4ee;
+  --shadow-lg: 0 18px 45px rgba(11, 18, 32, 0.14);
+  --heading-grad-from: #25483e;
+  --heading-grad-to: #3e6f60;
+  --accent: #2f4f46;
+  --accent-weak: color-mix(in oklab, var(--accent) 14%, transparent);
+  --mint: #ecf7f3;
+  --mint-2: #e2f1eb;
   color-scheme: light;
 }
 
-/* Dark-mode foundation (toggle-ready via adding `class="dark"` on <html>). */
+/* Intentionally same as :root so browser/OS theme cannot alter app styling. */
 .dark {
-  --background: #0b1220; /* deep charcoal */
-  --foreground: #e5e7eb; /* slate-200 */
-  --muted: #9ca3af; /* slate-400 */
-  --surface: #0f172a; /* slate-900 */
-  --surface-2: #111827; /* slate-900-ish */
-  --surface-3: #0b1f1a; /* subtle green tint */
-  --zone-hero: #0b1220;
-  --zone-modules: #0b1324;
-  --glass-bg: rgba(15, 23, 42, 0.65);
-  --glass-border: rgba(148, 163, 184, 0.18);
-  --border: color-mix(in oklab, #e5e7eb 14%, transparent);
-  --brand: #3f6b5d;
-  --brand-2: #5b8a7a;
-  --brand-soft: color-mix(in oklab, var(--brand) 16%, var(--surface));
-  --brand-ring: color-mix(in oklab, var(--brand) 24%, transparent);
-  --shadow: 0 14px 34px rgba(0, 0, 0, 0.35);
-  --shadow-sm: 0 6px 18px rgba(0, 0, 0, 0.28);
-  --shadow-lg: 0 22px 60px rgba(0, 0, 0, 0.45);
-  --heading-grad-from: #7cc3aa;
-  --heading-grad-to: #a7f3d0;
-  --accent: #a7f3d0;
-  --accent-weak: color-mix(in oklab, var(--accent) 22%, transparent);
-  --mint: rgba(255, 255, 255, 0.06);
-  --mint-2: rgba(255, 255, 255, 0.10);
-  color-scheme: dark;
+  --background: #f7fafc;
+  --foreground: #0f1e28;
+  --muted: #52636d;
+  --surface: #ffffff;
+  --surface-2: #f2f7f7;
+  --surface-3: #eef4f4;
+  --zone-hero: #ffffff;
+  --zone-modules: #f6fafb;
+  --glass-bg: rgba(255, 255, 255, 0.88);
+  --glass-border: rgba(15, 30, 40, 0.09);
+  --border: color-mix(in oklab, #0f1e28 10%, transparent);
+  --brand: #2f4f46;
+  --brand-2: #40675c;
+  --brand-soft: color-mix(in oklab, var(--brand) 10%, var(--surface));
+  --brand-ring: color-mix(in oklab, var(--brand) 20%, transparent);
+  --shadow: 0 10px 28px rgba(11, 18, 32, 0.08);
+  --shadow-sm: 0 4px 14px rgba(11, 18, 32, 0.06);
+  --shadow-lg: 0 18px 45px rgba(11, 18, 32, 0.14);
+  --heading-grad-from: #25483e;
+  --heading-grad-to: #3e6f60;
+  --accent: #2f4f46;
+  --accent-weak: color-mix(in oklab, var(--accent) 14%, transparent);
+  --mint: #ecf7f3;
+  --mint-2: #e2f1eb;
+  color-scheme: light;
 }
 
 html {
