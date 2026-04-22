@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Owl logo">
+  <!-- Monochrome owl mark (light) intended for dark green square background -->
+  <g fill="#efe9df">
+    <!-- Ears / brow -->
+    <path d="M62 66c18-20 40-30 66-30s48 10 66 30l-28 22c-10-10-22-15-38-15s-28 5-38 15L62 66z"/>
+    <!-- Face silhouette -->
+    <path d="M60 88c0-8 4-14 12-18 12-6 32-10 56-10s44 4 56 10c8 4 12 10 12 18v54c0 40-28 74-68 74H128c-40 0-68-34-68-74V88z" opacity="0.98"/>
+    <!-- Eye rings -->
+    <path d="M82 126c0-26 20-46 46-46 16 0 30 8 38 20 8-12 22-20 38-20 26 0 46 20 46 46s-20 46-46 46c-16 0-30-8-38-20-8 12-22 20-38 20-26 0-46-20-46-46z" fill="#efe9df"/>
+    <!-- Pupils (knockout-ish by using bg color later; keep slightly darker) -->
+    <circle cx="108" cy="126" r="12" fill="#3a4d44" opacity="0.55"/>
+    <circle cx="148" cy="126" r="12" fill="#3a4d44" opacity="0.55"/>
+    <!-- Beak -->
+    <path d="M128 134l-10 14h20l-10-14z" opacity="0.95"/>
+    <!-- Book / chest -->
+    <path d="M74 156c16 18 34 28 54 28s38-10 54-28v16c0 10-4 18-12 24-10 8-24 12-42 12s-32-4-42-12c-8-6-12-14-12-24v-16z"/>
+    <!-- Inner book notch -->
+    <path d="M102 170c8 6 17 9 26 9s18-3 26-9" fill="none" stroke="#3a4d44" stroke-width="10" stroke-linecap="round" opacity="0.22"/>
+  </g>
+</svg>
+

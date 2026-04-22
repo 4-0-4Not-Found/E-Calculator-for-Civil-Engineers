@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Owl mark">
+  <!-- Transparent background; intended to sit on a brand-colored square -->
+  <g fill="none" stroke="none">
+    <!-- Head + ears -->
+    <path
+      fill="#f1eee6"
+      d="M28 34c6-10 16-16 28-18l8 12 8-12c12 2 22 8 28 18 4 6 6 14 6 24 0 34-26 56-50 56S22 92 22 58c0-10 2-18 6-24Z"
+    />
+    <!-- Eye sockets -->
+    <path
+      fill="#2f4f46"
+      d="M44 58c0-10 8-18 18-18 6 0 11 3 14 7 3-4 8-7 14-7 10 0 18 8 18 18s-8 18-18 18c-6 0-11-3-14-7-3 4-8 7-14 7-10 0-18-8-18-18Z"
+      opacity="0.85"
+    />
+    <!-- Pupils -->
+    <circle cx="58" cy="58" r="6.5" fill="#f1eee6" opacity="0.95" />
+    <circle cx="90" cy="58" r="6.5" fill="#f1eee6" opacity="0.95" />
+    <!-- Beak -->
+    <path fill="#f1eee6" d="M72 66l-8 12-8-12c5 2 11 2 16 0Z" opacity="0.9" />
+    <!-- Book / chest -->
+    <path
+      fill="#f1eee6"
+      d="M40 86c8 6 16 10 24 10s16-4 24-10c2 18-8 32-24 32S38 104 40 86Z"
+      opacity="0.95"
+    />
+    <!-- Small inner lines -->
+    <path
+      d="M52 88c4 3 8 4 12 4s8-1 12-4"
+      stroke="#2f4f46"
+      stroke-width="4"
+      stroke-linecap="round"
+      opacity="0.35"
+    />
+  </g>
+</svg>
+
