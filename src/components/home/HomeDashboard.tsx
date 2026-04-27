@@ -619,9 +619,17 @@ export function HomeDashboard() {
                 </div>
               );
             }
-            return list.map((m, idx) => {
+            const moduleNumber: Record<string, string> = {
+              Tension: "1",
+              Compression: "2",
+              Bending: "3",
+              Shear: "4",
+              Combined: "5",
+              Connections: "6",
+            };
+            return list.map((m) => {
             const diagramSrc = moduleDiagramSrc[m.label] ?? null;
-            const shortcut = String(idx + 1);
+            const shortcut = moduleNumber[m.label] ?? "";
             return (
               <a
                 key={m.label}

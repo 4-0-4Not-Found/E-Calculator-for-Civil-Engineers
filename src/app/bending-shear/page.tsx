@@ -224,6 +224,12 @@ export default function BendingShearPage() {
     return candidates[0] ?? null;
   }, [mode, Mu, Vu, mat, L, wLive, designMethod, derivedFromLoads, unbracedLbIn, cbFactor]);
 
+  useEffect(() => {
+    if (mode !== "design") return;
+    if (!suggestion) return;
+    queueMicrotask(() => setShapeName(suggestion.s.shape));
+  }, [mode, suggestion]);
+
   const resetInputs = () => {
     clearDraft();
     setDesignMethod(bendingDefaults.designMethod);
@@ -285,25 +291,33 @@ export default function BendingShearPage() {
                       ))}
                     </SelectInput>
                   </Field>
-                  <Field
-                    label={mode === "design" ? "W-shape (design)" : "Member (W or HSS)"}
-                    hint="AISC v16. HSS uses simplified assumptions; verify critical members with AISC F7."
-                  >
-                    <SelectInput value={shapeName} onChange={setShapeName}>
-                      {shapeOptions.map((s) => (
-                        <option key={s.shape} value={s.shape}>
-                          {s.shape}
-                        </option>
-                      ))}
-                    </SelectInput>
-                  </Field>
+                  {mode === "check" ? (
+                    <Field
+                      label="Member (W or HSS)"
+                      hint="AISC v16. HSS uses simplified assumptions; verify critical members with AISC F7."
+                    >
+                      <SelectInput value={shapeName} onChange={setShapeName}>
+                        {shapeOptions.map((s) => (
+                          <option key={s.shape} value={s.shape}>
+                            {s.shape}
+                          </option>
+                        ))}
+                      </SelectInput>
+                    </Field>
+                  ) : (
+                    <Field label="Recommended W-shape" hint="Lightest passing W (auto-selected).">
+                      <div className="rounded-2xl bg-[color:var(--surface-2)] px-3 py-2 text-sm font-semibold ring-1 ring-inset ring-[color:var(--border)]/60">
+                        {suggestion ? suggestion.s.shape : "No passing section found"}
+                      </div>
+                    </Field>
+                  )}
                 </div>
 
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <Field label="Mode" hint="Check a chosen section, or suggest a lighter W that works.">
+                  <Field label="Mode" hint="Analysis checks your selected section; Design auto-picks the lightest passing W-shape.">
                     <SelectInput value={mode} onChange={(v) => setMode(v as "check" | "design")}>
-                      <option value="check">Check section</option>
-                      <option value="design">Suggest lightest W</option>
+                      <option value="check">Analysis</option>
+                      <option value="design">Design</option>
                     </SelectInput>
                   </Field>
                   <Field label="Design method" hint="LRFD or ASD strength reduction.">

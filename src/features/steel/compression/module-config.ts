@@ -10,6 +10,7 @@ type CompressionDefaults = {
   L: string;
   Pu: string;
   designMethod: "LRFD" | "ASD";
+  mode: "check" | "design";
 };
 
 export const compressionDefaults: CompressionDefaults = {
@@ -21,6 +22,7 @@ export const compressionDefaults: CompressionDefaults = {
   L: "240",
   Pu: "700",
   designMethod: "LRFD",
+  mode: "check",
 };
 
 export const compressionDraftSchema = z.object({
@@ -32,6 +34,7 @@ export const compressionDraftSchema = z.object({
   L: z.string().optional(),
   Pu: z.string().optional(),
   designMethod: z.enum(["LRFD", "ASD"]).optional(),
+  mode: z.enum(["check", "design"]).optional(),
 });
 
 export const evaluateCompression = calculateCompressionDesign;

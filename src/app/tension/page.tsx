@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { aiscShapes } from "@/lib/aisc/data";
 import {
   filterShapesByFamily,
@@ -199,6 +199,17 @@ export default function TensionModulePage() {
     return null;
   }, [mode, shapeChoices, Pu, selectedMaterial, designMethod, Agv, Anv, Agt, Ant, ubs]);
 
+  useEffect(() => {
+    if (mode !== "design") return;
+    if (!designSuggestion) return;
+    queueMicrotask(() => {
+      setShapeName(designSuggestion.shape);
+      setAg(String(designSuggestion.A));
+      setAn(String(designSuggestion.A));
+      setU("1");
+    });
+  }, [mode, designSuggestion]);
+
   /** Design mode: compare first 16 lightest shapes (same assumptions as design suggestion). */
   const designComparisonRows = useMemo(() => {
     if (mode !== "design" || shapeChoices.length === 0) return [];
@@ -355,27 +366,35 @@ export default function TensionModulePage() {
                     </SelectInput>
                   </Field>
 
-                  <Field label="AISC Shape" hint="Ag auto-updates from the database.">
-                    <SelectInput
-                      value={shapeName}
-                      onChange={(v) => {
-                        const selected = aiscShapes.find((s) => s.shape === v);
-                        setShapeName(v);
-                        if (selected) setAg(String(selected.A));
-                      }}
-                    >
-                      {shapeChoices.map((s) => (
-                        <option key={s.shape} value={s.shape}>
-                          {s.shape}
-                        </option>
-                      ))}
-                    </SelectInput>
-                  </Field>
+                  {mode === "check" ? (
+                    <Field label="AISC Shape" hint="Ag auto-updates from the database.">
+                      <SelectInput
+                        value={shapeName}
+                        onChange={(v) => {
+                          const selected = aiscShapes.find((s) => s.shape === v);
+                          setShapeName(v);
+                          if (selected) setAg(String(selected.A));
+                        }}
+                      >
+                        {shapeChoices.map((s) => (
+                          <option key={s.shape} value={s.shape}>
+                            {s.shape}
+                          </option>
+                        ))}
+                      </SelectInput>
+                    </Field>
+                  ) : (
+                    <Field label="Recommended section" hint="Lightest in family that passes (gross = net assumption).">
+                      <div className="rounded-2xl bg-[color:var(--surface-2)] px-3 py-2 text-sm font-semibold ring-1 ring-inset ring-[color:var(--border)]/60">
+                        {designSuggestion ? designSuggestion.shape : "No passing section found"}
+                      </div>
+                    </Field>
+                  )}
 
                   <Field label="Mode" hint="Check a section, or get a lightest-weight suggestion in the chosen family.">
                     <SelectInput value={mode} onChange={(v) => setMode(v as "check" | "design")}>
-                      <option value="check">Check / analyze</option>
-                      <option value="design">Design (lightest shape)</option>
+                      <option value="check">Analysis</option>
+                      <option value="design">Design</option>
                     </SelectInput>
                   </Field>
 
@@ -404,56 +423,66 @@ export default function TensionModulePage() {
               </CardBody>
             </Card>
 
-            <Card id="tension-net-area">
-              <CardHeader title="Net area" description="Areas and shear lag factor (yielding / rupture)." />
-              <CardBody>
-                <div className="mb-3 flex flex-wrap gap-2">
-                  <Button variant="secondary" size="sm" type="button" onClick={() => setU("0.90")}>
-                    Typical U = 0.90
-                  </Button>
-                  <Button variant="secondary" size="sm" type="button" onClick={() => setAn(Ag)}>
-                    Set An = Ag (no holes yet)
-                  </Button>
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Field label="Shear lag factor U" hint="dimensionless">
-                    <TextInput value={U} onChange={setU} placeholder="e.g. 0.90" />
-                  </Field>
-                  <Field label="Ag" hint="gross area (in²)" error={isInvalidNumber(Ag, { min: 0 }) ? "Enter a number ≥ 0." : undefined}>
-                    <TextInputWithUnit
-                      value={Ag}
-                      onChange={setAg}
-                      unit="in²"
-                      inputMode="decimal"
-                      className={isInvalidNumber(Ag, { min: 0 }) ? "border-rose-300 focus:border-rose-400 focus:ring-rose-500/10" : undefined}
-                    />
-                  </Field>
-                  <Field label="An" hint="net area (in²)" error={isInvalidNumber(An, { min: 0 }) ? "Enter a number ≥ 0." : undefined}>
-                    <TextInputWithUnit
-                      value={An}
-                      onChange={setAn}
-                      unit="in²"
-                      inputMode="decimal"
-                      className={isInvalidNumber(An, { min: 0 }) ? "border-rose-300 focus:border-rose-400 focus:ring-rose-500/10" : undefined}
-                    />
-                  </Field>
-                  <div className="rounded-2xl bg-[color:var(--surface-2)] p-4 text-sm text-[color:var(--muted)] ring-1 ring-inset ring-[color:var(--border)]/60">
-                    <p className="text-xs font-semibold uppercase tracking-wide">Tip</p>
-                    <p className="mt-2 text-sm">
-                      If you don’t have hole details yet, use <strong>An ≈ Ag</strong> for quick sizing, then refine in Check mode.
-                    </p>
+            {mode === "check" ? (
+              <Card id="tension-net-area">
+                <CardHeader title="Net area" description="Areas and shear lag factor (yielding / rupture)." />
+                <CardBody>
+                  <div className="mb-3 flex flex-wrap gap-2">
+                    <Button variant="secondary" size="sm" type="button" onClick={() => setU("0.90")}>
+                      Typical U = 0.90
+                    </Button>
+                    <Button variant="secondary" size="sm" type="button" onClick={() => setAn(Ag)}>
+                      Set An = Ag (no holes yet)
+                    </Button>
                   </div>
-                </div>
-              </CardBody>
-            </Card>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <Field label="Shear lag factor U" hint="dimensionless">
+                      <TextInput value={U} onChange={setU} placeholder="e.g. 0.90" />
+                    </Field>
+                    <Field
+                      label="Ag"
+                      hint="gross area (in²)"
+                      error={isInvalidNumber(Ag, { min: 0 }) ? "Enter a number ≥ 0." : undefined}
+                    >
+                      <TextInputWithUnit
+                        value={Ag}
+                        onChange={setAg}
+                        unit="in²"
+                        inputMode="decimal"
+                        className={isInvalidNumber(Ag, { min: 0 }) ? "border-rose-300 focus:border-rose-400 focus:ring-rose-500/10" : undefined}
+                      />
+                    </Field>
+                    <Field
+                      label="An"
+                      hint="net area (in²)"
+                      error={isInvalidNumber(An, { min: 0 }) ? "Enter a number ≥ 0." : undefined}
+                    >
+                      <TextInputWithUnit
+                        value={An}
+                        onChange={setAn}
+                        unit="in²"
+                        inputMode="decimal"
+                        className={isInvalidNumber(An, { min: 0 }) ? "border-rose-300 focus:border-rose-400 focus:ring-rose-500/10" : undefined}
+                      />
+                    </Field>
+                    <div className="rounded-2xl bg-[color:var(--surface-2)] p-4 text-sm text-[color:var(--muted)] ring-1 ring-inset ring-[color:var(--border)]/60">
+                      <p className="text-xs font-semibold uppercase tracking-wide">Tip</p>
+                      <p className="mt-2 text-sm">
+                        If you don’t have hole details yet, use <strong>An ≈ Ag</strong> for quick sizing, then refine in Check mode.
+                      </p>
+                    </div>
+                  </div>
+                </CardBody>
+              </Card>
+            ) : null}
 
-            {designSuggestion ? (
+            {mode === "design" && designSuggestion ? (
               <Card id="tension-design-suggestion">
                 <CardHeader title="Suggested section" description="Lightest in family that passes (gross = net assumption)." />
                 <CardBody>
                   <p className="text-2xl font-extrabold tracking-tight text-[color:var(--foreground)]">{designSuggestion.shape}</p>
                   <p className="mt-2 text-sm text-[color:var(--muted)]">
-                    {designSuggestion.W} lb/ft — uses gross = net areas and your block-shear inputs; switch to Check to enter real A<sub>n</sub> and holes.
+                    {designSuggestion.W} lb/ft — uses gross = net areas and your block-shear inputs; switch to Analysis to enter real A<sub>n</sub> and holes.
                   </p>
                 </CardBody>
               </Card>
@@ -497,9 +526,10 @@ export default function TensionModulePage() {
               </Card>
             ) : null}
 
-            <Card id="tension-block-shear">
-              <CardHeader title="Block shear + stagger helper" description="Block shear (J4.3) and optional stagger net width tool (D3)." />
-              <CardBody className="space-y-4">
+            {mode === "check" ? (
+              <Card id="tension-block-shear">
+                <CardHeader title="Block shear + stagger helper" description="Block shear (J4.3) and optional stagger net width tool (D3)." />
+                <CardBody className="space-y-4">
                 <div className="flex flex-wrap gap-2">
                   <Button variant="secondary" size="sm" type="button" onClick={() => setUbs("0.50")}>
                     Typical Ubs = 0.50
@@ -602,8 +632,9 @@ export default function TensionModulePage() {
                       <p className="text-sm text-[color:var(--muted)]">Enter W, d_h, t, and n to compute.</p>
                     )}
                 </div>
-              </CardBody>
-            </Card>
+                </CardBody>
+              </Card>
+            ) : null}
           </div>
 
           <div className="space-y-4 lg:col-span-5 lg:sticky lg:top-28" id="results">

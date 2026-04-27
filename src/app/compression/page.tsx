@@ -48,6 +48,7 @@ export default function CompressionPage() {
   const [L, setL] = useState(compressionDefaults.L);
   const [Pu, setPu] = useState(compressionDefaults.Pu);
   const [designMethod, setDesignMethod] = useState<"LRFD" | "ASD">(compressionDefaults.designMethod);
+  const [mode, setMode] = useState<"check" | "design">(compressionDefaults.mode);
   const [detailsTab, setDetailsTab] = useState<"steps" | "section">("steps");
   const [helpOpen, setHelpOpen] = useState(false);
   const [resultFlash, setResultFlash] = useState(false);
@@ -68,9 +69,10 @@ export default function CompressionPage() {
       if (typeof p.L === "string") setL(p.L);
       if (typeof p.Pu === "string") setPu(p.Pu);
       if (p.designMethod === "LRFD" || p.designMethod === "ASD") setDesignMethod(p.designMethod);
+      if (p.mode === "check" || p.mode === "design") setMode(p.mode);
     },
-    serialize: () => ({ material, shapeFamily, shapeName, k, builtUpFactor, L, Pu, designMethod }),
-    watch: [material, shapeFamily, shapeName, k, builtUpFactor, L, Pu, designMethod],
+    serialize: () => ({ material, shapeFamily, shapeName, k, builtUpFactor, L, Pu, designMethod, mode }),
+    watch: [material, shapeFamily, shapeName, k, builtUpFactor, L, Pu, designMethod, mode],
   });
 
   const shapeChoices = useMemo(
@@ -90,6 +92,41 @@ export default function CompressionPage() {
   };
 
   const kEffective = Number(k) * (Number.isFinite(Number(builtUpFactor)) && Number(builtUpFactor) > 0 ? Number(builtUpFactor) : 1);
+
+  const designSuggestion = useMemo(() => {
+    if (mode !== "design") return null;
+    if (!Number.isFinite(kEffective) || kEffective <= 0) return null;
+    const Lnum = Number(L);
+    const demand = Number(Pu);
+    if (!Number.isFinite(Lnum) || Lnum <= 0) return null;
+    if (!Number.isFinite(demand) || demand < 0) return null;
+    if (shapeChoices.length === 0) return null;
+
+    const sorted = shapeChoices.slice().sort((a, b) => a.W - b.W);
+    for (const s of sorted) {
+      const r = evaluateCompression({
+        designMethod,
+        Fy: mat.Fy,
+        E: 29000,
+        k: kEffective,
+        L: Lnum,
+        rx: s.rx ?? 1,
+        ry: s.ry ?? 1,
+        Ag: s.A ?? 0,
+        lambdaFlange: s.bf_2tf ?? 0,
+        lambdaWeb: s.h_tw ?? 0,
+        demandPu: demand,
+      });
+      if (r.isSafe) return s;
+    }
+    return null;
+  }, [mode, kEffective, L, Pu, shapeChoices, designMethod, mat]);
+
+  useEffect(() => {
+    if (mode !== "design") return;
+    if (!designSuggestion) return;
+    queueMicrotask(() => setShapeName(designSuggestion.shape));
+  }, [mode, designSuggestion]);
 
   const out = useMemo(
     () =>
@@ -121,6 +158,7 @@ export default function CompressionPage() {
     setL(compressionDefaults.L);
     setPu(compressionDefaults.Pu);
     setDesignMethod(compressionDefaults.designMethod);
+    setMode(compressionDefaults.mode);
   }, [clearDraft]);
 
   const invalid = (v: string, min = 0) => {
@@ -243,7 +281,7 @@ export default function CompressionPage() {
       saveSlots: {
         moduleKey: "compression",
         draftStorageKey: STORAGE.compression,
-        getCurrent: () => ({ material, shapeFamily, shapeName, k, builtUpFactor, L, Pu, designMethod }),
+        getCurrent: () => ({ material, shapeFamily, shapeName, k, builtUpFactor, L, Pu, designMethod, mode }),
       },
       onReset: resetInputs,
     }),
@@ -258,6 +296,7 @@ export default function CompressionPage() {
       k,
       builtUpFactor,
       shapeFamily,
+      mode,
       out,
       material,
       resetInputs,
@@ -354,6 +393,9 @@ export default function CompressionPage() {
               shapeName={shapeName}
               onShapeNameChange={setShapeName}
               shapeChoices={shapeChoices}
+              mode={mode}
+              onModeChange={setMode}
+              designSuggestionShape={designSuggestion?.shape ?? null}
             />
             <CompressionInputsMember
               designMethod={designMethod}
