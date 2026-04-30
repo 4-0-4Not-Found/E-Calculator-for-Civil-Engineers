@@ -7,7 +7,7 @@ import {
   shapeFamilyOptions,
   type ShapeFamilyKey,
 } from "@/lib/aisc/shape-filters";
-import { steelMaterialMap, steelMaterials, type SteelMaterialKey } from "@/lib/data/materials";
+import { normalizeSteelMaterialKey, steelMaterialMap, steelMaterials, type SteelMaterialKey } from "@/lib/data/materials";
 import { staggeredNetWidthInches } from "@/lib/limit-state-engine/net-area";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Field, SelectInput, TextInput } from "@/components/ui/Field";
@@ -51,6 +51,8 @@ export default function TensionModulePage() {
   const [An, setAn] = useState(tensionDefaults.An);
   const [U, setU] = useState(tensionDefaults.U);
   const [Pu, setPu] = useState(tensionDefaults.Pu);
+  const [deadLoad, setDeadLoad] = useState(tensionDefaults.deadLoad);
+  const [liveLoad, setLiveLoad] = useState(tensionDefaults.liveLoad);
   const [Agv, setAgv] = useState(tensionDefaults.Agv);
   const [Anv, setAnv] = useState(tensionDefaults.Anv);
   const [Agt, setAgt] = useState(tensionDefaults.Agt);
@@ -67,17 +69,21 @@ export default function TensionModulePage() {
   const [shapeFamily, setShapeFamily] = useState<ShapeFamilyKey>(tensionDefaults.shapeFamily as ShapeFamilyKey);
   const [designMethod, setDesignMethod] = useState<"LRFD" | "ASD">(tensionDefaults.designMethod);
   const [mode, setMode] = useState<"check" | "design">(tensionDefaults.mode);
+  const [comparisonOpen, setComparisonOpen] = useState(false);
+  const [comparisonFilter, setComparisonFilter] = useState<"all" | "safe" | "unsafe">("all");
   const { saving, savedAt, clearDraft } = useBrowserDraft({
     storageKey: STORAGE.tension,
     savedAtKey: CLIENT_PERSISTENCE.savedAt("tension"),
     schema: tensionDraftSchema,
     hydrate: (p) => {
-      if (typeof p.material === "string") setMaterial(p.material as SteelMaterialKey);
+      if (typeof p.material === "string") setMaterial(normalizeSteelMaterialKey(p.material));
       if (typeof p.shapeName === "string") setShapeName(p.shapeName);
       if (typeof p.Ag === "string") setAg(p.Ag);
       if (typeof p.An === "string") setAn(p.An);
       if (typeof p.U === "string") setU(p.U);
       if (typeof p.Pu === "string") setPu(p.Pu);
+      if (typeof p.deadLoad === "string") setDeadLoad(p.deadLoad);
+      if (typeof p.liveLoad === "string") setLiveLoad(p.liveLoad);
       if (typeof p.Agv === "string") setAgv(p.Agv);
       if (typeof p.Anv === "string") setAnv(p.Anv);
       if (typeof p.Agt === "string") setAgt(p.Agt);
@@ -99,7 +105,9 @@ export default function TensionModulePage() {
       Ag,
       An,
       U,
-      Pu,
+      Pu: String(Math.round(demandFromLoads * 1000) / 1000),
+      deadLoad,
+      liveLoad,
       Agv,
       Anv,
       Agt,
@@ -121,7 +129,8 @@ export default function TensionModulePage() {
       Ag,
       An,
       U,
-      Pu,
+      deadLoad,
+      liveLoad,
       Agv,
       Anv,
       Agt,
@@ -140,6 +149,15 @@ export default function TensionModulePage() {
   });
 
   const selectedMaterial = steelMaterialMap[material];
+  const demandFromLoads = useMemo(() => {
+    const dl = toNumber(deadLoad);
+    const ll = toNumber(liveLoad);
+    return designMethod === "LRFD" ? 1.2 * dl + 1.6 * ll : dl + ll;
+  }, [deadLoad, liveLoad, designMethod]);
+
+  useEffect(() => {
+    setPu(String(Math.round(demandFromLoads * 1000) / 1000));
+  }, [demandFromLoads]);
   const shapeChoices = useMemo(
     () => filterShapesByFamily(aiscShapes, shapeFamily, "tension"),
     [shapeFamily],
@@ -165,19 +183,19 @@ export default function TensionModulePage() {
       Ag: toNumber(Ag),
       An: toNumber(An),
       U: toNumber(U),
-      demandPu: toNumber(Pu),
+      demandPu: demandFromLoads,
       Agv: toNumber(Agv),
       Anv: toNumber(Anv),
       Agt: toNumber(Agt),
       Ant: toNumber(Ant),
       ubs: toNumber(ubs) || 0.5,
     });
-  }, [selectedMaterial, designMethod, Ag, An, U, Pu, Agv, Anv, Agt, Ant, ubs]);
+  }, [selectedMaterial, designMethod, Ag, An, U, demandFromLoads, Agv, Anv, Agt, Ant, ubs]);
 
   /** Lightest section in family that passes all limit states with gross = net (optimistic — refine in Check). */
   const designSuggestion = useMemo(() => {
     if (mode !== "design") return null;
-    const demand = toNumber(Pu);
+    const demand = demandFromLoads;
     const list = [...shapeChoices].sort((a, b) => a.W - b.W);
     for (const s of list) {
       const r = evaluateTension({
@@ -197,7 +215,7 @@ export default function TensionModulePage() {
       if (r.isSafe) return s;
     }
     return null;
-  }, [mode, shapeChoices, Pu, selectedMaterial, designMethod, Agv, Anv, Agt, Ant, ubs]);
+  }, [mode, shapeChoices, demandFromLoads, selectedMaterial, designMethod, Agv, Anv, Agt, Ant, ubs]);
 
   useEffect(() => {
     if (mode !== "design") return;
@@ -210,13 +228,12 @@ export default function TensionModulePage() {
     });
   }, [mode, designSuggestion]);
 
-  /** Design mode: compare first 16 lightest shapes (same assumptions as design suggestion). */
+  /** Design mode: compare all shapes in family (same assumptions as design suggestion). */
   const designComparisonRows = useMemo(() => {
     if (mode !== "design" || shapeChoices.length === 0) return [];
-    const demand = toNumber(Pu);
+    const demand = demandFromLoads;
     return [...shapeChoices]
       .sort((a, b) => a.W - b.W)
-      .slice(0, 16)
       .map((s) => {
         const r = evaluateTension({
           designMethod,
@@ -240,7 +257,13 @@ export default function TensionModulePage() {
           gov: r.governingCase,
         };
       });
-  }, [mode, shapeChoices, Pu, selectedMaterial, designMethod, Agv, Anv, Agt, Ant, ubs]);
+  }, [mode, shapeChoices, demandFromLoads, selectedMaterial, designMethod, Agv, Anv, Agt, Ant, ubs]);
+
+  const filteredComparisonRows = useMemo(() => {
+    if (comparisonFilter === "safe") return designComparisonRows.filter((row) => row.safe);
+    if (comparisonFilter === "unsafe") return designComparisonRows.filter((row) => !row.safe);
+    return designComparisonRows;
+  }, [designComparisonRows, comparisonFilter]);
 
   const staggerHelp = useMemo(() => {
     const W = toNumber(stagW);
@@ -278,6 +301,8 @@ export default function TensionModulePage() {
     setAn(tensionDefaults.An);
     setU(tensionDefaults.U);
     setPu(tensionDefaults.Pu);
+    setDeadLoad(tensionDefaults.deadLoad);
+    setLiveLoad(tensionDefaults.liveLoad);
     setAgv(tensionDefaults.Agv);
     setAnv(tensionDefaults.Anv);
     setAgt(tensionDefaults.Agt);
@@ -321,28 +346,56 @@ export default function TensionModulePage() {
         <div className="grid gap-6 lg:grid-cols-12 lg:items-start">
           <div className="space-y-6 lg:col-span-7">
             <Card id="tension-general">
-              <CardHeader title="General" description="Steel, shape selection, method, and required axial." right={<Badge tone="info">Inputs</Badge>} />
+              <CardHeader title="General" description="Steel, shape selection, method, and loading properties." right={<Badge tone="info">Inputs</Badge>} />
               <CardBody>
                 <div className="grid gap-5 md:grid-cols-2">
                   <Field
-                    label="Required Pu / Pa"
-                    hint="Required axial (kips) — LRFD Pu or ASD Pa depending on method."
-                    error={isInvalidNumber(Pu, { min: 0 }) ? "Enter a number ≥ 0." : undefined}
-                    className="md:col-span-2"
+                    label="Dead load (D)"
+                    hint="Axial dead load in kips."
+                    error={isInvalidNumber(deadLoad, { min: 0 }) ? "Enter a number ≥ 0." : undefined}
                   >
                     <div className="rounded-2xl bg-[color:var(--surface-2)] p-3 ring-1 ring-inset ring-[color:var(--border)]/60 sm:p-4">
                       <TextInputWithUnit
-                        value={Pu}
-                        onChange={setPu}
+                        value={deadLoad}
+                        onChange={setDeadLoad}
                         unit="kips"
-                        placeholder="e.g. 900"
+                        placeholder="e.g. 500"
                         inputMode="decimal"
                         className={
-                          isInvalidNumber(Pu, { min: 0 })
+                          isInvalidNumber(deadLoad, { min: 0 })
                             ? "border-rose-300 focus:border-rose-400 focus:ring-rose-500/10"
                             : undefined
                         }
                       />
+                    </div>
+                  </Field>
+                  <Field
+                    label="Live load (L)"
+                    hint="Axial live load in kips."
+                    error={isInvalidNumber(liveLoad, { min: 0 }) ? "Enter a number ≥ 0." : undefined}
+                  >
+                    <div className="rounded-2xl bg-[color:var(--surface-2)] p-3 ring-1 ring-inset ring-[color:var(--border)]/60 sm:p-4">
+                      <TextInputWithUnit
+                        value={liveLoad}
+                        onChange={setLiveLoad}
+                        unit="kips"
+                        placeholder="e.g. 250"
+                        inputMode="decimal"
+                        className={
+                          isInvalidNumber(liveLoad, { min: 0 })
+                            ? "border-rose-300 focus:border-rose-400 focus:ring-rose-500/10"
+                            : undefined
+                        }
+                      />
+                    </div>
+                  </Field>
+                  <Field
+                    label={designMethod === "LRFD" ? "Computed demand Pu" : "Computed demand Pa"}
+                    hint={designMethod === "LRFD" ? "Pu = 1.2D + 1.6L" : "Pa = D + L"}
+                    className="md:col-span-2"
+                  >
+                    <div className="rounded-2xl bg-[color:var(--surface-2)] p-3 ring-1 ring-inset ring-[color:var(--border)]/60 sm:p-4">
+                      <p className="text-sm font-semibold tabular-nums text-[color:var(--foreground)]">{fmt(demandFromLoads)} kips</p>
                     </div>
                   </Field>
 
@@ -409,7 +462,7 @@ export default function TensionModulePage() {
                 {shape ? (
                   <div className="mt-4 rounded-2xl bg-[color:var(--surface-2)] px-4 py-3 ring-1 ring-inset ring-[color:var(--border)]/60">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-[color:var(--muted)]">Section context</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-[color:var(--muted)]">Section properties</p>
                       <Badge tone="info">{shape.shape}</Badge>
                     </div>
                     <div className="mt-2 grid grid-cols-2 gap-2 text-xs font-semibold text-[color:var(--muted)] sm:grid-cols-4">
@@ -490,38 +543,86 @@ export default function TensionModulePage() {
 
             {mode === "design" && designComparisonRows.length > 0 ? (
               <Card id="tension-section-compare">
-                <CardHeader title="Section comparison" description="Lightest first (gross = net assumption)." />
-                <CardBody>
-                  <div className="overflow-x-auto rounded-xl ring-1 ring-inset ring-[color:var(--border)]/70 bg-[color:var(--surface)]">
-                    <table className="w-full min-w-[28rem] text-left text-sm text-[color:var(--foreground)]">
-                      <thead className="sticky top-0 z-10 bg-[color:var(--surface-2)] text-xs font-semibold uppercase text-[color:var(--muted)] shadow-[0_1px_0_rgba(15,23,42,0.06)]">
-                        <tr>
-                          <th className="px-3 py-2">Shape</th>
-                          <th className="px-3 py-2">W (plf)</th>
-                          <th className="px-3 py-2">Governing</th>
-                          <th className="px-3 py-2">Strength</th>
-                          <th className="px-3 py-2">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {designComparisonRows.map((row) => (
-                          <tr key={row.shape} className="border-t border-[color:var(--border)]/60">
-                            <td className="px-3 py-2 font-semibold">{row.shape}</td>
-                            <td className="px-3 py-2">{fmt(row.W, 1)}</td>
-                            <td className="px-3 py-2">{row.gov}</td>
-                            <td className="px-3 py-2">{fmt(row.strength)} kips</td>
-                            <td className="px-3 py-2">
-                              {row.safe ? (
-                                <span className="font-semibold text-emerald-700">SAFE</span>
-                              ) : (
-                                <span className="font-semibold text-rose-700">NOT SAFE</span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                <CardHeader
+                  title="Section comparison"
+                  description="Lightest first (gross = net assumption)."
+                  right={
+                    <Button variant="secondary" size="sm" type="button" onClick={() => setComparisonOpen((v) => !v)}>
+                      {comparisonOpen ? "Hide table" : "Show table"}
+                    </Button>
+                  }
+                />
+                <CardBody className="space-y-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      variant={comparisonFilter === "all" ? "primary" : "secondary"}
+                      size="sm"
+                      type="button"
+                      onClick={() => setComparisonFilter("all")}
+                    >
+                      All ({designComparisonRows.length})
+                    </Button>
+                    <Button
+                      variant={comparisonFilter === "safe" ? "primary" : "secondary"}
+                      size="sm"
+                      type="button"
+                      onClick={() => setComparisonFilter("safe")}
+                    >
+                      SAFE ({designComparisonRows.filter((r) => r.safe).length})
+                    </Button>
+                    <Button
+                      variant={comparisonFilter === "unsafe" ? "primary" : "secondary"}
+                      size="sm"
+                      type="button"
+                      onClick={() => setComparisonFilter("unsafe")}
+                    >
+                      NOT SAFE ({designComparisonRows.filter((r) => !r.safe).length})
+                    </Button>
                   </div>
+                  {comparisonOpen ? (
+                    <div className="overflow-x-auto rounded-xl ring-1 ring-inset ring-[color:var(--border)]/70 bg-[color:var(--surface)]">
+                      <table className="w-full min-w-[28rem] text-left text-sm text-[color:var(--foreground)]">
+                        <thead className="sticky top-0 z-10 bg-[color:var(--surface-2)] text-xs font-semibold uppercase text-[color:var(--muted)] shadow-[0_1px_0_rgba(15,23,42,0.06)]">
+                          <tr>
+                            <th className="px-3 py-2">Shape</th>
+                            <th className="px-3 py-2">W (plf)</th>
+                            <th className="px-3 py-2">Governing</th>
+                            <th className="px-3 py-2">Strength</th>
+                            <th className="px-3 py-2">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredComparisonRows.length > 0 ? (
+                            filteredComparisonRows.map((row) => (
+                              <tr key={row.shape} className="border-t border-[color:var(--border)]/60">
+                                <td className="px-3 py-2 font-semibold">{row.shape}</td>
+                                <td className="px-3 py-2">{fmt(row.W, 1)}</td>
+                                <td className="px-3 py-2">{row.gov}</td>
+                                <td className="px-3 py-2">{fmt(row.strength)} kips</td>
+                                <td className="px-3 py-2">
+                                  {row.safe ? (
+                                    <span className="font-semibold text-emerald-700">SAFE</span>
+                                  ) : (
+                                    <span className="font-semibold text-rose-700">NOT SAFE</span>
+                                  )}
+                                </td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr className="border-t border-[color:var(--border)]/60">
+                              <td className="px-3 py-3 text-sm text-[color:var(--muted)]" colSpan={5}>
+                                No rows match the selected filter.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-[color:var(--muted)]">
+                      Table is hidden by default. Click <strong>Show table</strong> to view all candidate sections.
+                    </p>
+                  )}
                 </CardBody>
               </Card>
             ) : null}
@@ -643,7 +744,7 @@ export default function TensionModulePage() {
               governing={result.governingCase}
               capacityLabel={designMethod === "LRFD" ? "Design strength (φPn)" : "Allowable (Pa)"}
               capacity={`${fmt(result.controllingStrength)} kips`}
-              demandLabel={designMethod === "LRFD" ? "Demand Pu" : "Demand Pa"}
+              demandLabel={designMethod === "LRFD" ? "Demand Pu (1.2D+1.6L)" : "Demand Pa (D+L)"}
               demand={`${fmt(result.demand)} kips`}
               utilization={result.controllingStrength > 0 ? result.demand / result.controllingStrength : undefined}
               metaRight={<Badge tone="info">{selectedMaterial.key}</Badge>}
@@ -662,7 +763,8 @@ export default function TensionModulePage() {
                   lines: [
                     `Method: ${designMethod} · Material: ${selectedMaterial.key}`,
                     `Mode: ${mode}`,
-                    `Pu = ${Pu} kips`,
+                    `D/L = ${deadLoad} / ${liveLoad} kips`,
+                    `${designMethod === "LRFD" ? "Pu" : "Pa"} = ${fmt(demandFromLoads)} kips`,
                     `Governing: ${result.governingCase}`,
                     `Capacity: ${fmt(result.controllingStrength)} kips`,
                     `Demand: ${fmt(result.demand)} kips`,
@@ -677,7 +779,8 @@ export default function TensionModulePage() {
                   `Tension — ${shapeName}`,
                   `Method: ${designMethod} · Material: ${selectedMaterial.key}`,
                   `Mode: ${mode}`,
-                  `Pu = ${Pu} kips`,
+                  `D/L = ${deadLoad} / ${liveLoad} kips`,
+                  `${designMethod === "LRFD" ? "Pu" : "Pa"} = ${fmt(demandFromLoads)} kips`,
                   `Governing: ${result.governingCase}`,
                   `Capacity: ${fmt(result.controllingStrength)} kips`,
                   `Demand: ${fmt(result.demand)} kips`,
@@ -698,6 +801,8 @@ export default function TensionModulePage() {
                   An,
                   U,
                   Pu,
+                  deadLoad,
+                  liveLoad,
                   Agv,
                   Anv,
                   Agt,

@@ -8,6 +8,8 @@ type TensionDefaults = {
   An: string;
   U: string;
   Pu: string;
+  deadLoad: string;
+  liveLoad: string;
   Agv: string;
   Anv: string;
   Agt: string;
@@ -31,6 +33,8 @@ export const tensionDefaults: TensionDefaults = {
   An: "32",
   U: "0.9",
   Pu: "900",
+  deadLoad: "500",
+  liveLoad: "250",
   Agv: "24",
   Anv: "20",
   Agt: "8",
@@ -54,6 +58,8 @@ export const tensionDraftSchema = z.object({
   An: z.string().optional(),
   U: z.string().optional(),
   Pu: z.string().optional(),
+  deadLoad: z.string().optional(),
+  liveLoad: z.string().optional(),
   Agv: z.string().optional(),
   Anv: z.string().optional(),
   Agt: z.string().optional(),

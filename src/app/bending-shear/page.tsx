@@ -9,7 +9,7 @@ import {
 import { fmtKipFt, fmtKips } from "@/lib/format/display";
 import { flangeWebSlenderness } from "@/lib/limit-state-engine/section-slenderness";
 import { aiscShapes } from "@/lib/aisc/data";
-import { steelMaterialMap, steelMaterials, type SteelMaterialKey } from "@/lib/data/materials";
+import { normalizeSteelMaterialKey, steelMaterialMap, steelMaterials, type SteelMaterialKey } from "@/lib/data/materials";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Field, SelectInput, TextInput } from "@/components/ui/Field";
@@ -48,7 +48,7 @@ export default function BendingShearPage() {
     schema: bendingDraftSchema,
     hydrate: (p) => {
       if (p.designMethod === "LRFD" || p.designMethod === "ASD") setDesignMethod(p.designMethod);
-      if (typeof p.material === "string") setMaterial(p.material as SteelMaterialKey);
+      if (typeof p.material === "string") setMaterial(normalizeSteelMaterialKey(p.material));
       if (typeof p.shapeName === "string") setShapeName(p.shapeName);
       if (typeof p.Mu === "string") setMu(p.Mu);
       if (typeof p.Vu === "string") setVu(p.Vu);
@@ -331,7 +331,7 @@ export default function BendingShearPage() {
                 {shape ? (
                   <div className="mt-4 rounded-2xl bg-[color:var(--surface-2)] px-4 py-3 ring-1 ring-inset ring-[color:var(--border)]/60">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-[color:var(--muted)]">Section context</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-[color:var(--muted)]">Section properties</p>
                       <Badge tone="info">{shape.shape}</Badge>
                     </div>
                     <div className="mt-2 grid grid-cols-2 gap-2 text-xs font-semibold text-[color:var(--muted)] sm:grid-cols-4">

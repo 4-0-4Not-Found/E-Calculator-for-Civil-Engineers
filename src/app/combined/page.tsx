@@ -11,7 +11,7 @@ import { StepsTable } from "@/components/StepsTable";
 import { useBrowserDraft } from "@/features/module-runtime/useBrowserDraft";
 import { CLIENT_PERSISTENCE } from "@/lib/client-persistence";
 import { STORAGE } from "@/lib/storage/keys";
-import { steelMaterialMap, type SteelMaterialKey } from "@/lib/data/materials";
+import { normalizeSteelMaterialKey, steelMaterialMap, steelMaterials, type SteelMaterialKey } from "@/lib/data/materials";
 import { fmtKipFt, fmtKips } from "@/lib/format/display";
 import { combinedDefaults, combinedDraftSchema, evaluateCombined } from "@/features/steel/combined/module-config";
 import { aiscShapes } from "@/lib/aisc/data";
@@ -35,7 +35,7 @@ export default function CombinedPage() {
     schema: combinedDraftSchema,
     hydrate: (p) => {
       if (p.designMethod === "LRFD" || p.designMethod === "ASD") setDesignMethod(p.designMethod);
-      if (typeof p.material === "string") setMaterial(p.material as SteelMaterialKey);
+      if (typeof p.material === "string") setMaterial(normalizeSteelMaterialKey(p.material));
       if (typeof p.deadLoadKft === "string") setDeadLoadKft(p.deadLoadKft);
       if (typeof p.liveLoadKft === "string") setLiveLoadKft(p.liveLoadKft);
       if (typeof p.spanFt === "string") setSpanFt(p.spanFt);
@@ -93,9 +93,11 @@ export default function CombinedPage() {
                   </Field>
                   <Field label="Steel type (Fy)">
                     <SelectInput value={material} onChange={(v) => setMaterial(v as SteelMaterialKey)}>
-                      <option value="A36">ASTM A36</option>
-                      <option value="A572">ASTM A572 Gr.50</option>
-                      <option value="A992">ASTM A992 (W)</option>
+                      {steelMaterials.map((m) => (
+                        <option key={m.key} value={m.key}>
+                          {m.label} (Fy={m.Fy}, Fu={m.Fu})
+                        </option>
+                      ))}
                     </SelectInput>
                   </Field>
                   <Field label="W-shape (selected)">

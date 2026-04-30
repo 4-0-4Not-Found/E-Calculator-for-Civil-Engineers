@@ -10,7 +10,7 @@ type ShearDefaults = {
 
 export const shearDefaults: ShearDefaults = {
   designMethod: "LRFD",
-  material: "A572",
+  material: "A572_GR_50",
   shapeName: "W44X290",
   demandV: "900",
 };

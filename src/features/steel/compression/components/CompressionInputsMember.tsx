@@ -7,8 +7,11 @@ import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 type Props = {
   designMethod: "LRFD" | "ASD";
   onDesignMethodChange: (v: "LRFD" | "ASD") => void;
-  Pu: string;
-  onPuChange: (v: string) => void;
+  deadLoad: string;
+  onDeadLoadChange: (v: string) => void;
+  liveLoad: string;
+  onLiveLoadChange: (v: string) => void;
+  demand: number;
   L: string;
   onLChange: (v: string) => void;
   k: string;
@@ -16,7 +19,8 @@ type Props = {
   builtUpFactor: string;
   onBuiltUpFactorChange: (v: string) => void;
   kEffective: number;
-  invalidPu: boolean;
+  invalidDeadLoad: boolean;
+  invalidLiveLoad: boolean;
   invalidL: boolean;
   onPresetK: () => void;
   onPresetBuiltUp: () => void;
@@ -29,7 +33,7 @@ export function CompressionInputsMember(props: Props) {
     <Card id="compression-member">
       <CardHeader
         title="Member"
-        description="Design method, demand, length, and K (units: kips, in)."
+        description="Design method, loading properties, length, and K (units: kips, in)."
         right={
           <div className="flex flex-wrap items-center justify-end gap-2">
             <Button variant="secondary" size="sm" type="button" onClick={props.onPresetK}>
@@ -58,23 +62,49 @@ export function CompressionInputsMember(props: Props) {
               <option value="ASD">ASD</option>
             </SelectInput>
           </Field>
-          <div id="field-pu">
+          <div id="field-dead-load">
             <Field
-              label="Demand Pu / Pa"
-              hint="Required compressive strength (kips)."
-              error={props.invalidPu ? "Enter a number ≥ 0." : undefined}
+              label="Dead load (D)"
+              hint="Compressive dead load (kips)."
+              error={props.invalidDeadLoad ? "Enter a number ≥ 0." : undefined}
             >
             <div className="rounded-2xl bg-[color:var(--brand)]/5 p-3 ring-1 ring-inset ring-[color:var(--brand)]/20 sm:p-4">
               <TextInputWithUnit
-                value={props.Pu}
-                onChange={props.onPuChange}
+                value={props.deadLoad}
+                onChange={props.onDeadLoadChange}
                 unit="kips"
                 inputMode="decimal"
                 className={
-                  props.invalidPu ? "border-rose-300 focus:border-rose-400 focus:ring-rose-500/10" : undefined
+                  props.invalidDeadLoad ? "border-rose-300 focus:border-rose-400 focus:ring-rose-500/10" : undefined
                 }
               />
             </div>
+            </Field>
+          </div>
+          <div id="field-live-load">
+            <Field
+              label="Live load (L)"
+              hint="Compressive live load (kips)."
+              error={props.invalidLiveLoad ? "Enter a number ≥ 0." : undefined}
+            >
+              <div className="rounded-2xl bg-[color:var(--brand)]/5 p-3 ring-1 ring-inset ring-[color:var(--brand)]/20 sm:p-4">
+                <TextInputWithUnit
+                  value={props.liveLoad}
+                  onChange={props.onLiveLoadChange}
+                  unit="kips"
+                  inputMode="decimal"
+                  className={
+                    props.invalidLiveLoad ? "border-rose-300 focus:border-rose-400 focus:ring-rose-500/10" : undefined
+                  }
+                />
+              </div>
+            </Field>
+          </div>
+          <div className="md:col-span-2">
+            <Field label={props.designMethod === "LRFD" ? "Computed demand Pu" : "Computed demand Pa"} hint={props.designMethod === "LRFD" ? "Pu = 1.2D + 1.6L" : "Pa = D + L"}>
+              <div className="rounded-2xl bg-[color:var(--surface-2)] p-3 text-sm font-semibold tabular-nums ring-1 ring-inset ring-[color:var(--border)]/60">
+                {props.demand.toFixed(3)} kips
+              </div>
             </Field>
           </div>
           <div id="field-l">

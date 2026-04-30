@@ -8,7 +8,7 @@ import {
   shapeFamilyOptions,
   type ShapeFamilyKey,
 } from "@/lib/aisc/shape-filters";
-import { steelMaterialMap, steelMaterials, type SteelMaterialKey } from "@/lib/data/materials";
+import { normalizeSteelMaterialKey, steelMaterialMap, steelMaterials, type SteelMaterialKey } from "@/lib/data/materials";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
@@ -47,6 +47,8 @@ export default function CompressionPage() {
   const [builtUpFactor, setBuiltUpFactor] = useState(compressionDefaults.builtUpFactor);
   const [L, setL] = useState(compressionDefaults.L);
   const [Pu, setPu] = useState(compressionDefaults.Pu);
+  const [deadLoad, setDeadLoad] = useState(compressionDefaults.deadLoad);
+  const [liveLoad, setLiveLoad] = useState(compressionDefaults.liveLoad);
   const [designMethod, setDesignMethod] = useState<"LRFD" | "ASD">(compressionDefaults.designMethod);
   const [mode, setMode] = useState<"check" | "design">(compressionDefaults.mode);
   const [detailsTab, setDetailsTab] = useState<"steps" | "section">("steps");
@@ -61,18 +63,32 @@ export default function CompressionPage() {
     savedAtKey: CLIENT_PERSISTENCE.savedAt("compression"),
     schema: compressionDraftSchema,
     hydrate: (p) => {
-      if (typeof p.material === "string") setMaterial(p.material as SteelMaterialKey);
+      if (typeof p.material === "string") setMaterial(normalizeSteelMaterialKey(p.material));
       if (typeof p.shapeFamily === "string") setShapeFamily(p.shapeFamily as ShapeFamilyKey);
       if (typeof p.shapeName === "string") setShapeName(p.shapeName);
       if (typeof p.k === "string") setK(p.k);
       if (typeof p.builtUpFactor === "string") setBuiltUpFactor(p.builtUpFactor);
       if (typeof p.L === "string") setL(p.L);
       if (typeof p.Pu === "string") setPu(p.Pu);
+      if (typeof p.deadLoad === "string") setDeadLoad(p.deadLoad);
+      if (typeof p.liveLoad === "string") setLiveLoad(p.liveLoad);
       if (p.designMethod === "LRFD" || p.designMethod === "ASD") setDesignMethod(p.designMethod);
       if (p.mode === "check" || p.mode === "design") setMode(p.mode);
     },
-    serialize: () => ({ material, shapeFamily, shapeName, k, builtUpFactor, L, Pu, designMethod, mode }),
-    watch: [material, shapeFamily, shapeName, k, builtUpFactor, L, Pu, designMethod, mode],
+    serialize: () => ({
+      material,
+      shapeFamily,
+      shapeName,
+      k,
+      builtUpFactor,
+      L,
+      Pu: String(Math.round(demandFromLoads * 1000) / 1000),
+      deadLoad,
+      liveLoad,
+      designMethod,
+      mode,
+    }),
+    watch: [material, shapeFamily, shapeName, k, builtUpFactor, L, deadLoad, liveLoad, designMethod, mode],
   });
 
   const shapeChoices = useMemo(
@@ -92,12 +108,22 @@ export default function CompressionPage() {
   };
 
   const kEffective = Number(k) * (Number.isFinite(Number(builtUpFactor)) && Number(builtUpFactor) > 0 ? Number(builtUpFactor) : 1);
+  const demandFromLoads = useMemo(() => {
+    const dl = Number(deadLoad);
+    const ll = Number(liveLoad);
+    if (!Number.isFinite(dl) || !Number.isFinite(ll)) return 0;
+    return designMethod === "LRFD" ? 1.2 * dl + 1.6 * ll : dl + ll;
+  }, [deadLoad, liveLoad, designMethod]);
+
+  useEffect(() => {
+    setPu(String(Math.round(demandFromLoads * 1000) / 1000));
+  }, [demandFromLoads]);
 
   const designSuggestion = useMemo(() => {
     if (mode !== "design") return null;
     if (!Number.isFinite(kEffective) || kEffective <= 0) return null;
     const Lnum = Number(L);
-    const demand = Number(Pu);
+    const demand = demandFromLoads;
     if (!Number.isFinite(Lnum) || Lnum <= 0) return null;
     if (!Number.isFinite(demand) || demand < 0) return null;
     if (shapeChoices.length === 0) return null;
@@ -120,7 +146,7 @@ export default function CompressionPage() {
       if (r.isSafe) return s;
     }
     return null;
-  }, [mode, kEffective, L, Pu, shapeChoices, designMethod, mat]);
+  }, [mode, kEffective, L, demandFromLoads, shapeChoices, designMethod, mat]);
 
   useEffect(() => {
     if (mode !== "design") return;
@@ -141,9 +167,9 @@ export default function CompressionPage() {
         Ag: shape?.A ?? 0,
         lambdaFlange: shape?.bf_2tf ?? 0,
         lambdaWeb: shape?.h_tw ?? 0,
-        demandPu: Number(Pu),
+        demandPu: demandFromLoads,
       }),
-    [mat, designMethod, kEffective, L, Pu, shape],
+    [mat, designMethod, kEffective, L, demandFromLoads, shape],
   );
 
   const missingSlenderness = shape ? shape.bf_2tf <= 0 && shape.h_tw <= 0 : false;
@@ -157,6 +183,8 @@ export default function CompressionPage() {
     setBuiltUpFactor(compressionDefaults.builtUpFactor);
     setL(compressionDefaults.L);
     setPu(compressionDefaults.Pu);
+    setDeadLoad(compressionDefaults.deadLoad);
+    setLiveLoad(compressionDefaults.liveLoad);
     setDesignMethod(compressionDefaults.designMethod);
     setMode(compressionDefaults.mode);
   }, [clearDraft]);
@@ -166,9 +194,10 @@ export default function CompressionPage() {
     return !Number.isFinite(n) || n < min;
   };
 
-  const invalidPu = invalid(Pu, 0);
+  const invalidDeadLoad = invalid(deadLoad, 0);
+  const invalidLiveLoad = invalid(liveLoad, 0);
   const invalidL = invalid(L, 0);
-  const inputsInvalid = invalidPu || invalidL;
+  const inputsInvalid = invalidDeadLoad || invalidLiveLoad || invalidL;
 
   const resultHeroStatus = inputsInvalid ? "invalid" : out.isSafe ? "safe" : "unsafe";
 
@@ -258,7 +287,8 @@ export default function CompressionPage() {
           title: `Compression — ${shapeName}`,
           lines: [
             `Method: ${designMethod} · Material: ${mat.key}`,
-            `Pu/Pa = ${Pu} kips · L = ${L} in · K = ${k} · built-up = ${builtUpFactor}`,
+            `D/L = ${deadLoad} / ${liveLoad} kips · ${designMethod === "LRFD" ? "Pu" : "Pa"} = ${demandFromLoads.toFixed(3)} kips`,
+            `L = ${L} in · K = ${k} · built-up = ${builtUpFactor}`,
             `Governing: ${out.governingCase}`,
             `Capacity: ${out.controllingStrength.toFixed(3)} kips`,
             `Demand: ${out.demand.toFixed(3)} kips`,
@@ -271,6 +301,8 @@ export default function CompressionPage() {
           "Compression",
           `Method: ${designMethod}`,
           `Material: ${mat.key}`,
+          `D/L = ${deadLoad} / ${liveLoad} kips`,
+          `${designMethod === "LRFD" ? "Pu" : "Pa"} = ${demandFromLoads.toFixed(3)} kips`,
           `Shape: ${shapeName}`,
           `Governing: ${out.governingCase}`,
           `Capacity: ${out.controllingStrength.toFixed(3)} kips`,
@@ -281,7 +313,19 @@ export default function CompressionPage() {
       saveSlots: {
         moduleKey: "compression",
         draftStorageKey: STORAGE.compression,
-        getCurrent: () => ({ material, shapeFamily, shapeName, k, builtUpFactor, L, Pu, designMethod, mode }),
+        getCurrent: () => ({
+          material,
+          shapeFamily,
+          shapeName,
+          k,
+          builtUpFactor,
+          L,
+          Pu,
+          deadLoad,
+          liveLoad,
+          designMethod,
+          mode,
+        }),
       },
       onReset: resetInputs,
     }),
@@ -291,7 +335,9 @@ export default function CompressionPage() {
       shapeName,
       designMethod,
       mat.key,
-      Pu,
+      deadLoad,
+      liveLoad,
+      demandFromLoads,
       L,
       k,
       builtUpFactor,
@@ -299,6 +345,7 @@ export default function CompressionPage() {
       mode,
       out,
       material,
+      Pu,
       resetInputs,
     ],
   );
@@ -308,7 +355,8 @@ export default function CompressionPage() {
       `Compression — ${shapeName}`,
       `Method: ${designMethod}`,
       `Material: ${mat.key}`,
-      `Pu/Pa: ${Pu} kips`,
+          `D/L: ${deadLoad}/${liveLoad} kips`,
+          `${designMethod === "LRFD" ? "Pu" : "Pa"}: ${demandFromLoads.toFixed(3)} kips`,
       `L: ${L} in`,
       `K: ${k} (built-up ${builtUpFactor})`,
       `Governing: ${String(out.governingCase)}`,
@@ -324,7 +372,7 @@ export default function CompressionPage() {
     } catch {
       push({ title: "Could not copy", message: "Your browser blocked clipboard access.", tone: "bad" });
     }
-  }, [Pu, L, builtUpFactor, designMethod, inputsInvalid, k, mat.key, out, push, shapeName]);
+  }, [L, builtUpFactor, deadLoad, demandFromLoads, designMethod, inputsInvalid, k, liveLoad, mat.key, out, push, shapeName]);
 
   return (
     <AppShell>
@@ -400,8 +448,11 @@ export default function CompressionPage() {
             <CompressionInputsMember
               designMethod={designMethod}
               onDesignMethodChange={setDesignMethod}
-              Pu={Pu}
-              onPuChange={setPu}
+              deadLoad={deadLoad}
+              onDeadLoadChange={setDeadLoad}
+              liveLoad={liveLoad}
+              onLiveLoadChange={setLiveLoad}
+              demand={demandFromLoads}
               L={L}
               onLChange={setL}
               k={k}
@@ -409,7 +460,8 @@ export default function CompressionPage() {
               builtUpFactor={builtUpFactor}
               onBuiltUpFactorChange={setBuiltUpFactor}
               kEffective={kEffective}
-              invalidPu={invalidPu}
+              invalidDeadLoad={invalidDeadLoad}
+              invalidLiveLoad={invalidLiveLoad}
               invalidL={invalidL}
               onPresetK={() => setK("1.0")}
               onPresetBuiltUp={() => setBuiltUpFactor("1.0")}
@@ -436,7 +488,7 @@ export default function CompressionPage() {
                   governing={out.governingCase}
                   capacityLabel={designMethod === "LRFD" ? "Design strength (φPn)" : "Allowable (Pn/Ω)"}
                   capacity={`${out.controllingStrength.toFixed(3)} kips`}
-                  demandLabel={designMethod === "LRFD" ? "Demand Pu" : "Demand Pa"}
+                  demandLabel={designMethod === "LRFD" ? "Demand Pu (1.2D+1.6L)" : "Demand Pa (D+L)"}
                   demand={`${out.demand.toFixed(3)} kips`}
                   utilization={inputsInvalid ? undefined : out.controllingStrength > 0 ? out.demand / out.controllingStrength : undefined}
                   metaRight={<Badge tone="info">{mat.key}</Badge>}
@@ -459,9 +511,14 @@ export default function CompressionPage() {
                   right={<Badge tone="bad">Needs attention</Badge>}
                 />
                 <CardBody className="flex flex-wrap gap-2">
-                  {invalidPu ? (
-                    <Button variant="secondary" size="sm" type="button" onClick={() => smoothScrollTo("field-pu")}>
-                      Pu / Pa
+                  {invalidDeadLoad ? (
+                    <Button variant="secondary" size="sm" type="button" onClick={() => smoothScrollTo("field-dead-load")}>
+                      Dead load
+                    </Button>
+                  ) : null}
+                  {invalidLiveLoad ? (
+                    <Button variant="secondary" size="sm" type="button" onClick={() => smoothScrollTo("field-live-load")}>
+                      Live load
                     </Button>
                   ) : null}
                   {invalidL ? (

@@ -9,6 +9,8 @@ type CompressionDefaults = {
   builtUpFactor: string;
   L: string;
   Pu: string;
+  deadLoad: string;
+  liveLoad: string;
   designMethod: "LRFD" | "ASD";
   mode: "check" | "design";
 };
@@ -21,6 +23,8 @@ export const compressionDefaults: CompressionDefaults = {
   builtUpFactor: "1.0",
   L: "240",
   Pu: "700",
+  deadLoad: "400",
+  liveLoad: "200",
   designMethod: "LRFD",
   mode: "check",
 };
@@ -33,6 +37,8 @@ export const compressionDraftSchema = z.object({
   builtUpFactor: z.string().optional(),
   L: z.string().optional(),
   Pu: z.string().optional(),
+  deadLoad: z.string().optional(),
+  liveLoad: z.string().optional(),
   designMethod: z.enum(["LRFD", "ASD"]).optional(),
   mode: z.enum(["check", "design"]).optional(),
 });
