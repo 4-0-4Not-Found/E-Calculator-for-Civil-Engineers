@@ -24,9 +24,11 @@ import { CalculatorActionRail } from "@/components/actions/CalculatorActionRail"
 import { useBrowserDraft } from "@/features/module-runtime/useBrowserDraft";
 import { smoothScrollTo } from "@/features/module-runtime/scroll";
 import { evaluateTension, tensionDefaults, tensionDraftSchema } from "@/features/steel/tension/module-config";
+import { asdAxialLoad, lrfdFactoredAxialLoad } from "@/lib/excel-parity";
 import { formatRelativeTime } from "@/lib/format/relativeTime";
 import { ModuleHero } from "@/components/layout/ModuleHero";
 import { ModuleDetailsTabs } from "@/components/layout/ModuleDetailsTabs";
+import { ModeSwitch } from "@/components/ui/ModeSwitch";
 
 const toNumber = (v: string) => Number(v) || 0;
 /** Client preference: ~3 decimals on final strengths / demands. */
@@ -152,8 +154,17 @@ export default function TensionModulePage() {
   const demandFromLoads = useMemo(() => {
     const dl = toNumber(deadLoad);
     const ll = toNumber(liveLoad);
-    return designMethod === "LRFD" ? 1.2 * dl + 1.6 * ll : dl + ll;
+    return designMethod === "LRFD" ? lrfdFactoredAxialLoad(dl, ll) : asdAxialLoad(dl, ll);
   }, [deadLoad, liveLoad, designMethod]);
+
+  /** Which LRFD combination governed (for user clarity). */
+  const lrfdGoverning = useMemo(() => {
+    const dl = toNumber(deadLoad);
+    const ll = toNumber(liveLoad);
+    const c1 = 1.4 * dl;
+    const c2 = 1.2 * dl + 1.6 * ll;
+    return c1 >= c2 ? "1.4D" : "1.2D + 1.6L";
+  }, [deadLoad, liveLoad]);
 
   useEffect(() => {
     setPu(String(Math.round(demandFromLoads * 1000) / 1000));
@@ -188,7 +199,7 @@ export default function TensionModulePage() {
       Anv: toNumber(Anv),
       Agt: toNumber(Agt),
       Ant: toNumber(Ant),
-      ubs: toNumber(ubs) || 0.5,
+      ubs: toNumber(ubs) || 1.0,
     });
   }, [selectedMaterial, designMethod, Ag, An, U, demandFromLoads, Agv, Anv, Agt, Ant, ubs]);
 
@@ -210,7 +221,7 @@ export default function TensionModulePage() {
         Anv: toNumber(Anv),
         Agt: toNumber(Agt),
         Ant: toNumber(Ant),
-        ubs: toNumber(ubs) || 0.5,
+        ubs: toNumber(ubs) || 1.0,
       });
       if (r.isSafe) return s;
     }
@@ -247,7 +258,7 @@ export default function TensionModulePage() {
           Anv: toNumber(Anv),
           Agt: toNumber(Agt),
           Ant: toNumber(Ant),
-          ubs: toNumber(ubs) || 0.5,
+          ubs: toNumber(ubs) || 1.0,
         });
         return {
           shape: s.shape,
@@ -338,15 +349,24 @@ export default function TensionModulePage() {
             },
             { key: "mat", label: selectedMaterial.key },
             { key: "method", label: designMethod },
-            { key: "mode", label: mode === "design" ? "Design" : "Check" },
+            { key: "mode", label: mode === "design" ? "Design mode" : "Analysis mode" },
           ]}
           image={{ src: "/assets/tension.png" }}
         />
 
         <div className="grid gap-6 lg:grid-cols-12 lg:items-start">
           <div className="space-y-6 lg:col-span-7">
+            <ModeSwitch
+              value={mode}
+              onChange={setMode}
+              description="Switch any time — your inputs stay saved on this device."
+            />
             <Card id="tension-general">
-              <CardHeader title="General" description="Steel, shape selection, method, and loading properties." right={<Badge tone="info">Inputs</Badge>} />
+              <CardHeader
+                title="General"
+                description="Steel, shape selection, method, and loading properties."
+                right={<Badge tone={mode === "design" ? "info" : "neutral"}>{mode === "design" ? "Design mode" : "Analysis mode"}</Badge>}
+              />
               <CardBody>
                 <div className="grid gap-5 md:grid-cols-2">
                   <Field
@@ -391,7 +411,11 @@ export default function TensionModulePage() {
                   </Field>
                   <Field
                     label={designMethod === "LRFD" ? "Computed demand Pu" : "Computed demand Pa"}
-                    hint={designMethod === "LRFD" ? "Pu = 1.2D + 1.6L" : "Pa = D + L"}
+                    hint={
+                      designMethod === "LRFD"
+                        ? `Pu = max(1.4D, 1.2D + 1.6L) — governs: ${lrfdGoverning}`
+                        : "Pa = D + L"
+                    }
                     className="md:col-span-2"
                   >
                     <div className="rounded-2xl bg-[color:var(--surface-2)] p-3 ring-1 ring-inset ring-[color:var(--border)]/60 sm:p-4">
@@ -443,13 +467,6 @@ export default function TensionModulePage() {
                       </div>
                     </Field>
                   )}
-
-                  <Field label="Mode" hint="Check a section, or get a lightest-weight suggestion in the chosen family.">
-                    <SelectInput value={mode} onChange={(v) => setMode(v as "check" | "design")}>
-                      <option value="check">Analysis</option>
-                      <option value="design">Design</option>
-                    </SelectInput>
-                  </Field>
 
                   <Field label="Design method" hint="LRFD (default) or ASD.">
                     <SelectInput value={designMethod} onChange={(v) => setDesignMethod(v as "LRFD" | "ASD")}>
@@ -653,13 +670,13 @@ export default function TensionModulePage() {
                     </Field>
                     <Field
                       label="Ubs (block shear)"
-                      hint="AISC J4.3 U_bs: 0.5 non-uniform tension on A_nt (typical); 1.0 uniform"
+                      hint="AISC J4.3 U_bs: 1.0 for uniform tension on A_nt (typical for plates / angles — workbook default); 0.5 for non-uniform tension"
                       className="md:col-span-2"
                     >
                       <TextInput
                         value={ubs}
                         onChange={setUbs}
-                        placeholder="0.5"
+                        placeholder="1.0"
                       />
                     </Field>
                   </div>
@@ -752,7 +769,7 @@ export default function TensionModulePage() {
 
             <CalculatorActionRail
               title="Actions"
-              subtitle={`${shapeName} · ${designMethod} · ${mode === "design" ? "Design" : "Check"}`}
+              subtitle={`${shapeName} · ${designMethod} · ${mode === "design" ? "Design mode" : "Analysis mode"}`}
               savedKey={CLIENT_PERSISTENCE.savedAt("tension")}
               saving={saving}
               savedAt={savedAt}

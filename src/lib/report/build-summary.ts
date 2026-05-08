@@ -115,7 +115,7 @@ export function summarizeTension(p: Record<string, string> | null): TensionSumma
       Anv: toN(p.Anv),
       Agt: toN(p.Agt),
       Ant: toN(p.Ant),
-      ubs: toN(p.ubs) || 0.5,
+      ubs: toN(p.ubs) || 1.0,
     });
     return {
       module: "tension",

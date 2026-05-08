@@ -41,21 +41,15 @@ export function CompressionInputsGeneral(props: Props) {
     <Card id="compression-general">
       <CardHeader
         title="General"
-        description="Steel, mode, and shape family. Analysis checks a chosen section; Design auto-picks the lightest safe section."
+        description="Steel and shape family. Analysis checks a chosen section; Design auto-picks the lightest safe section."
         right={
           <span className="inline-flex items-center rounded-full border border-[color:var(--accent-weak)] bg-[color:var(--mint)] px-3 py-1 text-[11px] font-semibold text-[color:var(--accent)] shadow-sm">
-            Inputs
+            {props.mode === "design" ? "Design mode" : "Analysis mode"}
           </span>
         }
       />
       <CardBody>
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Mode" hint="Analysis shows section selection; Design suggests and uses the lightest safe section.">
-            <SelectInput value={props.mode} onChange={(v) => props.onModeChange(v as "check" | "design")}>
-              <option value="check">Analysis</option>
-              <option value="design">Design</option>
-            </SelectInput>
-          </Field>
           <Field label="Steel Type" hint="Fy (ksi) comes from selection.">
             <SelectInput value={props.material} onChange={(v) => props.onMaterialChange(v as SteelMaterialKey)}>
               {props.steelMaterials.map((m) => (

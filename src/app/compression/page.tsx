@@ -35,6 +35,8 @@ import {
   CompressionSectionPropertiesPanel,
   CompressionStepsPanel,
 } from "@/features/steel/compression/components";
+import { asdAxialLoad, lrfdFactoredAxialLoad } from "@/lib/excel-parity";
+import { ModeSwitch } from "@/components/ui/ModeSwitch";
 
 const META_CHIP =
   "inline-flex h-8 items-center rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-2)] px-2.5 text-[11px] font-semibold text-[color:var(--foreground)]/80 shadow-sm";
@@ -112,8 +114,17 @@ export default function CompressionPage() {
     const dl = Number(deadLoad);
     const ll = Number(liveLoad);
     if (!Number.isFinite(dl) || !Number.isFinite(ll)) return 0;
-    return designMethod === "LRFD" ? 1.2 * dl + 1.6 * ll : dl + ll;
+    return designMethod === "LRFD" ? lrfdFactoredAxialLoad(dl, ll) : asdAxialLoad(dl, ll);
   }, [deadLoad, liveLoad, designMethod]);
+
+  /** Which LRFD combination governed (for user clarity). */
+  const lrfdGoverning = useMemo(() => {
+    const dl = Number(deadLoad) || 0;
+    const ll = Number(liveLoad) || 0;
+    const c1 = 1.4 * dl;
+    const c2 = 1.2 * dl + 1.6 * ll;
+    return c1 >= c2 ? "1.4D" : "1.2D + 1.6L";
+  }, [deadLoad, liveLoad]);
 
   useEffect(() => {
     setPu(String(Math.round(demandFromLoads * 1000) / 1000));
@@ -405,6 +416,12 @@ export default function CompressionPage() {
                 <span className={META_CHIP}>{mat.key}</span>
                 <span className={META_CHIP}>{designMethod}</span>
                 <span className={META_CHIP}>{shapeName}</span>
+                <span
+                  className={META_CHIP + " border-[color:var(--brand)]/30 bg-[color:var(--brand)]/8 text-[color:var(--brand)]"}
+                  aria-live="polite"
+                >
+                  {mode === "design" ? "Design mode" : "Analysis mode"}
+                </span>
               </div>
             </div>
 
@@ -431,6 +448,11 @@ export default function CompressionPage() {
         <div className="grid gap-6 lg:grid-cols-12 lg:items-start">
           {/* Inputs */}
           <div className="space-y-6 lg:col-span-7">
+            <ModeSwitch
+              value={mode}
+              onChange={setMode}
+              description="Switch any time — your inputs stay saved on this device."
+            />
             <CompressionInputsGeneral
               material={material}
               onMaterialChange={setMaterial}
@@ -453,6 +475,7 @@ export default function CompressionPage() {
               liveLoad={liveLoad}
               onLiveLoadChange={setLiveLoad}
               demand={demandFromLoads}
+              lrfdGoverning={lrfdGoverning}
               L={L}
               onLChange={setL}
               k={k}
@@ -547,7 +570,7 @@ export default function CompressionPage() {
             ) : null}
 
             <div id="actions">
-              <CalculatorActionRail {...actionRailProps} title="Actions" subtitle={`${shapeName} · ${designMethod}`} />
+              <CalculatorActionRail {...actionRailProps} title="Actions" subtitle={`${shapeName} · ${designMethod} · ${mode === "design" ? "Design mode" : "Analysis mode"}`} />
             </div>
           </div>
         </div>

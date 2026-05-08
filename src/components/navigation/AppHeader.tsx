@@ -14,10 +14,8 @@ type NavItem = { href: string; label: string; short?: string };
 const modules: NavItem[] = [
   { href: "/tension", label: "Tension" },
   { href: "/compression", label: "Compression" },
-  { href: "/bending-shear", label: "Beam", short: "Beam" },
+  { href: "/bending-shear", label: "Bending", short: "Bending" },
   { href: "/shear", label: "Shear", short: "Shear" },
-  { href: "/combined", label: "Combined", short: "Comb." },
-  { href: "/connections", label: "Connections", short: "Conn." },
 ];
 
 const utility: NavItem[] = [
@@ -37,10 +35,8 @@ function readLastSaved(): LastSaved {
     const pairs: Array<{ key: AutosaveModuleKey; label: string }> = [
       { key: "tension", label: "Tension" },
       { key: "compression", label: "Compression" },
-      { key: "bending", label: "Beam" },
+      { key: "bending", label: "Bending" },
       { key: "shear", label: "Shear" },
-      { key: "combined", label: "Combined" },
-      { key: "connections", label: "Connections" },
     ];
     let best: LastSaved = null;
     for (const p of pairs) {
@@ -134,15 +130,13 @@ export function AppHeader() {
   const projectStatus = useMemo(() => {
     void tick;
     void pathname;
-    if (!mounted) return { items: [], completed: 0, total: 6 };
+    if (!mounted) return { items: [], completed: 0, total: 4 };
     try {
       const keys: Array<{ k: AutosaveModuleKey; label: string; href: string }> = [
         { k: "tension", label: "Tension", href: "/tension" },
         { k: "compression", label: "Compression", href: "/compression" },
-        { k: "bending", label: "Beam", href: "/bending-shear" },
+        { k: "bending", label: "Bending", href: "/bending-shear" },
         { k: "shear", label: "Shear", href: "/shear" },
-        { k: "combined", label: "Combined", href: "/combined" },
-        { k: "connections", label: "Connections", href: "/connections" },
       ];
       const items = keys.map((x) => {
         const raw = localStorage.getItem(CLIENT_PERSISTENCE.savedAt(x.k));

@@ -48,8 +48,8 @@
 
 | ID | Use case | Fields & values | Expected (app engine) |
 |----|-----------|-----------------|------------------------|
-| **B1** | LRFD — **Option A** dead/live/span drives M,V; deflection D+L | Steel **A992**, **W24X131**, **LRFD**. **w_D** 0.8 klf, **w_L** 3.2 klf, **span** 30 ft. **C_b** 1.14, unbraced blank. | w for strength ≈ **6.08** klf → **M_u** ≈ **684** kip·ft, **V_u** ≈ **91.2** kips. Service w for δ ≈ **0.333333** kip/in. φM_n ≈ **1032.333** kip·ft, φV_n ≈ **409.827** kips, δ ≈ **0.625** in, δ_allow **1** in. Governing **bending**. **SAFE**. |
-| **B2** | ASD — same D+L **strength** w (D+L klf) | Same geometry, **ASD**, same D/L/span so required M,V from **4.0** klf → **M** **450** kip·ft, **V** **60** kips (auto-filled path) | M_n/Ω ≈ **686.848** kip·ft, V_n/Ω ≈ **273.218** kips. Governing **bending**. **SAFE**. |
+| **B1** | LRFD — **Option A** dead/live/span drives M,V; deflection D+L | Steel **A992**, **W24X131**, **LRFD**. **w_D** 0.8 klf, **w_L** 3.2 klf, **span** 30 ft. **C_b** 1.14, unbraced blank. | w for strength ≈ **6.08** klf → **M_u** ≈ **684** kip·ft, **V_u** ≈ **91.2** kips. Service w for δ ≈ **0.333333** kip/in. φM_n ≈ **1032.333** kip·ft, φV_n ≈ **444.675** kips (A_w = d·t_w per AISC G2.1(b)), δ ≈ **0.625** in, δ_allow **1** in. Governing **bending**. **SAFE**. |
+| **B2** | ASD — same D+L **strength** w (D+L klf) | Same geometry, **ASD**, same D/L/span so required M,V from **4.0** klf → **M** **450** kip·ft, **V** **60** kips (auto-filled path) | M_n/Ω ≈ **686.848** kip·ft, V_n/Ω ≈ **296.45** kips. Governing **bending**. **SAFE**. |
 | **B3** | Manual **Option B** — user M, V, L, w | Clear D/L/span; set **M_u** 200, **V_u** 40, **L** 360 in, **w** (deflection) 0.05 kip/in, same shape | Compare φM_n, φV_n, δ vs limits; SAFE if all ratios ≤ 1. (Exact numbers depend on shape.) |
 | **B4** | Design — least weight W | Mode **Design**, set loads/span or M,V,L/w, material | Suggestion = lightest **W** that passes bending, shear, deflection (per Ej). |
 

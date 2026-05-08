@@ -39,7 +39,7 @@ export const tensionDefaults: TensionDefaults = {
   Anv: "20",
   Agt: "8",
   Ant: "6.5",
-  ubs: "0.5",
+  ubs: "1.0",
   stagW: "",
   stagDh: "0.875",
   stagN: "2",

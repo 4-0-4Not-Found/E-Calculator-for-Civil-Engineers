@@ -200,10 +200,13 @@ export function calculateBendingShearDesign(input: BendingInput): CalculationOut
 
   const phiMn = input.designMethod === "LRFD" ? 0.9 * mn_ft : mn_ft / 1.67;
 
-  /** HSS: shear carried by two side webs (G5-style area); W-shape: single web panel. */
-  const Aw = profile === "HSS" ? 2 * input.h * input.tw : input.h * input.tw;
+  /**
+   * AISC 360-16 G2.1(b): for I-shaped members, A_w = d·t_w (full depth × web thickness).
+   * HSS: shear is carried by two side webs (G5-style — 2·h·t_w using clear height).
+   */
+  const Aw = profile === "HSS" ? 2 * input.h * input.tw : input.d * input.tw;
   if (Aw <= 0) {
-    return beamGeometryError(input, "Shear area A_w = h × t_w must be positive.");
+    return beamGeometryError(input, "Shear area A_w must be positive.");
   }
 
   const kv = input.isStiffened ? (input.h / input.a > 3 ? 5 : 5 + 5 / (input.h / input.a) ** 2) : 5;
@@ -227,13 +230,23 @@ export function calculateBendingShearDesign(input: BendingInput): CalculationOut
     Cv = lambdaV2 / λw;
     shearCase = "Case 2b";
   } else {
-    /** AISC 360-16 G2-9 — elastic web shear buckling (no TFA): C_v = 0.51 E k_v / (F_y (h/t_w)²). */
-    Cv = (0.51 * E * kv) / (λw ** 2 * Fy);
+    /**
+     * AISC 360-16 G2-3 — elastic web shear buckling: C_v = 1.51·E·k_v / (F_y·(h/t_w)²).
+     * (Same coefficient as the workbook PROGRAM-1/2 Shear (ANALYSIS) Case 3.)
+     */
+    Cv = (1.51 * E * kv) / (λw ** 2 * Fy);
     shearCase = "Case 2c";
   }
 
   const vn = 0.6 * Fy * Aw * Cv;
-  const phiVn = input.designMethod === "LRFD" ? 1.0 * vn : vn / 1.5;
+  /**
+   * AISC 360-16 G2.1 (User Note): φ_v = 1.00, Ω_v = 1.50 only when h/t_w ≤ 2.24·√(E/F_y)
+   * (rolled I-shaped members with compact webs in shear). Otherwise φ_v = 0.90, Ω_v = 1.67.
+   * Matches workbook PROGRAM-1 Shear (ANALYSIS) cells E46 / I46.
+   */
+  const phi_v = λw <= lambdaV1 ? 1.0 : 0.9;
+  const omega_v = λw <= lambdaV1 ? 1.5 : 1.67;
+  const phiVn = input.designMethod === "LRFD" ? phi_v * vn : vn / omega_v;
 
   const ratioBending = safeRatio(input.Mu, phiMn);
   const ratioShear = safeRatio(input.Vu, phiVn);
@@ -329,7 +342,16 @@ export function calculateBendingShearDesign(input: BendingInput): CalculationOut
     },
     { id: "b3", label: "k_v", formula: "AISC G2", value: kv, unit: "-" },
     { id: "b4", label: "C_v", formula: "AISC G2", value: Cv, unit: "-" },
-    { id: "b5", label: "Shear strength φV_n / V_n/Ω", formula: "§G2: φ=1.0 LRFD, Ω=1.5 ASD", value: phiVn, unit: "kips" },
+    {
+      id: "b5",
+      label: "Shear strength φV_n / V_n/Ω",
+      formula:
+        input.designMethod === "LRFD"
+          ? `§G2.1: φ_v = ${phi_v.toFixed(2)} (h/t_w ${λw <= lambdaV1 ? "≤" : ">"} 2.24√(E/F_y))`
+          : `§G2.1: Ω_v = ${omega_v.toFixed(2)} (h/t_w ${λw <= lambdaV1 ? "≤" : ">"} 2.24√(E/F_y))`,
+      value: phiVn,
+      unit: "kips",
+    },
     { id: "b6", label: "Deflection", formula: "δ ≤ allowable (live)", value: `${input.deflection} in ≤ ${input.deflectionAllowable} in` },
   ];
 

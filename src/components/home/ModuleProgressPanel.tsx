@@ -13,8 +13,8 @@ type ModuleKey = keyof typeof STORAGE;
 const modules: Array<{ key: ModuleKey; label: string; href: string }> = [
   { key: "tension", label: "Tension", href: "/tension" },
   { key: "compression", label: "Compression", href: "/compression" },
-  { key: "bending", label: "Beam", href: "/bending-shear" },
-  { key: "connections", label: "Connections", href: "/connections" },
+  { key: "bending", label: "Bending", href: "/bending-shear" },
+  { key: "shear", label: "Shear", href: "/shear" },
 ];
 
 function TinyStatus(props: { tone: "empty" | "complete"; label: string }) {

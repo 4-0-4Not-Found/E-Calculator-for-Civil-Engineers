@@ -41,15 +41,14 @@ export default function InfoPage() {
                 approximated when slenderness data exists—see limitations below.
               </li>
               <li>
-                <strong>Beam:</strong> Strong axis, simply supported: flexure (F6 flange + F2 LTB), shear (G2), deflection.
-                <strong> Design mode</strong> searches rolled <strong>W</strong> shapes. <strong>Check mode</strong> can use{" "}
+                <strong>Bending:</strong> Strong axis, simply supported: flexure (F6 flange + F2 LTB), shear (G2), deflection.
+                <strong> Design mode</strong> searches rolled <strong>W</strong> shapes. <strong>Analysis mode</strong> can use{" "}
                 <strong>W</strong> or <strong>HSS</strong> with simplified HSS assumptions (wall slenderness, shear area).
                 Optional dead/live/span to build loads, or enter M, V, and w yourself.
               </li>
               <li>
-                <strong>Connections:</strong> Bolt shear and bearing (J3.10 — hole-edge limit), slip-critical slip (J3.8), bolt
-                tension, shear–tension interaction, fillet and groove weld metal in shear, approximate prying plate thickness —
-                plus bolt-count and weld-length hints. Inputs can auto-save in your browser.
+                <strong>Shear:</strong> Web shear capacity (G2) following the workbook PROGRAM-2 Shear sheet. Reports the
+                governing C_v case and method-aware capacity for LRFD or ASD.
               </li>
               </ul>
             </div>
@@ -69,8 +68,8 @@ export default function InfoPage() {
                 shear-on-throat checks here, and project-specific details not captured in a short form.
               </li>
               <li>
-                <strong>Beam design mode</strong> does not search HSS — use check mode for HSS strong-axis review with the stated
-                simplifications.
+                <strong>Bending design mode</strong> does not search HSS — use Analysis mode for HSS strong-axis review with the
+                stated simplifications.
               </li>
               <li>Full AISC E7 effective-area treatment for every slender compression element—results are educational checks.</li>
               <li>Building code load combinations beyond what you enter (wind, seismic, snow) unless you supply the factored loads.</li>
@@ -95,9 +94,9 @@ export default function InfoPage() {
                 <strong>Force:</strong> kips; <strong>stress:</strong> ksi; <strong>moment:</strong> kip·ft where labeled.
               </li>
               <li>
-                <strong>LRFD</strong> is the default; switch to <strong>ASD</strong> where offered. Beam auto-loads from D+L use
-                LRFD factored w for strength when LRFD is selected, and D+L for ASD strength when ASD is selected; service{" "}
-                <strong>D+L</strong> is used for deflection checks.
+                <strong>LRFD</strong> is the default; switch to <strong>ASD</strong> where offered. LRFD demand uses{" "}
+                <strong>max(1.4D, 1.2D + 1.6L)</strong> (the higher case governs); ASD demand uses <strong>D + L</strong>;
+                service <strong>D+L</strong> is used for deflection checks.
               </li>
               <li>Final strengths and demands are usually shown to <strong>about three decimal places</strong> for readability.</li>
               </ul>

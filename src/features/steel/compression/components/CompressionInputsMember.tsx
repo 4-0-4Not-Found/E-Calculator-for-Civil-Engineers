@@ -12,6 +12,8 @@ type Props = {
   liveLoad: string;
   onLiveLoadChange: (v: string) => void;
   demand: number;
+  /** Which LRFD combo controls (only displayed when designMethod === "LRFD"). */
+  lrfdGoverning?: string;
   L: string;
   onLChange: (v: string) => void;
   k: string;
@@ -101,7 +103,14 @@ export function CompressionInputsMember(props: Props) {
             </Field>
           </div>
           <div className="md:col-span-2">
-            <Field label={props.designMethod === "LRFD" ? "Computed demand Pu" : "Computed demand Pa"} hint={props.designMethod === "LRFD" ? "Pu = 1.2D + 1.6L" : "Pa = D + L"}>
+            <Field
+              label={props.designMethod === "LRFD" ? "Computed demand Pu" : "Computed demand Pa"}
+              hint={
+                props.designMethod === "LRFD"
+                  ? `Pu = max(1.4D, 1.2D + 1.6L) — governs: ${props.lrfdGoverning ?? "1.2D + 1.6L"}`
+                  : "Pa = D + L"
+              }
+            >
               <div className="rounded-2xl bg-[color:var(--surface-2)] p-3 text-sm font-semibold tabular-nums ring-1 ring-inset ring-[color:var(--border)]/60">
                 {props.demand.toFixed(3)} kips
               </div>

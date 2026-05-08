@@ -25,6 +25,8 @@ export default function ShearPage() {
   const [material, setMaterial] = useState<SteelMaterialKey>(shearDefaults.material as SteelMaterialKey);
   const [shapeName, setShapeName] = useState(shearDefaults.shapeName);
   const [demandV, setDemandV] = useState(shearDefaults.demandV);
+  const [stiffening, setStiffening] = useState<"unstiffened" | "stiffened">(shearDefaults.stiffening);
+  const [alpha, setAlpha] = useState(shearDefaults.alpha);
 
   const { savedAt, saving, clearDraft } = useBrowserDraft({
     storageKey: STORAGE.shear,
@@ -35,9 +37,11 @@ export default function ShearPage() {
       if (typeof p.material === "string") setMaterial(normalizeSteelMaterialKey(p.material));
       if (typeof p.shapeName === "string") setShapeName(p.shapeName);
       if (typeof p.demandV === "string") setDemandV(p.demandV);
+      if (p.stiffening === "unstiffened" || p.stiffening === "stiffened") setStiffening(p.stiffening);
+      if (typeof p.alpha === "string") setAlpha(p.alpha);
     },
-    serialize: () => ({ designMethod, material, shapeName, demandV }),
-    watch: [designMethod, material, shapeName, demandV],
+    serialize: () => ({ designMethod, material, shapeName, demandV, stiffening, alpha }),
+    watch: [designMethod, material, shapeName, demandV, stiffening, alpha],
   });
 
   const shapeOptions = useMemo(() => aiscShapes.filter((s) => s.type === "W"), []);
@@ -52,8 +56,10 @@ export default function ShearPage() {
       tw: shape.tw,
       hTw: shape.h_tw,
       demandV: Number(demandV) || 0,
+      stiffening,
+      alpha: stiffening === "stiffened" ? Number(alpha) || 0 : undefined,
     });
-  }, [shape, designMethod, mat, demandV]);
+  }, [shape, designMethod, mat, demandV, stiffening, alpha]);
 
   const ratio = out && out.controllingStrength > 0 ? out.demand / out.controllingStrength : undefined;
   const [detailsTab, setDetailsTab] = useState<"steps" | "section">("steps");
@@ -105,6 +111,26 @@ export default function ShearPage() {
                   <Field label="Shear demand V_u (kips)">
                     <TextInput value={demandV} onChange={setDemandV} />
                   </Field>
+                  <Field
+                    label="Web stiffening"
+                    hint="Workbook PROGRAM-1 Shear: unstiffened uses k_v = 5; stiffened derives k_v from α/h."
+                  >
+                    <SelectInput
+                      value={stiffening}
+                      onChange={(v) => setStiffening(v as "unstiffened" | "stiffened")}
+                    >
+                      <option value="unstiffened">Unstiffened</option>
+                      <option value="stiffened">Stiffened</option>
+                    </SelectInput>
+                  </Field>
+                  {stiffening === "stiffened" ? (
+                    <Field
+                      label="Stiffener spacing α (in)"
+                      hint="Clear distance between transverse stiffeners. Workbook cell E16."
+                    >
+                      <TextInput value={alpha} onChange={setAlpha} placeholder="e.g. 50" />
+                    </Field>
+                  ) : null}
                 </div>
 
                 {shape ? (
@@ -141,7 +167,7 @@ export default function ShearPage() {
               saveSlots={{
                 moduleKey: "shear",
                 draftStorageKey: STORAGE.shear,
-                getCurrent: () => ({ designMethod, material, shapeName, demandV }),
+                getCurrent: () => ({ designMethod, material, shapeName, demandV, stiffening, alpha }),
               }}
               copyText={() =>
                 [
@@ -150,6 +176,7 @@ export default function ShearPage() {
                   `Material: ${material}`,
                   `Shape: ${shapeName}`,
                   `Demand V_u: ${demandV || "0"} kips`,
+                  `Web stiffening: ${stiffening}${stiffening === "stiffened" ? ` (α = ${alpha || "0"} in)` : ""}`,
                   out ? `Capacity: ${out.controllingStrength.toFixed(3)} kips` : "Capacity: —",
                   out ? `Status: ${out.isSafe ? "SAFE" : "NOT SAFE"}` : "Status: —",
                 ].join("\n")
@@ -165,6 +192,8 @@ export default function ShearPage() {
                 setMaterial(shearDefaults.material as SteelMaterialKey);
                 setShapeName(shearDefaults.shapeName);
                 setDemandV(shearDefaults.demandV);
+                setStiffening(shearDefaults.stiffening);
+                setAlpha(shearDefaults.alpha);
               }}
             />
           </div>

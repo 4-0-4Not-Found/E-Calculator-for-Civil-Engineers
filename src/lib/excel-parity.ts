@@ -9,6 +9,19 @@ export function lrfdFactoredUniformLoadKlf(deadLoadKlf: number, liveLoadKlf: num
   return Math.max(1.4 * deadLoadKlf, 1.2 * deadLoadKlf + 1.6 * liveLoadKlf);
 }
 
+/**
+ * Factored axial load (kips) for LRFD — same governing rule as the workbook:
+ * the higher of `1.4*D` and `1.2*D + 1.6*L` controls.
+ */
+export function lrfdFactoredAxialLoad(deadLoad: number, liveLoad: number): number {
+  return Math.max(1.4 * deadLoad, 1.2 * deadLoad + 1.6 * liveLoad);
+}
+
+/** Service axial load (kips) for ASD — D + L (unfactored sum). */
+export function asdAxialLoad(deadLoad: number, liveLoad: number): number {
+  return deadLoad + liveLoad;
+}
+
 /** Service uniform load for deflection (kips/ft) — unfactored D + L, as used for δ checks in many class sheets. */
 export function serviceUniformLoadKlf(deadLoadKlf: number, liveLoadKlf: number): number {
   return deadLoadKlf + liveLoadKlf;

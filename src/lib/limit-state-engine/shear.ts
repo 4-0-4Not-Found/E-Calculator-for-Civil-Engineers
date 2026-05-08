@@ -7,6 +7,14 @@ export type ShearInput = {
   tw: number;
   hTw: number;
   demandV: number;
+  /**
+   * Web stiffening condition. Default `"unstiffened"` (k_v = 5).
+   * When `"stiffened"`, provide `alpha` (clear distance between transverse stiffeners, in)
+   * and the engine derives k_v per the workbook PROGRAM-1 Shear (ANALYSIS) cell H35.
+   */
+  stiffening?: "unstiffened" | "stiffened";
+  /** Clear distance between transverse stiffeners (in). Used only when `stiffening === "stiffened"`. */
+  alpha?: number;
 };
 
 function safeRatio(demand: number, capacity: number): number {
@@ -15,12 +23,29 @@ function safeRatio(demand: number, capacity: number): number {
 }
 
 /**
- * Workbook parity: PROGRAM-2.xlsx, "Shear (ANALYSIS)".
- * Uses E = 29000 ksi and k_v = 5 for unstiffened webs.
+ * Workbook parity: PROGRAM-1/2 Shear (ANALYSIS).
+ * Uses E = 29000 ksi. k_v = 5 for unstiffened webs; for stiffened webs k_v
+ * follows cell H35: `if (α/h > 3) || (α/h > [260/(h/tw)]²) → 5; else 5 + 5/(α/h)²`.
+ *
+ * Web clear height `h` is derived from `h/t_w · t_w` (matches the workbook’s
+ * E17 = L19 × L18 derivation when needed for stiffener-spacing geometry).
  */
 export function calculateShearDesign(input: ShearInput): CalculationOutput {
   const E = 29000;
-  const kv = 5;
+  const stiffening = input.stiffening ?? "unstiffened";
+  /** h derived from h/t_w · t_w (consistent with workbook L19·L18 — used only for α/h ratio). */
+  const hClear = input.hTw * input.tw;
+  const alpha = input.alpha ?? 0;
+  const aspect = stiffening === "stiffened" && hClear > 0 ? alpha / hClear : 0;
+  const aspectLimit = input.hTw > 0 ? (260 / input.hTw) ** 2 : 0;
+  let kv = 5;
+  if (stiffening === "stiffened") {
+    if (aspect <= 0 || aspect > 3 || aspect > aspectLimit) {
+      kv = 5;
+    } else {
+      kv = 5 + 5 / (aspect * aspect);
+    }
+  }
   if (input.Fy <= 0 || input.d <= 0 || input.tw <= 0 || input.hTw <= 0) {
     return {
       steps: [{ id: "s-err", label: "Invalid input", value: "Fy, d, t_w, and h/t_w must be positive." }],
@@ -62,7 +87,19 @@ export function calculateShearDesign(input: ShearInput): CalculationOutput {
   return {
     steps: [
       { id: "s1", label: "Web slenderness λ_w", formula: "h/t_w", value: input.hTw },
-      { id: "s2", label: "Shear buckling coefficient k_v", value: kv },
+      {
+        id: "s2",
+        label: "Shear buckling coefficient k_v",
+        formula:
+          stiffening === "stiffened"
+            ? "5 + 5/(α/h)² (or 5 when α/h > 3 or α/h > [260/(h/t_w)]²)"
+            : "5 (unstiffened web)",
+        value: kv,
+        note:
+          stiffening === "stiffened"
+            ? `α = ${alpha.toFixed(3)} in, h ≈ ${hClear.toFixed(3)} in, α/h = ${aspect.toFixed(3)}`
+            : undefined,
+      },
       { id: "s3", label: "Shear coefficient C_v", formula: "Workbook Shear (ANALYSIS) logic", value: cv, note: cvCase },
       { id: "s4", label: "Nominal shear V_n", formula: "0.6 F_y d t_w C_v", value: vn, unit: "kips" },
       {

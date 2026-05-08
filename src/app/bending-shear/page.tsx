@@ -26,6 +26,7 @@ import { smoothScrollTo } from "@/features/module-runtime/scroll";
 import { bendingDefaults, bendingDraftSchema, evaluateBending } from "@/features/steel/bending/module-config";
 import { ModuleHero } from "@/components/layout/ModuleHero";
 import { ModuleDetailsTabs } from "@/components/layout/ModuleDetailsTabs";
+import { ModeSwitch } from "@/components/ui/ModeSwitch";
 import { formatRelativeTime } from "@/lib/format/relativeTime";
 
 export default function BendingShearPage() {
@@ -271,15 +272,24 @@ export default function BendingShearPage() {
             { key: "saved", label: saving ? "Saving…" : savedAt ? `Saved ${formatRelativeTime(savedAt) ?? "recently"}` : "Not saved yet" },
             { key: "mat", label: steelMaterialMap[material].key },
             { key: "method", label: designMethod },
-            { key: "mode", label: mode === "design" ? "Design" : "Check" },
+            { key: "mode", label: mode === "design" ? "Design mode" : "Analysis mode" },
           ]}
           image={{ src: "/assets/bending.png" }}
         />
 
         <div className="grid gap-6 lg:grid-cols-12 lg:items-start">
           <div className="space-y-6 lg:col-span-7">
+            <ModeSwitch
+              value={mode}
+              onChange={setMode}
+              description="Switch any time — your inputs stay saved on this device."
+            />
             <Card id="beam-general">
-              <CardHeader title="General" description="Steel, member selection, check/design mode, and method." right={<Badge tone="info">Inputs</Badge>} />
+              <CardHeader
+                title="General"
+                description="Steel, member selection, and method."
+                right={<Badge tone={mode === "design" ? "info" : "neutral"}>{mode === "design" ? "Design mode" : "Analysis mode"}</Badge>}
+              />
               <CardBody>
                 <div className="grid gap-4 md:grid-cols-2">
                   <Field label="Steel Type" hint="Fy and Fu (ksi) from the material table.">
@@ -314,12 +324,6 @@ export default function BendingShearPage() {
                 </div>
 
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <Field label="Mode" hint="Analysis checks your selected section; Design auto-picks the lightest passing W-shape.">
-                    <SelectInput value={mode} onChange={(v) => setMode(v as "check" | "design")}>
-                      <option value="check">Analysis</option>
-                      <option value="design">Design</option>
-                    </SelectInput>
-                  </Field>
                   <Field label="Design method" hint="LRFD or ASD strength reduction.">
                     <SelectInput value={designMethod} onChange={(v) => setDesignMethod(v as "LRFD" | "ASD")}>
                       <option value="LRFD">LRFD</option>
@@ -398,7 +402,14 @@ export default function BendingShearPage() {
                       <p className="font-bold">Derived from your loads ({designMethod})</p>
                       <p className="tabular-nums">
                         w for strength = {derivedFromLoads.wStrengthKlf.toFixed(3)} k/ft
-                        {designMethod === "LRFD" ? " (LRFD factored)" : " (ASD D + L)"}
+                        {designMethod === "LRFD"
+                          ? ` (LRFD — governs: ${
+                              1.4 * (Number(deadLoadKft) || 0) >=
+                              1.2 * (Number(deadLoadKft) || 0) + 1.6 * (Number(liveLoadKft) || 0)
+                                ? "1.4D"
+                                : "1.2D + 1.6L"
+                            })`
+                          : " (ASD: D + L)"}
                       </p>
                       <p className="tabular-nums">
                         M_u = {derivedFromLoads.MuDer.toFixed(3)} kip·ft · V_u = {derivedFromLoads.VuDer.toFixed(3)} kips
@@ -506,7 +517,7 @@ export default function BendingShearPage() {
 
             <CalculatorActionRail
               title="Actions"
-              subtitle={`${shapeName} · ${designMethod} · ${mode === "design" ? "Design" : "Check"}`}
+              subtitle={`${shapeName} · ${designMethod} · ${mode === "design" ? "Design mode" : "Analysis mode"}`}
               savedKey={CLIENT_PERSISTENCE.savedAt("bending")}
               saving={saving}
               savedAt={savedAt}
@@ -529,13 +540,13 @@ export default function BendingShearPage() {
                   } else if (out) {
                     lines.push(`Capacity: ${fmtKips(out.controllingStrength)} · Demand: ${fmtKips(out.demand)}`);
                   }
-                  return { title: `Beam — ${shapeName}`, lines };
+                  return { title: `Bending — ${shapeName}`, lines };
                 },
               }}
               copyText={() => {
-                if (!out) return "Beam — No results";
+                if (!out) return "Bending — No results";
                 const lines = [
-                  "Beam",
+                  "Bending",
                   `Method: ${designMethod}`,
                   `Material: ${mat.key}`,
                   `Shape: ${shapeName}`,

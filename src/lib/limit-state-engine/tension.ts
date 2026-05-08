@@ -11,7 +11,12 @@ export type TensionInput = {
   Anv?: number;
   Agt?: number;
   Ant?: number;
-  /** AISC J4.3 U_bs: 1.0 uniform tension stress on net tension area; 0.5 non-uniform. */
+  /**
+   * AISC J4.3 U_bs: 1.0 for uniform tension stress on the net tension area
+   * (typical rolled angles, plates, gussets, single-row bolt patterns) and 0.5
+   * for non-uniform tension (e.g., some coped beam ends). Default 1.0 matches
+   * the workbook PROGRAM-1 Tension sheets.
+   */
   ubs?: number;
   /** LRFD (default) or ASD — AISC D2 / J4.3 Ω factors. */
   designMethod?: "LRFD" | "ASD";
@@ -39,7 +44,7 @@ export function calculateTensionDesign(input: TensionInput): CalculationOutput {
 
   const rnYield = Fy * Ag;
   const rnFracture = Fu * Ae;
-  const Ubs = input.ubs ?? 0.5;
+  const Ubs = input.ubs ?? 1.0;
 
   const rnShearRuptureTensionRupture = 0.6 * Fu * Anv + Ubs * Fu * Ant;
   const rnShearYieldTensionRupture = 0.6 * Fy * Agv + Ubs * Fu * Ant;

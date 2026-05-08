@@ -216,7 +216,7 @@ describe("Bending (calculateBendingShearDesign) — fields: designMethod, materi
       Cb: 1.14,
     });
     expect(b.results.bending.phiPn).toBeCloseTo(1032.333, 2);
-    expect(b.results.shear.phiPn).toBeCloseTo(409.827, 2);
+    expect(b.results.shear.phiPn).toBeCloseTo(444.675, 2);
     expect(delta).toBeCloseTo(0.625, 2);
     expect(b.beamLimitStates?.governing).toBe("bending");
     expect(b.isSafe).toBe(true);
@@ -256,7 +256,7 @@ describe("Bending (calculateBendingShearDesign) — fields: designMethod, materi
       Cb: 1.14,
     });
     expect(b.results.bending.phiPn).toBeCloseTo(686.848, 2);
-    expect(b.results.shear.phiPn).toBeCloseTo(273.218, 2);
+    expect(b.results.shear.phiPn).toBeCloseTo(296.45, 2);
     expect(b.beamLimitStates?.governing).toBe("bending");
     expect(b.isSafe).toBe(true);
   });

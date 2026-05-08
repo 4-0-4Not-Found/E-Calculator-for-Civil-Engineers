@@ -36,7 +36,7 @@ const modules: Array<{
   },
   {
     key: "bending",
-    label: "Beam",
+    label: "Bending",
     href: "/bending-shear",
     summary: "Flexure, shear, deflection; W + HSS check modes.",
     bullets: ["Load-to-M/V helper", "Utilization by limit state"],
@@ -47,20 +47,6 @@ const modules: Array<{
     href: "/shear",
     summary: "Web shear capacity from PROGRAM-2 Shear (ANALYSIS).",
     bullets: ["Cv case detection", "Method-aware capacity"],
-  },
-  {
-    key: "combined",
-    label: "Combined",
-    href: "/combined",
-    summary: "Integrated bending + shear + deflection design workflow.",
-    bullets: ["Workbook load combos", "Lightest SAFE shape hint"],
-  },
-  {
-    key: "connections",
-    label: "Connections",
-    href: "/connections",
-    summary: "Bolts, slip-critical, tension, interaction, welds.",
-    bullets: ["Overall summary", "Design hints (n, weld size)"],
   },
 ];
 
@@ -336,7 +322,7 @@ export function HomeDashboard() {
       if (k === "1") window.location.assign("/tension");
       if (k === "2") window.location.assign("/compression");
       if (k === "3") window.location.assign("/bending-shear");
-      if (k === "4") window.location.assign("/connections");
+      if (k === "4") window.location.assign("/shear");
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -607,8 +593,6 @@ export function HomeDashboard() {
               { label: "Compression", href: "/compression" },
               { label: "Bending", href: "/bending-shear" },
               { label: "Shear", href: "/shear" },
-              { label: "Combined", href: "/combined" },
-              { label: "Connections", href: "/connections" },
             ] as const;
             const q = moduleQuery.trim().toLowerCase();
             const list = q.length ? all.filter((m) => m.label.toLowerCase().includes(q)) : all;
@@ -624,8 +608,6 @@ export function HomeDashboard() {
               Compression: "2",
               Bending: "3",
               Shear: "4",
-              Combined: "5",
-              Connections: "6",
             };
             return list.map((m) => {
             const diagramSrc = moduleDiagramSrc[m.label] ?? null;
