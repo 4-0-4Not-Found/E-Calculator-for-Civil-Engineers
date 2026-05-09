@@ -75,6 +75,16 @@ export default function ShearPage() {
             </>
           }
           description="Workbook source: PROGRAM-2.xlsx / Shear (ANALYSIS). Uses selected W-shape web depth and thickness with method-specific shear capacity."
+          chips={[
+            {
+              key: "saved",
+              label: saving ? "Saving…" : savedAt ? `Saved ${formatRelativeTime(savedAt) ?? "recently"}` : "Not saved yet",
+            },
+            { key: "mat", label: mat.key },
+            { key: "method", label: designMethod },
+            { key: "shape", label: shapeName },
+            { key: "stiff", label: stiffening === "stiffened" ? "Stiffened web" : "Unstiffened web" },
+          ]}
           image={{ src: "/assets/shear.png", alt: "Shear module" }}
         />
 
@@ -168,6 +178,29 @@ export default function ShearPage() {
                 moduleKey: "shear",
                 draftStorageKey: STORAGE.shear,
                 getCurrent: () => ({ designMethod, material, shapeName, demandV, stiffening, alpha }),
+              }}
+              compare={{
+                storageKey: CLIENT_PERSISTENCE.compareSnapshot("shear"),
+                getCurrent: () => {
+                  const utilPct =
+                    out && out.controllingStrength > 0
+                      ? (out.demand / out.controllingStrength) * 100
+                      : null;
+                  const lines: string[] = [
+                    `Method: ${designMethod} · Material: ${material}`,
+                    `Shape: ${shapeName}`,
+                    `Web: ${stiffening}${stiffening === "stiffened" ? ` (α = ${alpha || "0"} in)` : ""}`,
+                    `Demand V_u: ${demandV || "0"} kips`,
+                    out ? `Governing: ${out.governingCase}` : "Governing: —",
+                    out ? `Capacity (${designMethod === "LRFD" ? "φV_n" : "V_n/Ω"}): ${out.controllingStrength.toFixed(3)} kips` : "Capacity: —",
+                    out ? `Status: ${out.isSafe ? "SAFE" : "NOT SAFE"}` : "Status: —",
+                    utilPct != null && Number.isFinite(utilPct) ? `Utilization: ${utilPct.toFixed(1)}%` : "Utilization: —",
+                  ];
+                  return {
+                    title: `Shear — ${shapeName}`,
+                    lines,
+                  };
+                },
               }}
               copyText={() =>
                 [

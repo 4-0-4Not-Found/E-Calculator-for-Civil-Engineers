@@ -14,9 +14,10 @@ import {
   calculateGrooveWeldShearLRFD,
 } from "@/lib/limit-state-engine/connections-advanced";
 import { calculateTensionDesign } from "@/lib/limit-state-engine/tension";
+import { calculateShearDesign } from "@/lib/limit-state-engine/shear";
 import type { CalculationOutput, CalculationStep } from "@/lib/types/calculation";
 import type { BoltGroup, BoltThreadMode } from "@/lib/data/bolts";
-import { steelMaterialMap, type SteelMaterialKey } from "@/lib/data/materials";
+import { normalizeSteelMaterialKey, steelMaterialMap, type SteelMaterialKey } from "@/lib/data/materials";
 
 const toN = (v: string | undefined) => (v !== undefined ? Number(v) || 0 : 0);
 
@@ -94,7 +95,25 @@ export type BendingSummary =
     }
   | { module: "bending"; ok: false; error: string };
 
-export type ModuleSummary = TensionSummary | CompressionSummary | BendingSummary | ConnectionsReportSummary;
+export type ShearSummary =
+  | {
+      module: "shear";
+      ok: true;
+      output: CalculationOutput;
+      shapeName: string;
+      materialLabel: string;
+      designMethod: "LRFD" | "ASD";
+      stiffening: "unstiffened" | "stiffened";
+      alphaIn?: number;
+    }
+  | { module: "shear"; ok: false; error: string };
+
+export type ModuleSummary =
+  | TensionSummary
+  | CompressionSummary
+  | BendingSummary
+  | ShearSummary
+  | ConnectionsReportSummary;
 
 export function summarizeTension(p: Record<string, string> | null): TensionSummary {
   if (!p || typeof p.material !== "string") {
@@ -239,6 +258,52 @@ export function summarizeBending(p: Record<string, string> | null): BendingSumma
     };
   } catch (e) {
     return { module: "bending", ok: false, error: e instanceof Error ? e.message : "Error" };
+  }
+}
+
+export function summarizeShear(p: Record<string, string> | null): ShearSummary {
+  if (!p || typeof p.shapeName !== "string") {
+    return { module: "shear", ok: false, error: "No saved shear inputs." };
+  }
+  try {
+    const shape = aiscShapes.find((s) => s.shape === p.shapeName);
+    if (!shape) return { module: "shear", ok: false, error: "Shape not found." };
+    if (shape.type !== "W") {
+      return { module: "shear", ok: false, error: "Shear module supports W-shapes only." };
+    }
+    const matKey = normalizeSteelMaterialKey(p.material) as SteelMaterialKey;
+    const mat = steelMaterialMap[matKey];
+    if (!mat) return { module: "shear", ok: false, error: "Invalid steel type." };
+
+    const designMethod: "LRFD" | "ASD" = p.designMethod === "ASD" ? "ASD" : "LRFD";
+    const stiffening: "unstiffened" | "stiffened" =
+      p.stiffening === "stiffened" ? "stiffened" : "unstiffened";
+    const alphaParsed = Number(p.alpha);
+    const alphaIn =
+      stiffening === "stiffened" && Number.isFinite(alphaParsed) && alphaParsed > 0 ? alphaParsed : undefined;
+
+    const out = calculateShearDesign({
+      designMethod,
+      Fy: mat.Fy,
+      d: shape.d,
+      tw: shape.tw,
+      hTw: shape.h_tw,
+      demandV: toN(p.demandV),
+      stiffening,
+      alpha: alphaIn,
+    });
+    return {
+      module: "shear",
+      ok: true,
+      output: out,
+      shapeName: p.shapeName,
+      materialLabel: mat.label,
+      designMethod,
+      stiffening,
+      alphaIn,
+    };
+  } catch (e) {
+    return { module: "shear", ok: false, error: e instanceof Error ? e.message : "Error" };
   }
 }
 

@@ -8,12 +8,17 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 
+/**
+ * NOTE: This panel is currently NOT rendered anywhere — external project-level
+ * JSON backup/restore was removed per client request in favour of in-app save
+ * slots. The component is kept here for safety / potential future use, but
+ * receives no telemetry, debug instrumentation, or external network calls.
+ */
 export function ProjectBackupPanel() {
   const [msg, setMsg] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
   const toast = useToast();
-  const isDev = process.env.NODE_ENV === "development";
 
   const download = useCallback(() => {
     const bundle = collectBundle();
@@ -23,57 +28,32 @@ export function ProjectBackupPanel() {
     a.download = `spanledger-project-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
-    // #region agent log (download click)
-    if (isDev) {
-      fetch('/api/debug184fe2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'184fe2',runId:'pre-fix',hypothesisId:'H1',location:'ProjectBackupPanel.tsx:download',message:'Download invoked',data:{filename:a.download,keys:Object.keys(bundle)},timestamp:Date.now()})}).catch(()=>{});
-    }
-    // #endregion agent log (download click)
     setMsg("Download started — includes inputs saved from each module you have used.");
     toast.push({ title: "Download started", message: a.download, tone: "info" });
-  }, [toast, isDev]);
+  }, [toast]);
 
   const onFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
-    // #region agent log (upload selected)
-    if (isDev) {
-      fetch('/api/debug184fe2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'184fe2',runId:'pre-fix',hypothesisId:'H2',location:'ProjectBackupPanel.tsx:onFile',message:'File selected',data:{name:f.name,size:f.size,type:f.type},timestamp:Date.now()})}).catch(()=>{});
-    }
-    // #endregion agent log (upload selected)
     const reader = new FileReader();
     reader.onload = () => {
       try {
         const data = JSON.parse(String(reader.result));
         if (applyBundle(data)) {
-          // #region agent log (restore success)
-          if (isDev) {
-            fetch('/api/debug184fe2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'184fe2',runId:'pre-fix',hypothesisId:'H2',location:'ProjectBackupPanel.tsx:onFile',message:'Restore applied',data:{topKeys:data&&typeof data==='object'?Object.keys(data as object).slice(0,20):null},timestamp:Date.now()})}).catch(()=>{});
-          }
-          // #endregion agent log (restore success)
           setMsg("Loaded — refresh the page or open each module to see values.");
           toast.push({ title: "Loaded", message: "Project restored from JSON.", tone: "good" });
         } else {
-          // #region agent log (restore rejected)
-          if (isDev) {
-            fetch('/api/debug184fe2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'184fe2',runId:'pre-fix',hypothesisId:'H5',location:'ProjectBackupPanel.tsx:onFile',message:'Restore rejected by applyBundle',data:{dataType:data===null?'null':typeof data},timestamp:Date.now()})}).catch(()=>{});
-          }
-          // #endregion agent log (restore rejected)
           setMsg("Could not read project file.");
           toast.push({ title: "Load failed", message: "Could not read project file.", tone: "bad" });
         }
       } catch {
-        // #region agent log (restore parse error)
-        if (isDev) {
-          fetch('/api/debug184fe2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'184fe2',runId:'pre-fix',hypothesisId:'H5',location:'ProjectBackupPanel.tsx:onFile',message:'Restore failed: JSON.parse error',data:{},timestamp:Date.now()})}).catch(()=>{});
-        }
-        // #endregion agent log (restore parse error)
         setMsg("Invalid JSON file.");
         toast.push({ title: "Invalid file", message: "That JSON file could not be parsed.", tone: "bad" });
       }
       e.target.value = "";
     };
     reader.readAsText(f);
-  }, [toast, isDev]);
+  }, [toast]);
 
   const clearAll = useCallback(() => {
     setConfirmClearOpen(true);
@@ -83,14 +63,9 @@ export function ProjectBackupPanel() {
     Object.values(STORAGE).forEach((k) => localStorage.removeItem(k));
     AUTOSAVE_MODULE_KEYS.forEach((m) => localStorage.removeItem(CLIENT_PERSISTENCE.savedAt(m)));
     localStorage.removeItem(CLIENT_PERSISTENCE.lastRoute);
-    // #region agent log (clear all)
-    if (isDev) {
-      fetch('/api/debug184fe2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'184fe2',runId:'pre-fix',hypothesisId:'H4',location:'ProjectBackupPanel.tsx:doClearAll',message:'Cleared localStorage keys',data:{removedKeys:{tension:STORAGE.tension,compression:STORAGE.compression,bending:STORAGE.bending,connections:STORAGE.connections},removedTs:AUTOSAVE_MODULE_KEYS.map((m)=>CLIENT_PERSISTENCE.savedAt(m))},timestamp:Date.now()})}).catch(()=>{});
-    }
-    // #endregion agent log (clear all)
     setMsg("Saved inputs cleared for this browser.");
     toast.push({ title: "Cleared", message: "Saved inputs removed for this browser.", tone: "info" });
-  }, [toast, isDev]);
+  }, [toast]);
 
   return (
     <section className="rounded-2xl bg-[color:var(--mint)] p-8 text-sm shadow-[var(--shadow-sm)]">

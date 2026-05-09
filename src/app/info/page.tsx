@@ -64,8 +64,8 @@ export default function InfoPage() {
             <div className="border-t border-slate-200 p-5">
               <ul className="list-disc space-y-2 pl-5 text-sm">
               <li>
-                Full connection design: eccentric bolt groups, full T-stub / end-plate prying, combined weld limit states beyond the
-                shear-on-throat checks here, and project-specific details not captured in a short form.
+                Connection design (bolts, welds, prying, eccentric bolt groups, full T-stub / end-plate detailing) — this build
+                covers Tension, Compression, Bending, and Shear only.
               </li>
               <li>
                 <strong>Bending design mode</strong> does not search HSS — use Analysis mode for HSS strong-axis review with the

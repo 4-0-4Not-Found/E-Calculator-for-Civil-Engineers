@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
+// Node.js helper script (CommonJS) for one-off Excel parity dumps. Not part of the app bundle.
 const xlsx = require("xlsx");
 
 const wb = xlsx.readFile("C:/Users/ranol/Downloads/Steel-Program-1-2.xlsx", { cellFormula: true });

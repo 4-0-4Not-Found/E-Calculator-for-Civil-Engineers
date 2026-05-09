@@ -2,10 +2,11 @@ import { STORAGE } from "@/lib/storage/keys";
 import {
   summarizeBending,
   summarizeCompression,
+  summarizeShear,
   summarizeTension,
 } from "@/lib/report/build-summary";
 
-/** Parse a string-keyed module payload from localStorage (tension, compression, bending). */
+/** Parse a string-keyed module payload from localStorage (tension, compression, bending, shear). */
 export function parseModuleStringStore(key: string): Record<string, string> | null {
   try {
     const raw = localStorage.getItem(key);
@@ -17,12 +18,13 @@ export function parseModuleStringStore(key: string): Record<string, string> | nu
   }
 }
 
-/** Read the active module blobs (Tension, Compression, Bending) — call only in the browser after mount. */
+/** Read the active module blobs (Tension, Compression, Bending, Shear) — call only in the browser after mount. */
 export function readModuleStoresFromLocalStorage() {
   return {
     tension: parseModuleStringStore(STORAGE.tension),
     compression: parseModuleStringStore(STORAGE.compression),
     bending: parseModuleStringStore(STORAGE.bending),
+    shear: parseModuleStringStore(STORAGE.shear),
   };
 }
 
@@ -32,5 +34,6 @@ export function summarizeModuleStores(stores: ReturnType<typeof readModuleStores
     tension: summarizeTension(stores.tension),
     compression: summarizeCompression(stores.compression),
     bending: summarizeBending(stores.bending),
+    shear: summarizeShear(stores.shear),
   };
 }

@@ -159,6 +159,16 @@ summary::-webkit-details-marker {
 }
 
 @media print {
+  /*
+   * Page geometry. Margins leave room for the running header/footer rendered
+   * once at the top of each report page (see `.report-print-header` /
+   * `.report-print-footer` in src/app/report/page.tsx).
+   */
+  @page {
+    size: Letter;
+    margin: 14mm 14mm 16mm;
+  }
+
   /* Remove app chrome + interactive UI */
   header,
   nav,
@@ -176,7 +186,11 @@ summary::-webkit-details-marker {
   html,
   body {
     background: #fff !important;
-    color: #000 !important;
+    color: #0b1220 !important;
+    font-size: 10.5pt;
+    line-height: 1.45;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   /* Improve report readability on paper */
@@ -193,7 +207,7 @@ summary::-webkit-details-marker {
     break-inside: avoid;
   }
 
-  /* Expand details content and reduce visual noise */
+  /* Default: hide the on-screen <summary> chrome */
   summary {
     display: none !important;
   }
@@ -205,8 +219,101 @@ summary::-webkit-details-marker {
     padding-top: 0 !important;
   }
 
-  /* Tables: preserve borders */
+  /* Tables: preserve borders + avoid bad page splits */
   table {
     break-inside: avoid;
   }
+
+  /* ---- Report page print polish ---- */
+
+  /* Hidden by default on screen; shown only on print to give each section a real heading. */
+  .report-print-only {
+    display: block !important;
+  }
+
+  /* Module section header (printed-only, replaces the on-screen summary). */
+  .report-print-section-header {
+    display: flex !important;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12pt;
+    margin: 0 0 8pt;
+    padding: 0 0 6pt;
+    border-bottom: 1pt solid #cbd5e1;
+  }
+  .report-print-section-header h2 {
+    margin: 0;
+    font-size: 14pt;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: #0b1220;
+  }
+  .report-print-section-header .scenario {
+    font-size: 9.5pt;
+    color: #475569;
+    margin: 2pt 0 0;
+  }
+  .report-print-section-header .pill {
+    border: 1pt solid #cbd5e1;
+    border-radius: 999px;
+    padding: 1pt 8pt;
+    font-size: 9pt;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .report-print-section-header .pill.safe {
+    border-color: #86efac;
+    background: #ecfdf5 !important;
+    color: #065f46 !important;
+  }
+  .report-print-section-header .pill.unsafe {
+    border-color: #fca5a5;
+    background: #fef2f2 !important;
+    color: #991b1b !important;
+  }
+  .report-print-section-header .pill.empty {
+    border-color: #cbd5e1;
+    background: #f1f5f9 !important;
+    color: #334155 !important;
+  }
+
+  /* Running cover header / footer for the report. The page CSS above leaves
+     room; the elements live in <ReportPage> and use `position: fixed`. */
+  .report-print-header,
+  .report-print-footer {
+    display: flex !important;
+    position: fixed;
+    left: 0;
+    right: 0;
+    align-items: center;
+    justify-content: space-between;
+    color: #475569;
+    font-size: 9pt;
+    padding: 0 14mm;
+  }
+  .report-print-header {
+    top: 4mm;
+  }
+  .report-print-footer {
+    bottom: 4mm;
+    border-top: 0.5pt solid #cbd5e1;
+    padding-top: 2mm;
+  }
+  .report-print-header .brand,
+  .report-print-footer .brand {
+    font-weight: 800;
+    color: #0b1220;
+  }
+
+  /* Each module starts on a new page so the layout stays clean. */
+  .report-print-break-before {
+    break-before: page;
+  }
+}
+
+/* On screen, the print-only blocks should never render. */
+.report-print-only,
+.report-print-header,
+.report-print-footer {
+  display: none;
 }

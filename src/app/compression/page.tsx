@@ -16,6 +16,7 @@ import { CLIENT_PERSISTENCE } from "@/lib/client-persistence";
 import { STORAGE } from "@/lib/storage/keys";
 import { AppShell } from "@/components/layout/AppShell";
 import { ResultHero } from "@/components/results/ResultHero";
+import { ModuleHero } from "@/components/layout/ModuleHero";
 import { PageFooterNav } from "@/components/navigation/PageFooterNav";
 import { CalculatorActionRail } from "@/components/actions/CalculatorActionRail";
 import { useBrowserDraft } from "@/features/module-runtime/useBrowserDraft";
@@ -37,9 +38,6 @@ import {
 } from "@/features/steel/compression/components";
 import { asdAxialLoad, lrfdFactoredAxialLoad } from "@/lib/excel-parity";
 import { ModeSwitch } from "@/components/ui/ModeSwitch";
-
-const META_CHIP =
-  "inline-flex h-8 items-center rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-2)] px-2.5 text-[11px] font-semibold text-[color:var(--foreground)]/80 shadow-sm";
 
 export default function CompressionPage() {
   const [material, setMaterial] = useState<SteelMaterialKey>(compressionDefaults.material as SteelMaterialKey);
@@ -387,62 +385,32 @@ export default function CompressionPage() {
 
   return (
     <AppShell>
-      <div className="space-y-10 md:space-y-12">
-        {/* Hero */}
-        <section className="rounded-3xl border border-[color:var(--border)] bg-[color:var(--zone-hero)] px-6 py-8 shadow-[var(--shadow-sm)] sm:px-10 sm:py-10">
-          <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
-            <div className="min-w-0">
-              <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[color:var(--muted)]">
-                steel module
-              </p>
-              <h1 className="mt-3 text-[34px] font-extrabold leading-[0.98] tracking-tight text-[color:var(--foreground)] sm:text-[44px]">
-                <span className="bg-gradient-to-r from-[color:var(--heading-grad-from)] to-[color:var(--heading-grad-to)] bg-clip-text text-transparent">
-                  Compression
-                </span>{" "}
-                Analysis &amp; Design
-              </h1>
-              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[color:var(--muted)]">
-                Column buckling (E3), LRFD or ASD. Inputs save in this browser.
-              </p>
-
-              <div className="mt-5 flex flex-wrap items-center gap-2">
-                <span className={META_CHIP}>
-                  {saving
-                    ? "Saving…"
-                    : savedAt != null
-                      ? `Saved ${formatRelativeTime(savedAt) ?? "recently"}`
-                      : "Not saved yet"}
-                </span>
-                <span className={META_CHIP}>{mat.key}</span>
-                <span className={META_CHIP}>{designMethod}</span>
-                <span className={META_CHIP}>{shapeName}</span>
-                <span
-                  className={META_CHIP + " border-[color:var(--brand)]/30 bg-[color:var(--brand)]/8 text-[color:var(--brand)]"}
-                  aria-live="polite"
-                >
-                  {mode === "design" ? "Design mode" : "Analysis mode"}
-                </span>
-              </div>
-            </div>
-
-            <div className="w-full md:w-auto md:max-w-[360px]">
-              <div
-                className="relative overflow-hidden rounded-2xl border border-white/80 bg-white p-4 shadow-sm"
-                aria-hidden="true"
-              >
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent to-[color:var(--mint)]/55" />
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/assets/compression.png"
-                  alt=""
-                  className="relative z-[1] mx-auto h-36 w-auto max-w-full object-contain sm:h-40 md:h-44"
-                  draggable={false}
-                  decoding="async"
-                />
-              </div>
-            </div>
-          </div>
-        </section>
+      <div className="space-y-8 md:space-y-10">
+        <ModuleHero
+          eyebrow="steel module"
+          title={
+            <>
+              Compression{" "}
+              <span className="text-[color:var(--foreground)]">Analysis &amp; Design</span>
+            </>
+          }
+          description="Column buckling (E3), LRFD or ASD. Inputs save in this browser."
+          chips={[
+            {
+              key: "saved",
+              label: saving
+                ? "Saving…"
+                : savedAt != null
+                  ? `Saved ${formatRelativeTime(savedAt) ?? "recently"}`
+                  : "Not saved yet",
+            },
+            { key: "mat", label: mat.key },
+            { key: "method", label: designMethod },
+            { key: "shape", label: shapeName },
+            { key: "mode", label: mode === "design" ? "Design mode" : "Analysis mode" },
+          ]}
+          image={{ src: "/assets/compression.png" }}
+        />
 
         {/* Main workspace */}
         <div className="grid gap-6 lg:grid-cols-12 lg:items-start">

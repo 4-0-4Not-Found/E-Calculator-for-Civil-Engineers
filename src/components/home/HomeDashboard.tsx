@@ -11,7 +11,8 @@ import { PRODUCT_BRAND } from "@/lib/brand";
 import { AUTOSAVE_MODULE_KEYS, CLIENT_PERSISTENCE, type AutosaveModuleKey } from "@/lib/client-persistence";
 import { STORAGE } from "@/lib/storage/keys";
 
-type ModuleKey = keyof typeof STORAGE;
+/** Active home modules only — Combined / Connections were removed per client request. */
+type ModuleKey = "tension" | "compression" | "bending" | "shear";
 
 const modules: Array<{
   key: ModuleKey;
@@ -54,9 +55,7 @@ const moduleDiagramSrc: Record<string, string> = {
   Tension: "/assets/tension.png",
   Compression: "/assets/compression.png",
   Bending: "/assets/bending.png",
-  Connections: "/assets/connections.png",
   Shear: "/assets/shear.png",
-  Combined: "/assets/combined.png",
 };
 
 function tsKey(m: ModuleKey) {
@@ -127,8 +126,6 @@ function emptyModuleState(): Record<ModuleKey, { hasData: boolean; savedTs: numb
     compression: { hasData: false, savedTs: null },
     bending: { hasData: false, savedTs: null },
     shear: { hasData: false, savedTs: null },
-    combined: { hasData: false, savedTs: null },
-    connections: { hasData: false, savedTs: null },
   };
 }
 
@@ -154,24 +151,10 @@ function previewLineFor(key: ModuleKey): string | null {
       const Vu = typeof p.Vu === "string" ? p.Vu : null;
       return shape && Mu && Vu ? `${shape} · Mu ${Mu} · Vu ${Vu}` : shape ? String(shape) : null;
     }
-    if (key === "connections") {
-      const vu = typeof p.vu === "string" ? p.vu : null;
-      const tu = typeof p.tu === "string" ? p.tu : null;
-      const n = typeof p.nBolts === "string" ? p.nBolts : null;
-      const d = typeof p.dBolt === "string" ? p.dBolt : null;
-      return vu && n && d ? `Vu ${vu} · Tu ${tu ?? "0"} · n=${n} d=${d} in` : vu ? `Vu ${vu}` : null;
-    }
     if (key === "shear") {
       const shape = typeof p.shapeName === "string" ? p.shapeName : null;
       const vu = typeof p.demandV === "string" ? p.demandV : null;
       return shape && vu ? `${shape} · Vu ${vu} kips` : shape ? shape : null;
-    }
-    if (key === "combined") {
-      const shape = typeof p.shapeName === "string" ? p.shapeName : null;
-      const span = typeof p.spanFt === "string" ? p.spanFt : null;
-      const dl = typeof p.deadLoadKft === "string" ? p.deadLoadKft : null;
-      const ll = typeof p.liveLoadKft === "string" ? p.liveLoadKft : null;
-      return shape && span ? `${shape} · L ${span} ft · D/L ${dl ?? "0"}/${ll ?? "0"}` : shape ? shape : null;
     }
     return null;
   } catch {
@@ -260,8 +243,6 @@ export function HomeDashboard() {
       "/assets/compression.png",
       "/assets/bending.png",
       "/assets/shear.png",
-      "/assets/combined.png",
-      "/assets/connections.png",
     ];
     const links: HTMLLinkElement[] = [];
     for (const href of hrefs) {
