@@ -1,6 +1,6 @@
 {
-  "name": "SpanLedger Steel",
-  "short_name": "SpanLedger",
+  "name": "SteelSight",
+  "short_name": "SteelSight",
   "description": "Steel member design calculators for civil engineering coursework — local-first PWA.",
   "id": "/",
   "scope": "/",

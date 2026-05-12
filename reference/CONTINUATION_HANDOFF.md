@@ -1,10 +1,10 @@
-# Continuation handoff (SpanLedger Steel)
+# Continuation handoff (SteelSight)
 
 Use this file when starting a **new chat thread** so context is not lost.
 
 ## Product
 
-- **Brand:** SpanLedger Steel (`src/lib/brand.ts`); visible app title/tagline in `src/lib/ui/strings.ts` also pull from `PRODUCT_BRAND`.
+- **Brand:** SteelSight (`src/lib/brand.ts`); visible app title/tagline in `src/lib/ui/strings.ts` also pull from `PRODUCT_BRAND`.
 - **PWA / metadata:** `public/manifest.json`, `src/app/layout.tsx`
 - **Install icons:** `public/icons/icon-{180,192,512}.png`, `public/apple-touch-icon.png`, in-app brand image `public/publicbrandowl-logo.png`.
 

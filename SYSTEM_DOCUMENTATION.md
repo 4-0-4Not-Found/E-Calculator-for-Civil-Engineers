@@ -1,9 +1,9 @@
-# SpanLedger Steel — System Documentation
+# SteelSight — System Documentation
 
 ## Introduction
 
 ### Purpose of the system
-SpanLedger Steel is a web-based engineering tool that helps users run **AISC 360–style structural steel checks** directly in the browser. It is built for learning and iterative design/checking workflows: enter inputs, review results and steps, then compile a combined report.
+SteelSight is a web-based engineering tool that helps users run **AISC 360–style structural steel checks** directly in the browser. It is built for learning and iterative design/checking workflows: enter inputs, review results and steps, then compile a combined report.
 
 ### Target users
 - **Primary**: civil/structural engineering students completing steel design coursework.

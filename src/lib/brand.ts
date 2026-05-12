@@ -1,9 +1,9 @@
-/** Product copy for this white-label build (SpanLedger Steel). */
+/** Product copy for this white-label build (SteelSight). */
 export const PRODUCT_BRAND = {
   /** Primary product name shown in the shell and PWA metadata. */
-  name: "SpanLedger Steel",
+  name: "SteelSight",
   /** Short name for install banners and compact UI. */
-  shortName: "SpanLedger",
+  shortName: "SteelSight",
   /** One-line value proposition on Home. */
   tagline:
     "Steel member checks for coursework — inputs stay on this device, with print-friendly reporting.",

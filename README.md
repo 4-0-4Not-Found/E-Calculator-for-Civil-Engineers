@@ -1,6 +1,6 @@
-# SpanLedger Steel (PWA) — Structural Steel Calculators
+# SteelSight (PWA) — Structural Steel Calculators
 
-SpanLedger Steel is a browser-first set of structural steel calculators designed for **learning and coursework workflows**. It runs AISC-360–style checks using **local TypeScript calculation modules** (no external calculation service), provides step-by-step breakdowns for review, and supports offline-friendly usage via a **Progressive Web App (PWA)**.
+SteelSight is a browser-first set of structural steel calculators designed for **learning and coursework workflows**. It runs AISC-360–style checks using **local TypeScript calculation modules** (no external calculation service), provides step-by-step breakdowns for review, and supports offline-friendly usage via a **Progressive Web App (PWA)**.
 
 > Educational tool only: verify real designs with applicable standards and qualified review.
 
@@ -169,7 +169,7 @@ npm -v
 
 ### Option A — Run from a ZIP archive
 
-1. **Unzip** the archive to any folder (a plain path like `C:\projects\spanledger-steel` works best).
+1. **Unzip** the archive to any folder (a plain path like `C:\projects\steelsight` works best).
 2. **Open a terminal** in the project folder (`aisc-pwa/`).
 3. **Install dependencies** (only the first time):
    ```bash

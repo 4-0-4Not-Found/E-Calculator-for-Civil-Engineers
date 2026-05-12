@@ -17,15 +17,15 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SpanLedger Steel",
+  title: "SteelSight",
   description:
-    "SpanLedger Steel — steel member calculators for coursework. Runs locally in your browser with offline-friendly PWA support.",
+    "SteelSight — steel member calculators for coursework. Runs locally in your browser with offline-friendly PWA support.",
   manifest: "/manifest.json",
-  applicationName: "SpanLedger Steel",
+  applicationName: "SteelSight",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "SpanLedger",
+    title: "SteelSight",
   },
   formatDetection: {
     telephone: false,

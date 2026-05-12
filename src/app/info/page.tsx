@@ -9,7 +9,7 @@ export default function InfoPage() {
     <AppShell>
       <div className="space-y-8 md:space-y-10">
         <ModuleHero
-          eyebrow="spanledger"
+          eyebrow="steelsight"
           title={
             <>
               About{" "}
