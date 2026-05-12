@@ -411,7 +411,7 @@ export function HomeDashboard() {
         <div className="flex flex-col items-start justify-between gap-10 md:flex-row md:items-center">
           <div className="max-w-xl">
             <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[color:var(--foreground)]">
-              steel-ingo
+              steelsight
             </p>
             <p className="mt-2 text-xs text-[color:var(--muted)]">
               An AISC-based Steel Analysis
