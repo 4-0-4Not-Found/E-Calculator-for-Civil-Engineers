@@ -23,10 +23,8 @@ export const BREADCRUMB_LABELS: Record<string, string> = {
   "/tension": "Tension",
   "/compression": "Compression",
   "/bending-shear": "Bending",
-  "/connections": "Connections",
+  "/shear": "Shear",
   "/report": "Report",
   "/info": "Info",
   "/offline": "Offline",
-  "/workspace": "Workspace",
-  "/scope": "Scope",
 };

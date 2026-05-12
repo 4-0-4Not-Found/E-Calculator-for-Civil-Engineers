@@ -427,7 +427,7 @@ export default function ReportPage() {
               Print / Save PDF
             </Button>
           }
-          image={{ src: "/assets/combined.png" }}
+          image={{ src: "/publicbrandowl-logo.png", alt: `${PRODUCT_BRAND.shortName} mark` }}
         />
 
         {/* Print-only cover sheet: brand title + generated date + four-row status table.

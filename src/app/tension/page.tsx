@@ -33,9 +33,6 @@ import { ModeSwitch } from "@/components/ui/ModeSwitch";
 const toNumber = (v: string) => Number(v) || 0;
 /** Client preference: ~3 decimals on final strengths / demands. */
 const fmt = (n: number, digits = 3) => (Number.isFinite(n) ? n.toFixed(digits) : "-");
-/** Unified metadata chips (header rail). */
-const META_CHIP =
-  "inline-flex h-8 items-center rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-2)] px-2.5 text-[11px] font-semibold text-[color:var(--foreground)]/80 shadow-sm";
 
 function isInvalidNumber(v: string, opts?: { min?: number; allowBlank?: boolean }) {
   const allowBlank = opts?.allowBlank ?? false;

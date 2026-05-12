@@ -1,4 +1,4 @@
-# Manual verification tests (four modules)
+# Manual verification tests (active modules)
 
 **Automated:** The same numerical expectations are asserted in Vitest — `src/lib/limit-state-engine/calculations-verification.test.ts`. Run **`npm run test`** in `aisc-pwa` (no browser required).
 
@@ -11,7 +11,7 @@
 | Tension | `/tension` | `material`, `shapeName`, `designMethod`, `mode`, `Pu`, `U`, `Ag`, `An`, `Agv`, `Anv`, `Agt`, `Ant`, `ubs`, stagger: `stagW`, `stagDh`, `stagN`, `stagS`, `stagG`, `stagT`, `shapeFamily` |
 | Compression | `/compression` | `material`, `shapeFamily`, `shapeName`, `k`, `L`, `Pu`, `designMethod` |
 | Bending | `/bending-shear` | `designMethod`, `material`, `shapeName`, `mode`, `Mu`, `Vu`, `L`, `wLive`, `deadLoadKft`, `liveLoadKft`, `spanFt`, `unbracedLbIn`, `cbFactor` |
-| Connections | `/connections` | `designMethod`, `shearMode`, `vu`, `tu`, `boltGroup`, `dBolt`, `nBolts`, `shearPlanes`, `threadMode`, `checkBearing`, `plateFu`, `plateT`, `lcMin`, `surfaceClass`, `slipHf`, `fexx`, `legIn`, `weldLen`, `weldDemand` |
+| Shear | `/shear` | `material`, `shapeName`, `designMethod`, `demandV`, `stiffening`, `alpha` |
 | Report | `/report` | Reads all of the above keys (see `src/lib/storage/keys.ts`). |
 
 **How to use this file**
@@ -55,16 +55,12 @@
 
 ---
 
-## 4. Connections — `/connections`
+## 4. Shear — `/shear`
 
 | ID | Use case | Fields & values | Expected (app engine) |
 |----|-----------|-----------------|------------------------|
-| **N1** | Bearing mode — **shear-only** check (no bearing plate limit) | **LRFD**, mode **Bearing**, **Vu** 120, **A325**, **d** 0.75, **n** 4, **shear planes** 2, threads **N**, **Include bearing** off | **F_nv** **54** ksi, φR_n shear ≈ **143.139** kips, governing same. **SAFE** for shear. |
-| **N2** | Slip-critical — **NOT SAFE** | **Slip** mode, **Vu** 80, Class **A**, **h_f** 1, 4 bolts 0.75 **A325**, 2 slip planes, **LRFD** | **T_b** **28** kips, available slip ≈ **75.936** kips. **NOT SAFE** (75.9 < 80). |
-| **N3** | Bolt tension — **NOT SAFE** | **Tu** 150, 4 bolts 0.75 **A325**, **N** | **F_nt** **90** ksi, φR_n tension ≈ **119.282** kips. **NOT SAFE**. |
-| **N4** | Shear + tension interaction — **SAFE** | Bearing on, **Vu** 60, **Tu** 40, plate **F_u** 65, **t** 0.5, **L_c** 1.25, 4 bolts 0.75 **A325**, 2 planes, **N** | Interaction sum ≈ **0.288** (≤ 1). **SAFE**. |
-| **N5** | Fillet weld — demand exceeds capacity | **F_EXX** 70, leg **0.25** in, length **4** in, demand **50** kips | Throat ≈ **0.1768** in, φR_n ≈ **22.27** kips. **NOT SAFE** for 50 kip demand. |
-| **N6** | ASD display | Same as N1, switch **ASD** | Allowable shear/bearing uses R_n/Ω; values scale vs LRFD per code in UI. |
+| **S1** | LRFD — W44X290 workbook parity | Steel **A992** (Fy 50), Shape **W44X290** (d 43.6, tw 0.865, h/tw 45), Method **LRFD**, demand 0, stiffening **unstiffened** | V_n ≈ **1131.42** kips. Controlling LRFD ≈ **1131.42** kips. |
+| **S2** | ASD — same section, allowable scales by Ω | Same as S1, Method **ASD** | Controlling allowable ≈ **754.28** kips (V_n / 1.5). |
 
 ---
 

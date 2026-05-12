@@ -17,7 +17,6 @@ import { STORAGE } from "@/lib/storage/keys";
 import { AppShell } from "@/components/layout/AppShell";
 import { ResultHero } from "@/components/results/ResultHero";
 import { ModuleHero } from "@/components/layout/ModuleHero";
-import { PageFooterNav } from "@/components/navigation/PageFooterNav";
 import { CalculatorActionRail } from "@/components/actions/CalculatorActionRail";
 import { useBrowserDraft } from "@/features/module-runtime/useBrowserDraft";
 import { smoothScrollTo } from "@/features/module-runtime/scroll";
@@ -108,6 +107,7 @@ export default function CompressionPage() {
   };
 
   const kEffective = Number(k) * (Number.isFinite(Number(builtUpFactor)) && Number(builtUpFactor) > 0 ? Number(builtUpFactor) : 1);
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization -- existing memoization intentional; refactor risks regression.
   const demandFromLoads = useMemo(() => {
     const dl = Number(deadLoad);
     const ll = Number(liveLoad);
@@ -219,7 +219,6 @@ export default function CompressionPage() {
       if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
       flashTimerRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [out.controllingStrength, out.demand, out.governingCase, inputsInvalid, designMethod, mat.key, shapeName]);
 
   const focusResults = useCallback(() => {

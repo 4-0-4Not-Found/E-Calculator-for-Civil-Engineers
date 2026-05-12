@@ -19,11 +19,6 @@ function readStored(): ThemeMode {
   return "light";
 }
 
-function resolve(mode: ThemeMode): "light" | "dark" {
-  void mode;
-  return "light";
-}
-
 function applyDom(mode: ThemeMode): "light" | "dark" {
   void mode;
   document.documentElement.classList.remove("dark");

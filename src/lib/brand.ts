@@ -6,7 +6,7 @@ export const PRODUCT_BRAND = {
   shortName: "SpanLedger",
   /** One-line value proposition on Home. */
   tagline:
-    "Steel member checks for coursework — inputs stay on this device, with export and print-friendly reporting.",
+    "Steel member checks for coursework — inputs stay on this device, with print-friendly reporting.",
   /** Shown near capability badges where helpful. */
   standardsBlurb: "Aligned with common AISC-style limit states for learning workflows.",
 } as const;

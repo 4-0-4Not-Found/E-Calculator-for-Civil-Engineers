@@ -8,16 +8,11 @@ SpanLedger Steel is a browser-first set of structural steel calculators designed
 
 ## Features
 
-- **Four calculator modules**: Tension, Compression, Beam (Bending & Shear), Connections
+- **Four calculator modules**: Tension, Compression, Bending (Bending & Shear page), Shear
 - **Report / print-to-PDF**: combined project snapshot computed from saved module inputs
 - **Autosave**: inputs persist to `localStorage` per module (device + browser scoped)
+- **In-app save slots**: up to 20 named slots per module (save, rename, load, delete)
 - **Compare runs**: pin a baseline snapshot and compare current results (browser-local)
-- **Export & sharing**
-  - **Copy summary** (plain text)
-  - **Download CSV** (Excel-compatible) where provided
-  - **Copy JSON** snapshot (clipboard) where provided
-  - **Download XLSX** workbook where provided
-  - **Project backup/restore**: download one JSON file for all modules and restore it later
 - **PWA/offline support**: caches core app shell and provides `/offline` fallback
 - **Responsive UI**: mobile-first layout, keyboard-friendly controls
 
@@ -55,28 +50,21 @@ User-facing routes:
 - `/` — Home dashboard
 - `/tension` — Tension module
 - `/compression` — Compression module
-- `/bending-shear` — Beam module (bending/shear/deflection)
-- `/connections` — Connections module (bolts + welds)
+- `/bending-shear` — Bending module (bending/shear/deflection)
+- `/shear` — Shear module (web shear; workbook PROGRAM-2 parity)
 - `/report` — Combined report snapshot (print/PDF friendly)
 - `/info` — In-app documentation: scope, units, limitations, tips
 - `/offline` — PWA offline fallback page
 
-Other routes:
+Legacy redirect routes (kept to avoid 404s on stale bookmarks):
 
-- `/scope` — redirect to `/info`
-- `/workspace` — legacy route; currently redirects to `/`
+- `/connections`, `/combined` → `/`
+- `/workspace` → `/`
+- `/scope` → `/info`
 
-### “Backend” and API routes
+### No application backend
 
-There is **no application backend** for engineering computations (no database, no remote compute service). The repository includes a small set of API routes under `src/app/api/**` used for development diagnostics.
-
-Current API routes:
-
-- `GET /api/where` — dev-only environment info (**404 in production**)
-- `POST /api/debug-log` — dev diagnostic log (**no-op in production**)
-- `GET /api/agent-beacon` — dev diagnostic beacon (**no-op in production**)
-- `GET/POST /api/agent-log` — dev diagnostic log (**no-op in production**)
-- `POST /api/debug184fe2` — dev-only diagnostic file log (**hard no-op in production**; client calls are gated to dev)
+There is **no application backend** for engineering computations (no database, no remote compute service, no API routes). All work — calculation, storage, and report generation — happens client-side in the browser.
 
 ---
 
@@ -84,12 +72,12 @@ Current API routes:
 
 The UI is organized into:
 
-- `src/app/**`: module pages and supporting routes (`layout.tsx`, module `page.tsx` files, API routes)
+- `src/app/**`: module pages and supporting routes (`layout.tsx`, module `page.tsx` files)
 - `src/components/**`: reusable components
   - **Layout/navigation**: `AppShell`, `AppHeader`, `PageFooterNav`, section navigation
   - **UI primitives**: `Card`, `Button`, `Field`, `InputGroup`, `Toast`, `ConfirmDialog`
   - **Results**: `ResultHero`, `UtilizationBar`, `StepsTable`
-  - **Actions**: `CalculatorActionRail` (copy/export/compare/reset)
+  - **Actions**: `CalculatorActionRail` (save slots + compare + reset)
   - **Compare**: `CompareDrawer` (pin vs current)
 - `src/features/**`: cross-page UX utilities and feature modules (e.g. autosave hook)
 - `src/lib/**`: calculation engine, domain data, formatting, storage keys, report summarizers
@@ -104,9 +92,9 @@ Styling is Tailwind-first with small UI primitives used to keep module pages con
 | Module | Route | What it does (summary) |
 |---|---|---|
 | **Tension** | `/tension` | Gross yielding, net-section rupture, block shear. Includes stagger helper. Supports LRFD/ASD and “check vs design” modes. |
-| **Compression** | `/compression` | Member compression capacity with KL/r sensitivity. Supports LRFD/ASD. |
-| **Beam** | `/bending-shear` | Flexure, shear, and deflection checks. Includes helper inputs to derive demands from loads/span. Supports “check vs design” modes. |
-| **Connections** | `/connections` | Bolt and weld checks (shear/bearing, slip-critical, tension, interaction, fillet weld; plus optional helpers). |
+| **Compression** | `/compression` | Member compression capacity with KL/r sensitivity. Supports LRFD/ASD and “check vs design” modes. |
+| **Bending** | `/bending-shear` | Flexure, shear, and deflection checks. Includes helper inputs to derive demands from loads/span. Supports “check vs design” modes. |
+| **Shear** | `/shear` | Web shear capacity (G2) from workbook PROGRAM-2 Shear (ANALYSIS), with stiffened/unstiffened cases. |
 | **Report** | `/report` | Reads saved module inputs from this browser and recomputes a combined snapshot for printing/PDF. |
 | **Info** | `/info` | Scope, units, limitations, and workflow tips. |
 
@@ -117,7 +105,7 @@ The core calculations live in `src/lib/limit-state-engine/**`. Typical entry poi
 - `calculateTensionDesign(...)` (`src/lib/limit-state-engine/tension.ts`)
 - `calculateCompressionDesign(...)` (`src/lib/limit-state-engine/compression.ts`)
 - `calculateBendingShearDesign(...)` (`src/lib/limit-state-engine/bending.ts`)
-- Connections checks in `src/lib/limit-state-engine/connections.ts` and `connections-advanced.ts`
+- `calculateShearDesign(...)` (`src/lib/limit-state-engine/shear.ts`)
 
 Each returns a structured `CalculationOutput` (see `src/lib/types/calculation`) containing:
 
@@ -150,9 +138,9 @@ Module inputs are persisted in `localStorage` under these keys (`src/lib/storage
 - `spanledger/v1/forms/tension`
 - `spanledger/v1/forms/compression`
 - `spanledger/v1/forms/beam-flexure`
-- `spanledger/v1/forms/connections`
+- `spanledger/v1/forms/shear`
 
-Additional UI-level keys (theme, compare snapshots, last route, etc.) are defined in `src/lib/client-persistence.ts`.
+Additional UI-level keys (theme, compare snapshots, last route, save slots, etc.) are defined in `src/lib/client-persistence.ts`.
 
 ### Scope and behavior
 
@@ -162,41 +150,82 @@ Additional UI-level keys (theme, compare snapshots, last route, etc.) are define
 
 ---
 
-## Usage guide
+## Getting started
 
-### Run locally (development)
+### Prerequisites
+
+| Tool | Minimum version | Notes |
+|---|---|---|
+| **Node.js** | **20.9** (LTS recommended) | Download from [nodejs.org](https://nodejs.org/). |
+| **npm** | 10+ | Bundled with Node.js. |
+| (optional) **Git** | any recent | Only needed if cloning the repo (Option B). |
+
+Verify in a fresh terminal:
 
 ```bash
+node -v
+npm -v
+```
+
+### Option A — Run from a ZIP archive
+
+1. **Unzip** the archive to any folder (a plain path like `C:\projects\spanledger-steel` works best).
+2. **Open a terminal** in the project folder (`aisc-pwa/`).
+3. **Install dependencies** (only the first time):
+   ```bash
+   npm install
+   ```
+4. **Start the dev server:**
+   ```bash
+   npm run dev
+   ```
+   Open <http://localhost:3000> in any modern browser.
+
+### Option B — Run from the Git repository
+
+```bash
+git clone <your-repo-url>
+cd <repo-folder>/aisc-pwa
 npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`.
+Open <http://localhost:3000>.
 
-### Production build (local)
+### Production build (for offline / PWA testing)
+
+PWA install and offline behavior are **only enabled in production builds**. To test them locally:
 
 ```bash
 npm run build
 npm run start
 ```
 
+Then open <http://localhost:3000>. After the first visit, the page can be installed and used offline.
+
 ### Quality checks
 
 ```bash
-npm run lint
-npm test
+npm run lint   # Code static analysis
+npm test       # Calculation regression tests (16 tests across 4 files)
 ```
 
-### Typical workflow
+### Deploying to Vercel (optional)
 
-1. Start at **Home** (`/`) and open a module.
-2. Enter material/shape/demand inputs.
+1. Push the repository to GitHub.
+2. Go to <https://vercel.com/new> and import the repository.
+3. Framework preset **Next.js**. Build command `npm run build`. No environment variables required.
+4. Click **Deploy**. Full PWA behavior (install prompt, offline) activates on the deployed (https) URL.
+
+### Typical end-user workflow
+
+1. Start at **Home** (`/`) and open a module (keyboard shortcuts: `1`–`4` for the four calculators).
+2. Pick a material and AISC shape, then enter the demands.
 3. Use the action rail to:
-   - copy a summary,
-   - export CSV / JSON (and XLSX where offered),
+   - save the current inputs to a named slot (up to 20 per module),
    - pin and compare runs,
-   - reset inputs stored in this browser.
-4. Open **Report** (`/report`) and **Print / Save PDF** for submission or review.
+   - reset the inputs stored in this browser.
+4. Open **Report** (`/report`) and click **Print / Save PDF** for submission or review.
 
 ---
 
@@ -209,14 +238,13 @@ Each module can store a “pinned” snapshot in the browser and compare it to t
 - Pin current run → saved in `localStorage` under `CLIENT_PERSISTENCE.compareSnapshot(<module>)`
 - Compare view parses common metrics (capacity/demand/utilization/governing) from the module’s summary lines
 
-### Project backup/restore
+### Save slots (per module)
 
-The app can export a single JSON bundle containing all module inputs and later restore them:
+Each calculator page exposes a Save Slots panel:
 
-- **Backup**: generates a JSON file from the four module stores
-- **Restore**: writes restored objects back into module stores (browser-local)
-
-This is the recommended way to move work between browsers/devices.
+- Up to 20 named slots per module
+- Slots are saved, renamed, loaded, or deleted entirely client-side
+- Loading a slot writes its payload back into the module’s draft store and reloads the page
 
 ---
 
@@ -241,7 +269,6 @@ Practical expectations:
 
 - The app builds cleanly with `next build` and runs with `next start`.
 - Calculations run client-side; there is no database or external compute dependency.
-- Diagnostic API routes are **dev-focused** and are gated/no-op in production to avoid serverless filesystem/logging issues.
 
 ### Deploy steps
 
@@ -259,7 +286,6 @@ If you change caching/PWA behavior, always validate on a Vercel preview deployme
 ## Future improvements (optional)
 
 - Expand regression coverage for edge cases and boundary conditions (see `src/data/VERIFICATION_TESTS.md`).
-- Add stronger schema validation for backup/restore to provide clearer user feedback on invalid bundles.
 - Performance profiling: reduce unnecessary UI re-renders while keeping calculations deterministic and readable.
 
 ---

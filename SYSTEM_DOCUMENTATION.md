@@ -1,9 +1,9 @@
-# Structural Steel Calculators — System Documentation
+# SpanLedger Steel — System Documentation
 
 ## Introduction
 
 ### Purpose of the system
-Structural Steel Calculators is a web-based engineering tool that helps users run **AISC 360–style structural steel checks** directly in the browser. It is built for learning and iterative design/checking workflows: enter inputs, review results and steps, then compile a combined report.
+SpanLedger Steel is a web-based engineering tool that helps users run **AISC 360–style structural steel checks** directly in the browser. It is built for learning and iterative design/checking workflows: enter inputs, review results and steps, then compile a combined report.
 
 ### Target users
 - **Primary**: civil/structural engineering students completing steel design coursework.
@@ -29,12 +29,13 @@ This tool is intended for **educational use** and does not replace professional 
 - Dedicated modules for:
   - Tension
   - Compression
-  - Beam (bending, shear, deflection)
-  - Connections (bolts + welds, with optional helpers)
+  - Bending (flexure, shear, deflection)
+  - Shear (web shear capacity, workbook PROGRAM-2 parity)
   - Report (combined snapshot)
   - Info (capabilities, units, limitations, tips)
 - **Local persistence**: module inputs auto-save in the browser.
-- **Exports**: module actions include copy/export options where implemented.
+- **In-app save slots**: up to 20 named slots per module.
+- **Compare runs**: pin a baseline snapshot and compare current results.
 - **Responsive UI**: mobile-first layout and touch-friendly controls.
 - **Offline support**: service worker caching + offline fallback route (`/offline`).
 
@@ -49,14 +50,16 @@ Key user-facing routes:
 - `/` (Home)
 - `/tension`
 - `/compression`
-- `/bending-shear`
-- `/connections`
+- `/bending-shear` (Bending module)
+- `/shear`
 - `/report`
 - `/info`
 - `/offline` (PWA fallback page)
 
-Redirect:
-- `/scope` → `/info` (permanent redirect configured in `next.config.ts`)
+Legacy redirects (kept to avoid 404s on stale bookmarks):
+- `/connections`, `/combined` → `/`
+- `/workspace` → `/`
+- `/scope` → `/info`
 
 ### Component structure
 Reusable UI and feature components live under `src/components/`. Examples include:
@@ -64,17 +67,16 @@ Reusable UI and feature components live under `src/components/`. Examples includ
 - UI primitives (`Card`, `Button`, `Field`, inputs)
 - results display (`ResultHero`, `UtilizationBar`)
 - step-by-step tables (`StepsTable`)
-- action controls (`CalculatorActionRail`, export/copy helpers)
+- action controls (`CalculatorActionRail` — save slots, compare, reset)
 
-### “Backend” logic (local TypeScript modules)
+### Engineering logic (local TypeScript modules)
 All engineering logic is implemented as local, importable TypeScript functions under `src/lib/`. These modules do not depend on a remote API for computations.
 
 Key calculation entry points include:
 - `src/lib/limit-state-engine/tension.ts`: `calculateTensionDesign(...)`
 - `src/lib/limit-state-engine/compression.ts`: `calculateCompressionDesign(...)`
 - `src/lib/limit-state-engine/bending.ts`: `calculateBendingShearDesign(...)`
-- `src/lib/limit-state-engine/connections.ts`: bolt and weld checks (e.g., `calculateBoltShearBearingCombinedLRFD`, `calculateBoltSlipCritical`, `calculateFilletWeldLRFD`)
-- `src/lib/limit-state-engine/connections-advanced.ts`: optional helpers (e.g., groove weld shear, approximate prying thickness helper)
+- `src/lib/limit-state-engine/shear.ts`: `calculateShearDesign(...)`
 
 Calculation functions return a structured output (see `src/lib/types/calculation`) that includes:
 - a numeric **capacity/strength** (and demand),
@@ -82,16 +84,9 @@ Calculation functions return a structured output (see `src/lib/types/calculation
 - a set of **limit-state results**,
 - and a structured **step list** (for step-by-step tables).
 
-### API routes overview (`src/app/api/`)
-The project includes a small set of API route handlers used for logging/diagnostics during development.
+### No backend / no API routes
 
-Routes present in this repository:
-- `POST /api/agent-log`: development logging endpoint (no-op in production)
-- `GET /api/agent-beacon`: development diagnostic beacon (no-op in production)
-- `POST /api/debug-log`: development diagnostic logging (no-op in production)
-- `GET /api/where`: development-only environment info (**returns 404 in production**)
-
-These routes are intentionally restricted in production builds to keep deployments safe and lightweight.
+The application has **no server-side compute** and **no API routes**. All work — calculation, storage, and report generation — happens in the browser. The project is intentionally designed to be deployable as a static-ish Next.js app with no required environment variables or services.
 
 ---
 
@@ -134,7 +129,7 @@ These routes are intentionally restricted in production builds to keep deploymen
 - Controlling compression strength (kips) and safe/unsafe status for the entered demand
 - Step-by-step values including slenderness, Euler stress, and critical stress selection
 
-### Beam (Bending and Shear)
+### Bending
 **Route**: `/bending-shear`  
 **Purpose**: Evaluate a simply supported strong-axis member for flexure, shear, and deflection, and provide a quick load-to-demand helper workflow.
 
@@ -155,29 +150,23 @@ These routes are intentionally restricted in production builds to keep deploymen
 - Summary results rendered in `ResultHero` + limit-state cards
 - Step-by-step calculation output
 
-### Connections
-**Route**: `/connections`  
-**Purpose**: Provide bolt and weld checks commonly used in introductory steel connection design, including interaction where applicable.
+### Shear
+**Route**: `/shear`  
+**Purpose**: Evaluate web shear capacity (G2) following the PROGRAM-2 Shear (ANALYSIS) workbook conventions.
 
 **Key functions (calculation layer)**:
-- Bolt shear/bearing combination: `calculateBoltShearBearingCombinedLRFD(...)`
-- Slip-critical: `calculateBoltSlipCritical(...)`
-- Bolt tension: `calculateBoltTensionLRFD(...)`
-- Interaction: `calculateBoltShearTensionInteractionLRFD(...)`
-- Fillet weld: `calculateFilletWeldLRFD(...)`, helper `filletWeldMinLegInForDemand(...)`
-- Optional helpers: groove weld shear + approximate prying thickness (`src/lib/limit-state-engine/connections-advanced.ts`)
+- `calculateShearDesign(...)` (`src/lib/limit-state-engine/shear.ts`)
 
 **Key inputs (UI-level)**:
-- Design method (LRFD/ASD where supported by the module)
-- Bolt group + diameter + count + threads-in/out selection
-- Shear planes and demand forces (\(V_u\), \(T_u\))
-- Plate inputs for bearing checks (thickness, \(F_u\), clear distance \(L_c\))
-- Weld inputs (electrode strength, leg/throat, length, demand)
+- Material (Fy) and shape selection (W-shapes only)
+- Design method (LRFD/ASD)
+- Demand \(V_u\) / \(V_a\)
+- Stiffening mode (`unstiffened` / `stiffened`) and the optional clear-distance \(\alpha\) input for stiffened webs
 
 **Outputs**:
-- Overall safe/unsafe status based on the enabled checks
-- Per-check capacities, suggested bolt counts (where computed), and interaction values
-- Export/copy/report compatibility via saved inputs
+- Governing \(C_v\) case detection and capacity \(V_n\)
+- Method-aware controlling strength for LRFD or ASD
+- Step-by-step trail rendered in `StepsTable`
 
 ### Report
 **Route**: `/report`  
@@ -192,7 +181,7 @@ These routes are intentionally restricted in production builds to keep deploymen
 - Saved browser state only (no manual inputs on the Report page)
 
 **Outputs**:
-- A combined summary for Tension, Compression, Beam, and Connections
+- A combined summary for Tension, Compression, Bending, and Shear
 - Print/PDF-friendly layout, including calculation step tables when available
 
 ### Info
@@ -218,7 +207,6 @@ These routes are intentionally restricted in production builds to keep deploymen
 ### Engineering data sources
 - **AISC v16 shapes**: loaded from `data/aisc-shapes-v16.json` and exposed via `src/lib/aisc/data.ts`.
 - **Material presets**: defined in `src/lib/data/materials.ts` (Fy/Fu for common grades used by the UI).
-- **Bolt data**: defined in `src/lib/data/bolts.ts` (areas, nominal strengths, pretension values used by slip-critical checks).
 
 ---
 
@@ -234,9 +222,9 @@ These routes are intentionally restricted in production builds to keep deploymen
    - limit-state capacities/utilizations,
    - step-by-step table(s).
 5. Use module actions to:
-   - jump to results/steps sections,
-   - copy a summary,
-   - export data where provided.
+   - save the current inputs to a named slot,
+   - pin and compare runs,
+   - reset inputs stored in this browser.
 6. Open **Report** (`/report`) to generate a combined snapshot from the saved module inputs in this browser.
 
 ---
@@ -244,10 +232,10 @@ These routes are intentionally restricted in production builds to keep deploymen
 ## Project structure (folders)
 
 ### `src/app/`
-Holds page routes and route handlers:
-- module pages (`/tension`, `/compression`, `/bending-shear`, `/connections`)
+Holds page routes:
+- module pages (`/tension`, `/compression`, `/bending-shear`, `/shear`)
 - supporting routes (`/report`, `/info`, `/offline`)
-- development diagnostic API routes under `src/app/api/`
+- legacy redirect-only routes (`/connections`, `/combined`, `/workspace`, `/scope`)
 
 ### `src/components/`
 Reusable presentation and interaction components: layout shells, UI primitives, navigation, step tables, results cards, and action rails.
@@ -258,9 +246,6 @@ Domain logic and shared utilities:
 - engineering data access (`src/lib/aisc/`, `src/lib/data/`)
 - report summarization (`src/lib/report/`)
 - persistence keys (`src/lib/storage/`)
-
-### `src/app/api/`
-Small set of development diagnostics/logging routes. In production, these are gated to be no-ops or unavailable.
 
 ---
 
@@ -290,8 +275,8 @@ In practice:
 ## System limitations
 
 The in-app Info page documents key limitations. Examples include:
-- The tool does not replace full connection design (eccentric bolt groups, full end-plate/T-stub prying, combined weld limit states beyond the implemented checks).
-- Beam design mode does not search HSS (HSS is intended for check mode with the module’s stated simplifications).
+- The tool does not replace full connection design (bolts, welds, prying, eccentric bolt groups, end-plate detailing).
+- Bending design mode does not search HSS (HSS is intended for check mode with the module’s stated simplifications).
 - Not all advanced AISC provisions are implemented for every possible shape and condition; some checks are simplified for education.
 
 See `/info` for the canonical, user-facing limitations list.
@@ -301,7 +286,7 @@ See `/info` for the canonical, user-facing limitations list.
 ## Future improvements (realistic)
 
 Suggestions that fit the existing architecture (UI pages + pure calculation modules):
-- **More explicit input validation UX**: tighter per-field validation messaging and disabling exports when required inputs are missing.
+- **More explicit input validation UX**: tighter per-field validation messaging.
 - **Expanded test coverage**: add more regression cases for edge inputs (very small/large values, boundary conditions).
 - **More report configurability**: include optional “key steps only” sections per module (reusing existing step filtering logic where applicable).
 - **Performance profiling pass**: reduce unnecessary recalculations by memoizing derived UI-only structures (while keeping calculations correct and readable).

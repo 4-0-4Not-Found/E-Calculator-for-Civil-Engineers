@@ -5,13 +5,7 @@
 import shapes from "../src/data/aisc-shapes-v16.json";
 import { calculateBendingShearDesign } from "../src/lib/limit-state-engine/bending";
 import { calculateCompressionDesign } from "../src/lib/limit-state-engine/compression";
-import {
-  calculateBoltShearBearingCombinedLRFD,
-  calculateBoltSlipCritical,
-  calculateBoltTensionLRFD,
-  calculateBoltShearTensionInteractionLRFD,
-  calculateFilletWeldLRFD,
-} from "../src/lib/limit-state-engine/connections";
+import { calculateShearDesign } from "../src/lib/limit-state-engine/shear";
 import { calculateTensionDesign } from "../src/lib/limit-state-engine/tension";
 import { staggeredNetWidthInches } from "../src/lib/limit-state-engine/net-area";
 import type { AiscShape } from "../src/lib/aisc/types";
@@ -234,87 +228,46 @@ console.log(
   ),
 );
 
-// --- CONNECTIONS ---
-console.log("\n--- N1 Bearing shear+bolt: Vu=120, 4 bolts 3/4 A325 N, double shear ---");
-const n1 = calculateBoltShearBearingCombinedLRFD({
-  demandVu: 120,
-  boltGroup: "A325",
-  threadMode: "N",
-  dBolt: 0.75,
-  nBolts: 4,
-  shearPlanes: 2,
-  includeBearing: false,
-  lcMinIn: 1.25,
-  plateThicknessIn: 0.5,
-  plateFuKsi: 65,
+// --- SHEAR (PROGRAM-2 workbook parity) ---
+console.log("\n--- S1 LRFD W44X290 example (d=43.6, tw=0.865, h/tw=45, Fy=50) ---");
+const s1 = calculateShearDesign({
+  designMethod: "LRFD",
+  Fy: 50,
+  d: 43.6,
+  tw: 0.865,
+  hTw: 45,
+  demandV: 0,
 });
 console.log(
   JSON.stringify(
     {
-      Fnv: n1.shear.Fnv,
-      phiRnShear: round(n1.shear.phiRnTotal, 3),
-      phiRnGov: round(n1.phiRnTotalGoverning, 3),
-      isSafe: n1.shear.isSafe,
+      Vn: round(s1.results.nominal.phiPn, 3),
+      controllingStrength: round(s1.controllingStrength, 3),
+      isSafe: s1.isSafe,
     },
     null,
     2,
   ),
 );
 
-console.log("\n--- N2 Slip-critical Vu=80, Class A, hf=1, 4 bolts 3/4 A325, double shear LRFD ---");
-const n2 = calculateBoltSlipCritical({
-  demandVu: 80,
-  boltGroup: "A325",
-  dBolt: 0.75,
-  nBolts: 4,
-  slipPlanes: 2,
-  surfaceClass: "A",
-  hf: 1,
-  designMethod: "LRFD",
+console.log("\n--- S2 ASD same section ---");
+const s2 = calculateShearDesign({
+  designMethod: "ASD",
+  Fy: 50,
+  d: 43.6,
+  tw: 0.865,
+  hTw: 45,
+  demandV: 0,
 });
-if (!n2) throw new Error("N2 slip fixture: calculateBoltSlipCritical returned null (unexpected for A325 3/4)");
-console.log(JSON.stringify({ Tb: n2.Tb, availableSlip: round(n2.availableSlip, 3), isSafe: n2.isSafe }, null, 2));
-
-console.log("\n--- N3 Bolt tension Tu=150, 4x 3/4 A325 N ---");
-const n3 = calculateBoltTensionLRFD({
-  demandTu: 150,
-  boltGroup: "A325",
-  threadMode: "N",
-  dBolt: 0.75,
-  nBolts: 4,
-});
-console.log(JSON.stringify({ Fnt: n3.Fnt, phiRnTension: round(n3.phiRnTotal, 3), isSafe: n3.isSafe }, null, 2));
-
-console.log("\n--- N4 Interaction Vu=60 Tu=40 (bearing governs) ---");
-const n4b = calculateBoltShearBearingCombinedLRFD({
-  demandVu: 60,
-  boltGroup: "A325",
-  threadMode: "N",
-  dBolt: 0.75,
-  nBolts: 4,
-  shearPlanes: 2,
-  includeBearing: true,
-  lcMinIn: 1.25,
-  plateThicknessIn: 0.5,
-  plateFuKsi: 65,
-});
-const n4t = calculateBoltTensionLRFD({
-  demandTu: 40,
-  boltGroup: "A325",
-  threadMode: "N",
-  dBolt: 0.75,
-  nBolts: 4,
-});
-const int = calculateBoltShearTensionInteractionLRFD({
-  demandVu: 60,
-  demandTu: 40,
-  phiRnShearTotal: n4b.phiRnTotalGoverning,
-  phiRnTensionTotal: n4t.phiRnTotal,
-});
-console.log(JSON.stringify({ interactionSum: round(int.interactionSum, 4), isSafe: int.isSafe }, null, 2));
-
-console.log("\n--- N5 Fillet weld Fexx=70, leg=0.25, L=4, demand=50 ---");
-const n5 = calculateFilletWeldLRFD({ fexx: 70, legIn: 0.25, lengthIn: 4, demand: 50 });
-console.log(JSON.stringify({ phiRn: round(n5.phiRn, 3), throat: round(n5.throat, 4), demandOk: 50 <= n5.phiRn }, null, 2));
+console.log(
+  JSON.stringify(
+    {
+      controllingStrength: round(s2.controllingStrength, 3),
+      isSafe: s2.isSafe,
+    },
+    null,
+    2,
+  ),
+);
 
 console.log("\n=== END ===");

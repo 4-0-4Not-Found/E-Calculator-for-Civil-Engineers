@@ -1,4 +1,4 @@
-import { Card, CardBody, CardHeader } from "@/components/ui/Card";
+import { Card, CardBody } from "@/components/ui/Card";
 import { AppShell } from "@/components/layout/AppShell";
 import { BrandLink } from "@/components/ui/BrandLink";
 import { ModuleHero } from "@/components/layout/ModuleHero";
@@ -107,7 +107,7 @@ export default function InfoPage() {
             <summary className="min-h-11 cursor-pointer px-4 py-3.5 text-sm font-extrabold tracking-tight text-slate-950 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--brand)]/10 sm:px-5 sm:py-4">
               Tips
               <span className="mt-1 block text-xs font-semibold text-slate-600">
-                Faster workflow and where to print/export.
+                Faster workflow and where to print results.
               </span>
             </summary>
             <div className="border-t border-slate-200 p-5">

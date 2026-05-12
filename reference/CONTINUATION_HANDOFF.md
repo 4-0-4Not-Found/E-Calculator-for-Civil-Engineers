@@ -6,27 +6,21 @@ Use this file when starting a **new chat thread** so context is not lost.
 
 - **Brand:** SpanLedger Steel (`src/lib/brand.ts`); visible app title/tagline in `src/lib/ui/strings.ts` also pull from `PRODUCT_BRAND`.
 - **PWA / metadata:** `public/manifest.json`, `src/app/layout.tsx`
-- **Install icons:** `public/icons/icon-*.png`, `public/apple-touch-icon.png` (generated art + vector mark at `public/brand/spanledger-mark.svg`)
+- **Install icons:** `public/icons/icon-{180,192,512}.png`, `public/apple-touch-icon.png`, in-app brand image `public/publicbrandowl-logo.png`.
 
 ## Structural differences vs other white-label copy
 
 - **Calculation modules path:** `src/lib/limit-state-engine/` (renamed from `calculations/`).
-- **Browser storage namespace:** `src/lib/client-persistence.ts` + `src/lib/storage/keys.ts` — keys are **not** shared with other deployments.
+- **Browser storage namespace:** `src/lib/client-persistence.ts` + `src/lib/storage/keys.ts` — keys live under `spanledger/v1/*` and are **not** shared with other deployments.
 - **Theme / UI persistence keys:** also under `CLIENT_PERSISTENCE` in `client-persistence.ts`.
 
-## Navigation
+## Active modules
 
-- **All primary routes** remain: Home, Tension, Compression, Beam (`/bending-shear`), Connections, Report, Info (see `PageFooterNav`, `AppHeader`, `CommandPalette`).
-- `/workspace` still redirects to `/` (legacy).
+- **Home** (`/`), **Tension** (`/tension`), **Compression** (`/compression`), **Bending** (`/bending-shear`), **Shear** (`/shear`), **Report** (`/report`), **Info** (`/info`).
+- Removed modules retain redirect-only pages to avoid 404s on stale bookmarks: `/combined`, `/connections`, `/workspace`, `/scope` all redirect home or to `/info`.
 
-## Open work (when you resume)
+## Verified commands (from `aisc-pwa/`)
 
-- Client formal instructions + any Excel-driven formula tweaks.
-- Parity benchmark cases (Excel vs app) as agreed in planning.
-- Optional: trim/replace root `README.md` if it still describes the old product name.
-
-## Last verified commands (from project folder)
-
-- `npm test`
+- `npm test` — calculation parity (Vitest)
 - `npm run lint`
 - `npm run build`

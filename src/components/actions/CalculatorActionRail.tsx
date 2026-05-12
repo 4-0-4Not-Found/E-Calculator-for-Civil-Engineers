@@ -127,7 +127,6 @@ export function CalculatorActionRail(props: {
     if (!hydrated) return;
     if (!props.openSheetTick) return;
     setSheetOpen(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.openSheetTick, hydrated]);
 
   const header = useMemo(() => {
@@ -161,6 +160,7 @@ export function CalculatorActionRail(props: {
     if (!props.saveSlots) return;
     try {
       localStorage.setItem(props.saveSlots.draftStorageKey, JSON.stringify(slot.payload));
+      // eslint-disable-next-line react-hooks/purity -- click handler; Date.now is intentional.
       if (props.savedKey) localStorage.setItem(props.savedKey, String(Date.now()));
       window.location.reload();
     } catch {

@@ -2,12 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { CommandPaletteHost } from "@/components/command/CommandPalette";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { useToast } from "@/components/ui/Toast";
-import { AUTOSAVE_MODULE_KEYS, CLIENT_PERSISTENCE, type AutosaveModuleKey } from "@/lib/client-persistence";
-import { STORAGE } from "@/lib/storage/keys";
+import { CLIENT_PERSISTENCE } from "@/lib/client-persistence";
 
 type NavItem = { href: string; label: string; short?: string };
 
@@ -23,132 +20,31 @@ const utility: NavItem[] = [
   { href: "/info", label: "Info", short: "Info" },
 ];
 
-type LastSaved = { label: string; ts: number } | null;
-
 function isActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function readLastSaved(): LastSaved {
-  try {
-    const pairs: Array<{ key: AutosaveModuleKey; label: string }> = [
-      { key: "tension", label: "Tension" },
-      { key: "compression", label: "Compression" },
-      { key: "bending", label: "Bending" },
-      { key: "shear", label: "Shear" },
-    ];
-    let best: LastSaved = null;
-    for (const p of pairs) {
-      const raw = localStorage.getItem(CLIENT_PERSISTENCE.savedAt(p.key));
-      const ts = raw ? Number(raw) : NaN;
-      if (!Number.isFinite(ts)) continue;
-      if (!best || ts > best.ts) best = { label: p.label, ts };
-    }
-    return best;
-  } catch {
-    return null;
-  }
-}
-
-function formatRelative(ts: number) {
-  const diff = Date.now() - ts;
-  if (!Number.isFinite(diff)) return null;
-  if (diff < 15_000) return "just now";
-  const min = Math.floor(diff / 60_000);
-  if (min < 60) return `${min}m ago`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr}h ago`;
-  const day = Math.floor(hr / 24);
-  return `${day}d ago`;
-}
-
 export function AppHeader() {
   const pathname = usePathname() ?? "/";
-  const [tick, setTick] = useState(0);
-  const [clearOpen, setClearOpen] = useState(false);
-  const toast = useToast();
-  const isDev = process.env.NODE_ENV === "development";
-  const [mounted, setMounted] = useState(false);
   const headerRef = useRef<HTMLElement | null>(null);
 
-  useEffect(() => {
-    setMounted(true);
-    const onFocus = () => setTick((t) => t + 1);
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
-  }, []);
-
-  // #region agent log (header height -> sticky offsets)
+  // Expose header height as a CSS custom property so sticky offsets stay in sync.
   useLayoutEffect(() => {
     const el = headerRef.current;
     if (!el) return;
-    if (!isDev) return;
 
-    const apply = (hypothesisId: string, message: string) => {
+    const apply = () => {
       const r = el.getBoundingClientRect();
       const h = Math.max(0, Math.round(r.height));
       document.documentElement.style.setProperty("--app-header-h", `${h}px`);
-      fetch("/api/debug-log", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sessionId: "291aab",
-          runId: "pre-fix",
-          hypothesisId,
-          location: "AppHeader.tsx:useLayoutEffect(headerHeight)",
-          message,
-          data: {
-            pathname,
-            headerPx: h,
-            cssVar: getComputedStyle(document.documentElement).getPropertyValue("--app-header-h").trim() || null,
-            scrollY: typeof window !== "undefined" ? window.scrollY : null,
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
     };
 
-    apply("H1", "Initial header height measured");
-
-    const ro = new ResizeObserver(() => apply("H2", "Header height changed (ResizeObserver)"));
+    apply();
+    const ro = new ResizeObserver(() => apply());
     ro.observe(el);
     return () => ro.disconnect();
-  }, [pathname, isDev]);
-  // #endregion agent log (header height -> sticky offsets)
-
-  // (dev-only hydration logging removed)
-
-  const lastSaved = useMemo(() => {
-    // tick + pathname intentionally trigger refresh of localStorage-derived UI
-    void tick;
-    void pathname;
-    return mounted ? readLastSaved() : null;
-  }, [mounted, tick, pathname]);
-  const lastSavedLabel = lastSaved ? `${lastSaved.label} · ${formatRelative(lastSaved.ts) ?? "saved"}` : null;
-
-  const projectStatus = useMemo(() => {
-    void tick;
-    void pathname;
-    if (!mounted) return { items: [], completed: 0, total: 4 };
-    try {
-      const keys: Array<{ k: AutosaveModuleKey; label: string; href: string }> = [
-        { k: "tension", label: "Tension", href: "/tension" },
-        { k: "compression", label: "Compression", href: "/compression" },
-        { k: "bending", label: "Bending", href: "/bending-shear" },
-        { k: "shear", label: "Shear", href: "/shear" },
-      ];
-      const items = keys.map((x) => {
-        const raw = localStorage.getItem(CLIENT_PERSISTENCE.savedAt(x.k));
-        const ts = raw ? Number(raw) : NaN;
-        return { ...x, ts: Number.isFinite(ts) ? ts : null };
-      });
-      const completed = items.filter((i) => i.ts != null).length;
-      return { items, completed, total: items.length };
-    } catch {
-      return { items: [], completed: 0, total: 6 };
-    }
-  }, [tick, pathname, mounted]);
+  }, [pathname]);
 
   // Remember last visited route for a fast "Continue" on Home.
   // UI-only preference, no calculation logic.
@@ -160,35 +56,12 @@ export function AppHeader() {
     }
   }, [pathname]);
 
-  // (dev-only debug logging removed for production safety)
-
   return (
     <header
       ref={headerRef}
       className="sticky top-0 z-40 h-16 border-b border-[color:var(--accent-weak)] bg-[color:var(--glass-bg)] backdrop-blur-md"
     >
       <CommandPaletteHost />
-      <ConfirmDialog
-        open={clearOpen}
-        contextLabel="This device"
-        title="Clear all saved inputs?"
-        description={<p>This clears saved fields for all modules in this browser and cannot be undone.</p>}
-        confirmLabel="Clear"
-        cancelLabel="Cancel"
-        onCancel={() => setClearOpen(false)}
-        onConfirm={() => {
-          setClearOpen(false);
-          try {
-            Object.values(STORAGE).forEach((k) => localStorage.removeItem(k));
-            for (const k of AUTOSAVE_MODULE_KEYS) localStorage.removeItem(CLIENT_PERSISTENCE.savedAt(k));
-            localStorage.removeItem(CLIENT_PERSISTENCE.lastRoute);
-          } catch {
-            /* ignore */
-          }
-          toast.push({ title: "Cleared", message: "Saved inputs removed for this browser.", tone: "info" });
-          setTick((t) => t + 1);
-        }}
-      />
       {/* Desktop: slim header */}
       <div className="mx-auto hidden h-16 w-full max-w-6xl items-center justify-between gap-x-6 px-4 md:flex md:px-8">
         {/* Left: primary navigation */}
@@ -273,4 +146,3 @@ function NavPill(props: { href: string; label: string; short?: string; active: b
     </Link>
   );
 }
-

@@ -1,13 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Card, CardBody } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { InstallAppButton } from "@/components/InstallAppButton";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { BrandLink } from "@/components/ui/BrandLink";
-import { PRODUCT_BRAND } from "@/lib/brand";
 import { AUTOSAVE_MODULE_KEYS, CLIENT_PERSISTENCE, type AutosaveModuleKey } from "@/lib/client-persistence";
 import { STORAGE } from "@/lib/storage/keys";
 
@@ -26,7 +24,7 @@ const modules: Array<{
     label: "Tension",
     href: "/tension",
     summary: "Yielding, rupture, block shear; optional stagger helper.",
-    bullets: ["Quick SAFE / NOT SAFE", "Exports + step table"],
+    bullets: ["Quick SAFE / NOT SAFE", "Compare + step table"],
   },
   {
     key: "compression",
@@ -92,14 +90,6 @@ function readFavorites(): string[] {
   }
 }
 
-function writeFavorites(favs: string[]) {
-  try {
-    localStorage.setItem(CLIENT_PERSISTENCE.favorites, JSON.stringify(favs));
-  } catch {
-    /* ignore */
-  }
-}
-
 function readHomeOrder(): string[] | null {
   try {
     const raw = localStorage.getItem(CLIENT_PERSISTENCE.homeModuleOrder);
@@ -109,14 +99,6 @@ function readHomeOrder(): string[] | null {
     return out.length ? out : null;
   } catch {
     return null;
-  }
-}
-
-function writeHomeOrder(order: string[]) {
-  try {
-    localStorage.setItem(CLIENT_PERSISTENCE.homeModuleOrder, JSON.stringify(order));
-  } catch {
-    /* ignore */
   }
 }
 
@@ -160,27 +142,6 @@ function previewLineFor(key: ModuleKey): string | null {
   } catch {
     return null;
   }
-}
-
-function StatusBadge(props: { tone: "empty" | "complete" | "placeholder"; label: string }) {
-  const dot =
-    props.tone === "complete"
-      ? "bg-emerald-500"
-      : props.tone === "placeholder"
-        ? "bg-slate-300"
-        : "bg-slate-400";
-  const ring =
-    props.tone === "complete"
-      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-      : props.tone === "placeholder"
-        ? "border-slate-200 bg-[color:var(--surface)] text-slate-600"
-        : "border-slate-200 bg-[color:var(--surface)] text-slate-700";
-  return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] font-semibold ${ring}`}>
-      <span className={`h-1.5 w-1.5 rounded-full ${dot}`} aria-hidden="true" />
-      {props.label}
-    </span>
-  );
 }
 
 function ModuleIcon(props: { src: string | null }) {
@@ -227,8 +188,6 @@ export function HomeDashboard() {
   const [tick, setTick] = useState(0);
   /** false until after mount — SSR and first client paint must not read localStorage (differs from server HTML). */
   const [mounted, setMounted] = useState(false);
-  /** null until mounted — avoids SSR vs client mismatch on navigator.onLine */
-  const [networkOnline, setNetworkOnline] = useState<boolean | null>(null);
   const [restoreOpen, setRestoreOpen] = useState(false);
   const [moduleQuery, setModuleQuery] = useState("");
 
@@ -313,17 +272,6 @@ export function HomeDashboard() {
     const onFocus = () => setTick((v) => v + 1);
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
-  }, []);
-
-  useEffect(() => {
-    const sync = () => setNetworkOnline(navigator.onLine);
-    sync();
-    window.addEventListener("online", sync);
-    window.addEventListener("offline", sync);
-    return () => {
-      window.removeEventListener("online", sync);
-      window.removeEventListener("offline", sync);
-    };
   }, []);
 
   const resumeHref = useMemo(() => {

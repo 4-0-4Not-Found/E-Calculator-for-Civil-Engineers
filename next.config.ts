@@ -17,10 +17,9 @@ const OFFLINE_SHELL_ROUTES = [
   "/tension",
   "/compression",
   "/bending-shear",
-  "/connections",
+  "/shear",
   "/report",
   "/info",
-  "/workspace",
 ];
 
 const APP_SHELL_REVISION = "app-shell-v6";
