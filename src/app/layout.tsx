@@ -1,9 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { Geist_Mono, Inter } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { PwaBootstrap } from "@/components/pwa/PwaBootstrap";
 import { AppProviders } from "@/components/providers/AppProviders";
-import { ThemeInitScript } from "@/components/theme/ThemeInitScript";
+import { THEME_BOOT_JS } from "@/components/theme/ThemeInitScript";
 
 const inter = Inter({
   variable: "--font-geist-sans",
@@ -55,7 +56,11 @@ export default function RootLayout({
       className={`${inter.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
-        <ThemeInitScript />
+        <Script
+          id="theme-init-boot"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: THEME_BOOT_JS }}
+        />
       </head>
       <body suppressHydrationWarning className="min-h-full flex flex-col">
         <PwaBootstrap />

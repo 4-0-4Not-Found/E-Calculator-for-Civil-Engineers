@@ -10,8 +10,3 @@ export const THEME_BOOT_JS = `
   } catch(e) {}
 })();
 `;
-
-/** First-paint theme: sets `html.dark` before React hydrates (reduces flash). */
-export function ThemeInitScript() {
-  return <script suppressHydrationWarning dangerouslySetInnerHTML={{ __html: THEME_BOOT_JS }} />;
-}

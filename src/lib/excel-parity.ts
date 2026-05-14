@@ -1,5 +1,6 @@
 /**
- * Load-combination helpers aligned with common spreadsheet-style steel course workbooks.
+ * Load-combination helpers aligned with spreadsheet-style steel course workbooks
+ * (e.g. Steel-Program-1-2 / PROGRAM-1 Bending and related tabs).
  * LRFD factored uniform load uses `max(1.4*D, 1.2*D + 1.6*L)` klf for dead + live only
  * (AISC ASCE 7–style combination subset used in many class sheets).
  */
