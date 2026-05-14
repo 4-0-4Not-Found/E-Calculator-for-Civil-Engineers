@@ -467,8 +467,8 @@ export function buildExcelBendingAnalysisSnapshot(input: {
     Cb: input.Cb,
   });
 
-  const phiMnFlbLtb = phiB * ltb.MnMinFlbLtbKipFt;
-  const mnOverOmegaFlbLtb = ltb.MnMinFlbLtbKipFt / omegaB;
+  const phiMnFlbLtb = phiB * ltb.MnGovernKipFt;
+  const mnOverOmegaFlbLtb = ltb.MnGovernKipFt / omegaB;
   const flexureFlbLtbLrfd = {
     phiMnKipFt: phiMnFlbLtb,
     demandKipFt: MrLrfd,
